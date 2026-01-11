@@ -63,22 +63,11 @@ export function HomeView() {
                   <div className="text-sm text-stone-400">
                     {format(parseISO(record.date), 'MMM d, yyyy')}
                   </div>
-                  <div className="flex items-center gap-2">
-                    {record.voiceTag && (
-                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                        record.voiceTag === 'helpful' 
-                          ? 'bg-helpful-100 text-helpful-600' 
-                          : 'bg-critical-100 text-critical-600'
-                      }`}>
-                        {record.voiceTag === 'helpful' ? 'Helpful' : 'Critical'}
-                      </span>
-                    )}
-                    {improvement > 0 && (
-                      <span className="text-xs text-helpful-500 font-medium">
-                        ↓ {improvement}%
-                      </span>
-                    )}
-                  </div>
+                  {improvement > 0 && (
+                    <span className="text-xs text-helpful-500 font-medium">
+                      ↓ {improvement}%
+                    </span>
+                  )}
                 </div>
                 
                 <div className="text-stone-700 font-medium mb-3 line-clamp-2 leading-relaxed">

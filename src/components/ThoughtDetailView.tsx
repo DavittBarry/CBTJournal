@@ -98,19 +98,8 @@ export function ThoughtDetailView() {
         </div>
       )}
 
-      <div className="flex items-center gap-3 mb-6">
-        <div className="text-stone-500 text-sm">
-          {format(parseISO(record.date), 'EEEE, MMMM d, yyyy')}
-        </div>
-        {record.voiceTag && (
-          <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-            record.voiceTag === 'helpful' 
-              ? 'bg-helpful-100 text-helpful-600' 
-              : 'bg-critical-100 text-critical-600'
-          }`}>
-            {record.voiceTag === 'helpful' ? 'Helpful' : 'Critical'}
-          </span>
-        )}
+      <div className="text-stone-500 text-sm mb-6">
+        {format(parseISO(record.date), 'EEEE, MMMM d, yyyy')}
       </div>
 
       <div className="space-y-4">

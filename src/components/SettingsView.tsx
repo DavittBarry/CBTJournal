@@ -4,12 +4,12 @@ import { useAppStore } from '@/stores/appStore'
 type ImportStep = 'idle' | 'choose-mode' | 'confirm-replace'
 
 export function SettingsView() {
-  const { exportData, importData, thoughtRecords, depressionChecklists } = useAppStore()
+  const { exportData, importData, thoughtRecords, depressionChecklists, gratitudeEntries } = useAppStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [importStep, setImportStep] = useState<ImportStep>('idle')
   const [pendingImportData, setPendingImportData] = useState<string | null>(null)
 
-  const hasExistingData = thoughtRecords.length > 0 || depressionChecklists.length > 0
+  const hasExistingData = thoughtRecords.length > 0 || depressionChecklists.length > 0 || gratitudeEntries.length > 0
 
   const handleExport = async () => {
     const data = await exportData()
@@ -94,7 +94,7 @@ export function SettingsView() {
           <div className="card p-6 max-w-sm w-full">
             <h3 className="text-lg font-semibold text-stone-800 mb-2">Import data</h3>
             <p className="text-stone-500 text-sm mb-5">
-              You already have {thoughtRecords.length} thought record{thoughtRecords.length !== 1 ? 's' : ''} and {depressionChecklists.length} checklist{depressionChecklists.length !== 1 ? 's' : ''}. How would you like to import?
+              You have existing data. How would you like to import?
             </p>
             <div className="space-y-3">
               <button
@@ -159,6 +159,10 @@ export function SettingsView() {
           <div className="flex justify-between">
             <span className="text-stone-500">Thought records</span>
             <span className="text-stone-800 font-medium">{thoughtRecords.length}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-stone-500">Gratitude entries</span>
+            <span className="text-stone-800 font-medium">{gratitudeEntries.length}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-stone-500">Depression checklists</span>

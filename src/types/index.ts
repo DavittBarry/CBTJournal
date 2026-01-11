@@ -73,7 +73,13 @@ export interface ThoughtRecord {
   distortions: CognitiveDistortionId[]
   rationalResponse: string
   outcomeEmotions: Emotion[]
-  voiceTag?: 'helpful' | 'critical' | null
+}
+
+export interface GratitudeEntry {
+  id: string
+  createdAt: string
+  date: string
+  entries: string[]
 }
 
 export interface Emotion {

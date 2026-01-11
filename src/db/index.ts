@@ -1,5 +1,5 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb'
-import type { ThoughtRecord, DepressionChecklistEntry } from '@/types'
+import type { ThoughtRecord, DepressionChecklistEntry, GratitudeEntry } from '@/types'
 
 interface UntwistDB extends DBSchema {
   thoughtRecords: {
@@ -12,19 +12,31 @@ interface UntwistDB extends DBSchema {
     value: DepressionChecklistEntry
     indexes: { 'by-date': string }
   }
+  gratitudeEntries: {
+    key: string
+    value: GratitudeEntry
+    indexes: { 'by-date': string }
+  }
 }
 
 let dbPromise: Promise<IDBPDatabase<UntwistDB>> | null = null
 
 function getDB() {
   if (!dbPromise) {
-    dbPromise = openDB<UntwistDB>('untwist', 1, {
-      upgrade(db) {
-        const thoughtStore = db.createObjectStore('thoughtRecords', { keyPath: 'id' })
-        thoughtStore.createIndex('by-date', 'date')
+    dbPromise = openDB<UntwistDB>('untwist', 2, {
+      upgrade(db, oldVersion) {
+        if (oldVersion < 1) {
+          const thoughtStore = db.createObjectStore('thoughtRecords', { keyPath: 'id' })
+          thoughtStore.createIndex('by-date', 'date')
 
-        const depressionStore = db.createObjectStore('depressionChecklists', { keyPath: 'id' })
-        depressionStore.createIndex('by-date', 'date')
+          const depressionStore = db.createObjectStore('depressionChecklists', { keyPath: 'id' })
+          depressionStore.createIndex('by-date', 'date')
+        }
+        
+        if (oldVersion < 2) {
+          const gratitudeStore = db.createObjectStore('gratitudeEntries', { keyPath: 'id' })
+          gratitudeStore.createIndex('by-date', 'date')
+        }
       }
     })
   }
@@ -87,21 +99,45 @@ export const db = {
     return entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
   },
 
-  async exportData(): Promise<{ thoughtRecords: ThoughtRecord[]; depressionChecklists: DepressionChecklistEntry[] }> {
+  async addGratitudeEntry(entry: GratitudeEntry): Promise<string> {
+    const database = await getDB()
+    await database.add('gratitudeEntries', entry)
+    return entry.id
+  },
+
+  async updateGratitudeEntry(entry: GratitudeEntry): Promise<void> {
+    const database = await getDB()
+    await database.put('gratitudeEntries', entry)
+  },
+
+  async deleteGratitudeEntry(id: string): Promise<void> {
+    const database = await getDB()
+    await database.delete('gratitudeEntries', id)
+  },
+
+  async getAllGratitudeEntries(): Promise<GratitudeEntry[]> {
+    const database = await getDB()
+    const entries = await database.getAll('gratitudeEntries')
+    return entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  },
+
+  async exportData(): Promise<{ thoughtRecords: ThoughtRecord[]; depressionChecklists: DepressionChecklistEntry[]; gratitudeEntries: GratitudeEntry[] }> {
     const database = await getDB()
     return {
       thoughtRecords: await database.getAll('thoughtRecords'),
-      depressionChecklists: await database.getAll('depressionChecklists')
+      depressionChecklists: await database.getAll('depressionChecklists'),
+      gratitudeEntries: await database.getAll('gratitudeEntries')
     }
   },
 
-  async importData(data: { thoughtRecords?: ThoughtRecord[]; depressionChecklists?: DepressionChecklistEntry[] }, mode: 'merge' | 'replace' = 'merge'): Promise<void> {
+  async importData(data: { thoughtRecords?: ThoughtRecord[]; depressionChecklists?: DepressionChecklistEntry[]; gratitudeEntries?: GratitudeEntry[] }, mode: 'merge' | 'replace' = 'merge'): Promise<void> {
     const database = await getDB()
-    const tx = database.transaction(['thoughtRecords', 'depressionChecklists'], 'readwrite')
+    const tx = database.transaction(['thoughtRecords', 'depressionChecklists', 'gratitudeEntries'], 'readwrite')
     
     if (mode === 'replace') {
       await tx.objectStore('thoughtRecords').clear()
       await tx.objectStore('depressionChecklists').clear()
+      await tx.objectStore('gratitudeEntries').clear()
     }
     
     if (data.thoughtRecords) {
@@ -116,14 +152,21 @@ export const db = {
       }
     }
     
+    if (data.gratitudeEntries) {
+      for (const entry of data.gratitudeEntries) {
+        await tx.objectStore('gratitudeEntries').put(entry)
+      }
+    }
+    
     await tx.done
   },
 
   async clearAllData(): Promise<void> {
     const database = await getDB()
-    const tx = database.transaction(['thoughtRecords', 'depressionChecklists'], 'readwrite')
+    const tx = database.transaction(['thoughtRecords', 'depressionChecklists', 'gratitudeEntries'], 'readwrite')
     await tx.objectStore('thoughtRecords').clear()
     await tx.objectStore('depressionChecklists').clear()
+    await tx.objectStore('gratitudeEntries').clear()
     await tx.done
   }
 }

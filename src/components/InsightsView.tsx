@@ -7,14 +7,13 @@ import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, BarChart, 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 export function InsightsView() {
-  const { thoughtRecords, depressionChecklists } = useAppStore()
+  const { thoughtRecords, depressionChecklists, gratitudeEntries } = useAppStore()
 
   const stats = useMemo(() => {
     if (thoughtRecords.length === 0) return null
 
     const distortionCounts: Record<number, number> = {}
     const dayOfWeekCounts: Record<number, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 }
-    const voiceCounts = { helpful: 0, critical: 0, untagged: 0 }
     let totalImprovement = 0
     let improvementCount = 0
     const emotionCounts: Record<string, number> = {}
@@ -26,10 +25,6 @@ export function InsightsView() {
 
       const dayOfWeek = getDay(parseISO(record.date))
       dayOfWeekCounts[dayOfWeek]++
-
-      if (record.voiceTag === 'helpful') voiceCounts.helpful++
-      else if (record.voiceTag === 'critical') voiceCounts.critical++
-      else voiceCounts.untagged++
 
       if (record.emotions.length > 0 && record.outcomeEmotions.length > 0) {
         const maxInitial = Math.max(...record.emotions.map(e => e.intensity))
@@ -68,7 +63,6 @@ export function InsightsView() {
       totalRecords: thoughtRecords.length,
       topDistortions,
       dayOfWeekData,
-      voiceCounts,
       averageImprovement: improvementCount > 0 ? Math.round(totalImprovement / improvementCount) : 0,
       topEmotions
     }
@@ -85,7 +79,19 @@ export function InsightsView() {
       }))
   }, [depressionChecklists])
 
-  if (!stats && depressionChecklists.length === 0) {
+  const gratitudeStats = useMemo(() => {
+    if (gratitudeEntries.length === 0) return null
+    
+    const totalEntries = gratitudeEntries.reduce((sum, entry) => sum + entry.entries.length, 0)
+    
+    return {
+      totalDays: gratitudeEntries.length,
+      totalEntries,
+      avgPerDay: Math.round((totalEntries / gratitudeEntries.length) * 10) / 10
+    }
+  }, [gratitudeEntries])
+
+  if (!stats && depressionChecklists.length === 0 && !gratitudeStats) {
     return (
       <div className="pb-28">
         <h1 className="text-2xl font-semibold text-stone-800 mb-6">Insights</h1>
@@ -98,7 +104,7 @@ export function InsightsView() {
             </svg>
           </div>
           <p className="text-stone-500">
-            Add some thought records or complete a depression checklist to see your patterns.
+            Add some records to see your patterns.
           </p>
         </div>
       </div>
@@ -114,31 +120,13 @@ export function InsightsView() {
           <div className="grid grid-cols-2 gap-3">
             <div className="card p-5">
               <div className="text-3xl font-semibold text-stone-800">{stats.totalRecords}</div>
-              <div className="text-sm text-stone-500 mt-1">Total records</div>
+              <div className="text-sm text-stone-500 mt-1">Thought records</div>
             </div>
             <div className="card p-5">
               <div className="text-3xl font-semibold text-helpful-500">
                 {stats.averageImprovement > 0 ? `↓${stats.averageImprovement}%` : '—'}
               </div>
               <div className="text-sm text-stone-500 mt-1">Avg improvement</div>
-            </div>
-          </div>
-
-          <div className="card p-5">
-            <h2 className="text-base font-semibold text-stone-700 mb-4">Inner voice breakdown</h2>
-            <div className="flex gap-4">
-              <div className="flex-1 text-center">
-                <div className="text-2xl font-semibold text-helpful-500">{stats.voiceCounts.helpful}</div>
-                <div className="text-sm text-stone-500">Helpful</div>
-              </div>
-              <div className="flex-1 text-center">
-                <div className="text-2xl font-semibold text-critical-500">{stats.voiceCounts.critical}</div>
-                <div className="text-sm text-stone-500">Critical</div>
-              </div>
-              <div className="flex-1 text-center">
-                <div className="text-2xl font-semibold text-stone-400">{stats.voiceCounts.untagged}</div>
-                <div className="text-sm text-stone-500">Untagged</div>
-              </div>
             </div>
           </div>
 
@@ -179,6 +167,26 @@ export function InsightsView() {
             </div>
           </div>
         </>
+      )}
+
+      {gratitudeStats && (
+        <div className="card p-5">
+          <h2 className="text-base font-semibold text-stone-700 mb-4">Gratitude practice</h2>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-semibold text-stone-800">{gratitudeStats.totalDays}</div>
+              <div className="text-xs text-stone-500 mt-1">Days logged</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-semibold text-stone-800">{gratitudeStats.totalEntries}</div>
+              <div className="text-xs text-stone-500 mt-1">Total items</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-semibold text-stone-800">{gratitudeStats.avgPerDay}</div>
+              <div className="text-xs text-stone-500 mt-1">Avg per day</div>
+            </div>
+          </div>
+        </div>
       )}
 
       {depressionTrend.length > 0 && (

@@ -21,7 +21,6 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
   const [distortions, setDistortions] = useState<CognitiveDistortionId[]>(existingRecord?.distortions || [])
   const [rationalResponse, setRationalResponse] = useState(existingRecord?.rationalResponse || '')
   const [outcomeEmotions, setOutcomeEmotions] = useState<Emotion[]>(existingRecord?.outcomeEmotions || [{ name: '', intensity: 50 }])
-  const [voiceTag, setVoiceTag] = useState<'helpful' | 'critical' | null>(existingRecord?.voiceTag || null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -35,8 +34,7 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
       automaticThoughts,
       distortions,
       rationalResponse,
-      outcomeEmotions: outcomeEmotions.filter(e => e.name.trim()),
-      voiceTag
+      outcomeEmotions: outcomeEmotions.filter(e => e.name.trim())
     }
 
     if (existingRecord) {
@@ -182,37 +180,6 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
             className="input-field resize-none"
             placeholder="Write the automatic thoughts..."
           />
-        </div>
-
-        <div className="card p-5">
-          <label className="label">
-            Voice tag
-            <span className="label-hint">Is this your helpful or critical inner voice?</span>
-          </label>
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => setVoiceTag(voiceTag === 'helpful' ? null : 'helpful')}
-              className={`flex-1 py-3 rounded-xl border-2 font-medium transition-all duration-200 ${
-                voiceTag === 'helpful'
-                  ? 'bg-helpful-50 border-helpful-500 text-helpful-600'
-                  : 'bg-white border-stone-200 text-stone-500 hover:border-stone-300'
-              }`}
-            >
-              Helpful
-            </button>
-            <button
-              type="button"
-              onClick={() => setVoiceTag(voiceTag === 'critical' ? null : 'critical')}
-              className={`flex-1 py-3 rounded-xl border-2 font-medium transition-all duration-200 ${
-                voiceTag === 'critical'
-                  ? 'bg-critical-50 border-critical-500 text-critical-600'
-                  : 'bg-white border-stone-200 text-stone-500 hover:border-stone-300'
-              }`}
-            >
-              Critical
-            </button>
-          </div>
         </div>
 
         <div className="card p-5">

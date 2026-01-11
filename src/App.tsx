@@ -4,6 +4,8 @@ import { Navigation } from '@/components/Navigation'
 import { HomeView } from '@/components/HomeView'
 import { ThoughtRecordForm } from '@/components/ThoughtRecordForm'
 import { ThoughtDetailView } from '@/components/ThoughtDetailView'
+import { GratitudeView } from '@/components/GratitudeView'
+import { NewGratitudeView } from '@/components/NewGratitudeView'
 import { ChecklistView } from '@/components/ChecklistView'
 import { NewChecklistView } from '@/components/NewChecklistView'
 import { InsightsView } from '@/components/InsightsView'
@@ -32,6 +34,10 @@ function App() {
         return <ThoughtRecordForm />
       case 'thought-detail':
         return <ThoughtDetailView />
+      case 'gratitude':
+        return <GratitudeView />
+      case 'new-gratitude':
+        return <NewGratitudeView />
       case 'checklist':
         return <ChecklistView />
       case 'new-checklist':
