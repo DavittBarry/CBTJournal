@@ -106,7 +106,7 @@ export function NewChecklistView() {
   const categories = [...new Set(DEPRESSION_ITEMS.map(item => item.category))]
 
   return (
-    <form onSubmit={handleSubmit} className="pb-28">
+    <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <button
           type="button"
@@ -127,7 +127,7 @@ export function NewChecklistView() {
         centered={false}
       />
 
-      <div className="sticky top-0 bg-warm-100/95 backdrop-blur py-4 -mx-5 px-5 mb-6 z-10">
+      <div className="sticky top-0 bg-warm-100/95 backdrop-blur py-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 mb-6 z-10">
         <div className="card p-4">
           <div className="flex items-baseline gap-2 mb-2">
             <span className="text-2xl font-semibold text-stone-800">{total}</span>
@@ -167,7 +167,7 @@ export function NewChecklistView() {
       {categories.map(category => (
         <div key={category} className="mb-8">
           <h2 className="text-base font-semibold text-stone-700 mb-4 px-1">{category}</h2>
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {DEPRESSION_ITEMS.filter(item => item.category === category).map((item) => (
               <div key={item.key} className="card p-4">
                 <div className="text-stone-700 mb-3 text-sm leading-relaxed">{item.label}</div>

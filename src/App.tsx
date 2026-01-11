@@ -67,10 +67,20 @@ function App() {
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-warm-100 text-stone-800">
-        <main className="max-w-lg mx-auto px-5 py-8">
-          {renderView()}
-        </main>
         <Navigation />
+        
+        {/* Main content area with responsive margins */}
+        <main className="
+          pb-24 lg:pb-8
+          lg:ml-64
+          px-4 sm:px-6 lg:px-8
+          py-6 lg:py-8
+        ">
+          <div className="max-w-4xl mx-auto">
+            {renderView()}
+          </div>
+        </main>
+        
         <ToastContainer />
       </div>
     </ErrorBoundary>

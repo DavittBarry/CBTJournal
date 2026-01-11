@@ -57,7 +57,8 @@ export function InfoButton({ title, content, example }: InfoButtonProps) {
 
       {isOpen && (
         <div
-          className="absolute left-0 top-full mt-2 z-50 w-72 bg-white rounded-xl shadow-soft-lg border border-stone-200 p-4 animate-fade-in"
+          className="fixed sm:absolute left-4 right-4 sm:left-0 sm:right-auto top-auto sm:top-full mt-2 z-50 sm:w-72 bg-white rounded-xl shadow-soft-lg border border-stone-200 p-4 animate-fade-in"
+          style={{ bottom: 'auto' }}
         >
           <div className="flex items-start justify-between mb-2">
             <h4 className="font-semibold text-stone-800 text-sm">{title}</h4>
@@ -207,7 +208,7 @@ export function PageIntro({ title, description, steps, centered = true }: PageIn
 
       {isExpanded && (
         <div 
-          className="mt-4 bg-sage-50 rounded-xl p-5 animate-fade-in"
+          className="mt-4 bg-sage-50 rounded-xl p-5 animate-fade-in max-w-2xl mx-auto"
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >

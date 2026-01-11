@@ -115,7 +115,7 @@ export function SettingsView() {
   const allLogs = logger.getLogs()
 
   return (
-    <div className="pb-28">
+    <div className="max-w-2xl mx-auto">
       <h1 className="text-2xl font-semibold text-stone-800 mb-8 text-center">Settings</h1>
 
       {importStep === 'choose-mode' && (
@@ -182,55 +182,57 @@ export function SettingsView() {
         </div>
       )}
 
-      <section className="mb-8">
-        <h2 className="text-base font-semibold text-stone-700 mb-4">Your data</h2>
-        <div className="card p-5 space-y-4">
-          <div className="flex justify-between">
-            <span className="text-stone-500">Thought records</span>
-            <span className="text-stone-800 font-medium">{thoughtRecords.length}</span>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <section>
+          <h2 className="text-base font-semibold text-stone-700 mb-4">Your data</h2>
+          <div className="card p-5 space-y-4">
+            <div className="flex justify-between">
+              <span className="text-stone-500">Thought records</span>
+              <span className="text-stone-800 font-medium">{thoughtRecords.length}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-stone-500">Gratitude entries</span>
+              <span className="text-stone-800 font-medium">{gratitudeEntries.length}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-stone-500">Depression checklists</span>
+              <span className="text-stone-800 font-medium">{depressionChecklists.length}</span>
+            </div>
           </div>
-          <div className="flex justify-between">
-            <span className="text-stone-500">Gratitude entries</span>
-            <span className="text-stone-800 font-medium">{gratitudeEntries.length}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-stone-500">Depression checklists</span>
-            <span className="text-stone-800 font-medium">{depressionChecklists.length}</span>
-          </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="mb-8">
-        <h2 className="text-base font-semibold text-stone-700 mb-4">Export & import</h2>
-        <div className="space-y-3">
-          <button
-            onClick={handleExport}
-            className="btn-secondary w-full"
-          >
-            Export data as JSON
-          </button>
-          
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json"
-            onChange={handleFileSelect}
-            className="hidden"
-            id="import-file"
-          />
-          <label
-            htmlFor="import-file"
-            className="btn-secondary block w-full text-center cursor-pointer"
-          >
-            Import data from JSON
-          </label>
-        </div>
-        <p className="text-stone-500 text-sm mt-3 leading-relaxed">
-          Your data is stored locally on your device. Export regularly to back up your data.
-        </p>
-      </section>
+        <section>
+          <h2 className="text-base font-semibold text-stone-700 mb-4">Export & import</h2>
+          <div className="space-y-3">
+            <button
+              onClick={handleExport}
+              className="btn-secondary w-full"
+            >
+              Export data as JSON
+            </button>
+            
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              onChange={handleFileSelect}
+              className="hidden"
+              id="import-file"
+            />
+            <label
+              htmlFor="import-file"
+              className="btn-secondary block w-full text-center cursor-pointer"
+            >
+              Import data from JSON
+            </label>
+          </div>
+          <p className="text-stone-500 text-sm mt-3 leading-relaxed">
+            Your data is stored locally on your device. Export regularly to back up your data.
+          </p>
+        </section>
+      </div>
 
-      <section className="mb-8">
+      <section className="mt-8">
         <h2 className="text-base font-semibold text-stone-700 mb-4">About</h2>
         <div className="card p-5">
           <p className="text-stone-600 mb-3 leading-relaxed">
@@ -244,9 +246,9 @@ export function SettingsView() {
         </div>
       </section>
 
-      <section className="mb-8">
+      <section className="mt-8">
         <h2 className="text-base font-semibold text-stone-700 mb-4">Resources</h2>
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <a
             href="https://feelinggood.com/"
             target="_blank"
@@ -269,12 +271,12 @@ export function SettingsView() {
       </section>
 
       {isDev && (
-        <section>
+        <section className="mt-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-semibold text-stone-700">Developer tools</h2>
             <button
               onClick={() => setShowDevTools(!showDevTools)}
-              className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
+              className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:ring-0 focus:ring-offset-0 ${
                 showDevTools ? 'bg-sage-500' : 'bg-stone-300'
               }`}
               aria-label="Toggle developer tools"
@@ -288,7 +290,7 @@ export function SettingsView() {
           </div>
           
           {showDevTools && (
-            <div className="space-y-4 animate-fade-in">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
               <div className="card p-5">
                 <div className="flex justify-between mb-4">
                   <span className="text-stone-500 text-sm">Total logs</span>
@@ -314,23 +316,6 @@ export function SettingsView() {
                 </div>
               </div>
 
-              {recentErrors.length > 0 && (
-                <div className="card p-5">
-                  <h3 className="text-sm font-medium text-stone-700 mb-3">Recent errors</h3>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {recentErrors.map((log, i) => (
-                      <div key={i} className="bg-critical-50 rounded-lg p-3 text-xs">
-                        <div className="text-critical-600 font-mono mb-1">[{log.context}]</div>
-                        <div className="text-critical-700">{log.message}</div>
-                        <div className="text-critical-400 mt-1">
-                          {new Date(log.timestamp).toLocaleString()}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               <div className="card p-5">
                 <h3 className="text-sm font-medium text-stone-700 mb-3">Test actions</h3>
                 <div className="space-y-2">
@@ -354,6 +339,23 @@ export function SettingsView() {
                   </button>
                 </div>
               </div>
+
+              {recentErrors.length > 0 && (
+                <div className="card p-5 md:col-span-2">
+                  <h3 className="text-sm font-medium text-stone-700 mb-3">Recent errors</h3>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {recentErrors.map((log, i) => (
+                      <div key={i} className="bg-critical-50 rounded-lg p-3 text-xs">
+                        <div className="text-critical-600 font-mono mb-1">[{log.context}]</div>
+                        <div className="text-critical-700">{log.message}</div>
+                        <div className="text-critical-400 mt-1">
+                          {new Date(log.timestamp).toLocaleString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </section>

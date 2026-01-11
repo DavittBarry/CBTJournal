@@ -94,7 +94,7 @@ export function InsightsView() {
 
   if (!stats && depressionChecklists.length === 0 && !gratitudeStats) {
     return (
-      <div className="pb-28">
+      <div>
         <PageIntro
           title="Insights"
           description="This section shows patterns in your thought records, depression checklist scores, and gratitude practice. As you add more data, you'll see trends emerge that can help you understand your thinking patterns and track your progress over time."
@@ -116,7 +116,7 @@ export function InsightsView() {
   }
 
   return (
-    <div className="pb-28 space-y-4">
+    <div className="space-y-4">
       <PageIntro
         title="Insights"
         description="Track your progress and discover patterns. Seeing which cognitive distortions appear most often helps you focus your efforts. The average improvement shows how effective the thought record technique is for you. Depression scores over time reveal your overall trajectory."
@@ -124,7 +124,7 @@ export function InsightsView() {
 
       {stats && (
         <>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="card p-5">
               <div className="flex items-start justify-between">
                 <div>
@@ -151,24 +151,58 @@ export function InsightsView() {
                 />
               </div>
             </div>
+            {gratitudeStats && (
+              <>
+                <div className="card p-5">
+                  <div className="text-3xl font-semibold text-stone-800">{gratitudeStats.totalDays}</div>
+                  <div className="text-sm text-stone-500 mt-1">Gratitude days</div>
+                </div>
+                <div className="card p-5">
+                  <div className="text-3xl font-semibold text-stone-800">{gratitudeStats.avgPerDay}</div>
+                  <div className="text-sm text-stone-500 mt-1">Avg items/day</div>
+                </div>
+              </>
+            )}
           </div>
 
-          <div className="card p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-semibold text-stone-700">Top cognitive distortions</h2>
-              <StatInfoButton
-                title="Top cognitive distortions"
-                content="These are the thinking patterns that appear most often in your thought records. Knowing your most common distortions helps you recognize them faster in daily life and challenge them more effectively."
-              />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="card p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold text-stone-700">Top cognitive distortions</h2>
+                <StatInfoButton
+                  title="Top cognitive distortions"
+                  content="These are the thinking patterns that appear most often in your thought records. Knowing your most common distortions helps you recognize them faster in daily life and challenge them more effectively."
+                />
+              </div>
+              <div className="space-y-3">
+                {stats.topDistortions.map((d, i) => (
+                  <div key={d.id} className="flex items-center gap-3">
+                    <div className="text-stone-400 w-4 text-sm">{i + 1}.</div>
+                    <div className="flex-1 text-stone-700">{d.name}</div>
+                    <div className="text-sage-600 font-medium">{d.count}</div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="space-y-3">
-              {stats.topDistortions.map((d, i) => (
-                <div key={d.id} className="flex items-center gap-3">
-                  <div className="text-stone-400 w-4 text-sm">{i + 1}.</div>
-                  <div className="flex-1 text-stone-700">{d.name}</div>
-                  <div className="text-sage-600 font-medium">{d.count}</div>
-                </div>
-              ))}
+
+            <div className="card p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold text-stone-700">Most frequent emotions</h2>
+                <StatInfoButton
+                  title="Most frequent emotions"
+                  content="The emotions that appear most often in your thought records. Understanding which emotions you experience most frequently can help you anticipate triggers and develop targeted coping strategies."
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {stats.topEmotions.map(([emotion, count]) => (
+                  <span key={emotion} className="bg-warm-200 text-stone-600 px-3 py-1.5 rounded-full text-sm">
+                    {emotion} ({count})
+                  </span>
+                ))}
+              </div>
+              {stats.topEmotions.length === 0 && (
+                <p className="text-stone-400 text-sm">No emotions recorded yet</p>
+              )}
             </div>
           </div>
 
@@ -181,7 +215,7 @@ export function InsightsView() {
                   content="Shows how your Burns Depression Checklist scores change over time. A downward trend indicates improvement. Look for overall direction rather than individual points, as scores naturally fluctuate day to day."
                 />
               </div>
-              <div className="h-48">
+              <div className="h-48 sm:h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={depressionTrend}>
                     <XAxis dataKey="date" stroke="#a8a29e" fontSize={12} tickLine={false} axisLine={false} />
@@ -217,7 +251,7 @@ export function InsightsView() {
                 content="Shows which days you tend to write thought records. This can reveal patterns, like if certain days are more emotionally difficult for you or when you're most likely to practice CBT techniques."
               />
             </div>
-            <div className="h-40">
+            <div className="h-40 sm:h-48">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stats.dayOfWeekData}>
                   <XAxis dataKey="day" stroke="#a8a29e" fontSize={12} tickLine={false} axisLine={false} />
@@ -227,27 +261,10 @@ export function InsightsView() {
               </ResponsiveContainer>
             </div>
           </div>
-
-          <div className="card p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-semibold text-stone-700">Most frequent emotions</h2>
-              <StatInfoButton
-                title="Most frequent emotions"
-                content="The emotions that appear most often in your thought records. Understanding which emotions you experience most frequently can help you anticipate triggers and develop targeted coping strategies."
-              />
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {stats.topEmotions.map(([emotion, count]) => (
-                <span key={emotion} className="bg-warm-200 text-stone-600 px-3 py-1.5 rounded-full text-sm">
-                  {emotion} ({count})
-                </span>
-              ))}
-            </div>
-          </div>
         </>
       )}
 
-      {gratitudeStats && (
+      {!stats && gratitudeStats && (
         <div className="card p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-semibold text-stone-700">Gratitude practice</h2>

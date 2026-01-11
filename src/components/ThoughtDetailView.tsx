@@ -48,7 +48,7 @@ export function ThoughtDetailView() {
     : null
 
   return (
-    <div className="pb-28">
+    <div className="max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <button
           onClick={() => setView('home')}
@@ -120,14 +120,21 @@ export function ThoughtDetailView() {
           </div>
         </section>
 
-        <section className="card p-5">
-          <h2 className="text-xs font-medium text-stone-400 uppercase tracking-wide mb-2">Automatic thoughts</h2>
-          <p className="text-stone-700 whitespace-pre-wrap leading-relaxed">{record.automaticThoughts}</p>
-        </section>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <section className="card p-5">
+            <h2 className="text-xs font-medium text-stone-400 uppercase tracking-wide mb-2">Automatic thoughts</h2>
+            <p className="text-stone-700 whitespace-pre-wrap leading-relaxed">{record.automaticThoughts}</p>
+          </section>
+
+          <section className="card p-5">
+            <h2 className="text-xs font-medium text-stone-400 uppercase tracking-wide mb-2">Rational response</h2>
+            <p className="text-stone-700 whitespace-pre-wrap leading-relaxed">{record.rationalResponse}</p>
+          </section>
+        </div>
 
         <section className="card p-5">
           <h2 className="text-xs font-medium text-stone-400 uppercase tracking-wide mb-3">Cognitive distortions</h2>
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {record.distortions.map((id) => {
               const distortion = getDistortion(id)
               return distortion ? (
@@ -140,11 +147,6 @@ export function ThoughtDetailView() {
               ) : null
             })}
           </div>
-        </section>
-
-        <section className="card p-5">
-          <h2 className="text-xs font-medium text-stone-400 uppercase tracking-wide mb-2">Rational response</h2>
-          <p className="text-stone-700 whitespace-pre-wrap leading-relaxed">{record.rationalResponse}</p>
         </section>
 
         <section className="card p-5">

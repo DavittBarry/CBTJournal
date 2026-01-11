@@ -125,7 +125,7 @@ export function NewGratitudeView() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="pb-28">
+    <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <button
           type="button"

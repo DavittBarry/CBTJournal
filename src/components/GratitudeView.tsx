@@ -67,7 +67,7 @@ export function GratitudeView() {
   }
 
   return (
-    <div className="pb-28">
+    <div>
       <PageIntro
         title="Gratitude"
         description="Gratitude journaling is a simple but powerful practice. Research consistently shows that regularly noting things you're grateful for can increase happiness, reduce depression, improve sleep, and strengthen relationships. It works by training your brain to notice positive experiences you might otherwise overlook."
@@ -92,7 +92,7 @@ export function GratitudeView() {
       </div>
 
       {gratitudeEntries.length > 0 && (
-        <div className="flex gap-2 mb-4">
+        <div className="flex flex-col sm:flex-row gap-2 mb-4 max-w-2xl mx-auto">
           <div className="flex-1">
             <SearchBar 
               value={searchQuery} 
@@ -100,7 +100,7 @@ export function GratitudeView() {
               placeholder="Search entries..."
             />
           </div>
-          <div className="w-36">
+          <div className="w-full sm:w-40">
             <TimeFilter value={timeFilter} onChange={setTimeFilter} />
           </div>
         </div>
@@ -158,7 +158,7 @@ export function GratitudeView() {
           </button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {filteredEntries.map((entry) => {
             const isExpanded = expandedId === entry.id
 
@@ -166,7 +166,7 @@ export function GratitudeView() {
               <div
                 key={entry.id}
                 className={`card overflow-hidden transition-all duration-300 ${
-                  isExpanded ? 'shadow-soft-lg' : 'hover:shadow-soft-lg'
+                  isExpanded ? 'shadow-soft-lg md:col-span-2 lg:col-span-3' : 'hover:shadow-soft-lg'
                 }`}
               >
                 <button

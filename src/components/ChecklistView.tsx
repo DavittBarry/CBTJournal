@@ -103,7 +103,7 @@ export function ChecklistView() {
   }
 
   return (
-    <div className="pb-28">
+    <div>
       <PageIntro
         title="Depression checklist"
         description="This checklist helps you measure the severity of depression symptoms and track changes over time. Based on the Burns Depression Checklist, it covers thoughts, feelings, activities, relationships, and physical symptoms. Regular tracking helps you see your progress and identify what's working."
@@ -129,7 +129,7 @@ export function ChecklistView() {
 
       {depressionChecklists.length > 0 && (
         <div className="flex justify-center mb-4">
-          <div className="w-36">
+          <div className="w-40">
             <TimeFilter value={timeFilter} onChange={setTimeFilter} />
           </div>
         </div>
@@ -188,7 +188,7 @@ export function ChecklistView() {
           </button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {filteredChecklists.map((entry) => {
             const { level, color } = getDepressionLevel(entry.total)
             const prevEntry = getPrevEntry(entry)
@@ -201,7 +201,7 @@ export function ChecklistView() {
               <div
                 key={entry.id}
                 className={`card overflow-hidden transition-all duration-300 ${
-                  isExpanded ? 'shadow-soft-lg' : 'hover:shadow-soft-lg'
+                  isExpanded ? 'shadow-soft-lg md:col-span-2' : 'hover:shadow-soft-lg'
                 }`}
               >
                 <button
@@ -260,7 +260,7 @@ export function ChecklistView() {
                   <div className="px-5 pb-5">
                     <div className="pt-4 border-t border-stone-100 mb-4">
                       <h4 className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-3">Score guide</h4>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 text-xs">
                         <div className="flex justify-between">
                           <span className="text-stone-400">0-5</span>
                           <span className="text-stone-600">No depression</span>

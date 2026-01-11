@@ -81,7 +81,7 @@ export function HomeView() {
   }
 
   return (
-    <div className="pb-28">
+    <div>
       <PageIntro
         title="Thought records"
         description="Thought records are the core tool of cognitive behavioral therapy. They help you catch negative automatic thoughts, identify thinking patterns, and develop more balanced perspectives. Regular practice can significantly reduce anxiety and depression by changing how you relate to your thoughts."
@@ -107,7 +107,7 @@ export function HomeView() {
       </div>
 
       {thoughtRecords.length > 0 && (
-        <div className="flex gap-2 mb-4">
+        <div className="flex flex-col sm:flex-row gap-2 mb-4 max-w-2xl mx-auto">
           <div className="flex-1">
             <SearchBar 
               value={searchQuery} 
@@ -115,7 +115,7 @@ export function HomeView() {
               placeholder="Search records..."
             />
           </div>
-          <div className="w-36">
+          <div className="w-full sm:w-40">
             <TimeFilter value={timeFilter} onChange={setTimeFilter} />
           </div>
         </div>
@@ -174,7 +174,7 @@ export function HomeView() {
           </button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {filteredRecords.map((record) => {
             const maxEmotion = record.emotions.reduce(
               (max, e) => (e.intensity > max.intensity ? e : max),
@@ -191,7 +191,7 @@ export function HomeView() {
               <div
                 key={record.id}
                 className={`card overflow-hidden transition-all duration-300 ${
-                  isExpanded ? 'shadow-soft-lg' : 'hover:shadow-soft-lg'
+                  isExpanded ? 'shadow-soft-lg md:col-span-2' : 'hover:shadow-soft-lg'
                 }`}
               >
                 <button
@@ -262,19 +262,21 @@ export function HomeView() {
 
                 {isExpanded && (
                   <div className="px-5 pb-5 space-y-4">
-                    {record.automaticThoughts && (
-                      <div className="pt-4 border-t border-stone-100">
-                        <h4 className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2">Automatic thoughts</h4>
-                        <p className="text-stone-700 text-sm leading-relaxed whitespace-pre-wrap">{record.automaticThoughts}</p>
-                      </div>
-                    )}
-                    
-                    {record.rationalResponse && (
-                      <div className="pt-4 border-t border-stone-100">
-                        <h4 className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2">Rational response</h4>
-                        <p className="text-stone-700 text-sm leading-relaxed whitespace-pre-wrap">{record.rationalResponse}</p>
-                      </div>
-                    )}
+                    <div className="md:grid md:grid-cols-2 md:gap-6">
+                      {record.automaticThoughts && (
+                        <div className="pt-4 border-t border-stone-100 md:border-t-0 md:pt-0">
+                          <h4 className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2">Automatic thoughts</h4>
+                          <p className="text-stone-700 text-sm leading-relaxed whitespace-pre-wrap">{record.automaticThoughts}</p>
+                        </div>
+                      )}
+                      
+                      {record.rationalResponse && (
+                        <div className="pt-4 border-t border-stone-100 md:border-t-0 md:pt-0">
+                          <h4 className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2">Rational response</h4>
+                          <p className="text-stone-700 text-sm leading-relaxed whitespace-pre-wrap">{record.rationalResponse}</p>
+                        </div>
+                      )}
+                    </div>
 
                     {record.outcomeEmotions.length > 0 && record.outcomeEmotions[0].name && (
                       <div className="pt-4 border-t border-stone-100">
