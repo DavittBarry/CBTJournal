@@ -1,14 +1,25 @@
 import { useAppStore } from '@/stores/appStore'
 import { getDepressionLevel } from '@/types'
 import { format, parseISO } from 'date-fns'
+import { PageIntro } from '@/components/InfoComponents'
 
 export function ChecklistView() {
   const { depressionChecklists, setView } = useAppStore()
 
   return (
     <div className="pb-28">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-stone-800">Depression checklist</h1>
+      <PageIntro
+        title="Depression checklist"
+        description="This checklist helps you measure the severity of depression symptoms and track changes over time. Based on the Burns Depression Checklist, it covers thoughts, feelings, activities, relationships, and physical symptoms. Regular tracking helps you see your progress and identify what's working."
+        steps={[
+          'Complete the checklist when you first start using the app.',
+          'Retake it every 1-2 weeks to track your progress.',
+          'Use the score to guide your efforts and conversations with any healthcare providers.',
+          'Watch for trends over time rather than focusing on single scores.'
+        ]}
+      />
+
+      <div className="flex items-center justify-end mb-6">
         <button
           onClick={() => setView('new-checklist')}
           className="btn-primary text-sm py-2.5 px-4"
@@ -16,11 +27,6 @@ export function ChecklistView() {
           New checklist
         </button>
       </div>
-
-      <p className="text-stone-500 text-sm mb-6 leading-relaxed">
-        Track your symptoms every 2 weeks using the Burns Depression Checklist. 
-        Scores range from 0-100.
-      </p>
 
       {depressionChecklists.length === 0 ? (
         <div className="text-center py-16">
