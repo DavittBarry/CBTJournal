@@ -3,6 +3,7 @@ import { useAppStore } from '@/stores/appStore'
 import { COGNITIVE_DISTORTIONS, getDepressionLevel } from '@/types'
 import { format, parseISO, getDay } from 'date-fns'
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, BarChart, Bar } from 'recharts'
+import { PageIntro } from '@/components/InfoComponents'
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -94,7 +95,10 @@ export function InsightsView() {
   if (!stats && depressionChecklists.length === 0 && !gratitudeStats) {
     return (
       <div className="pb-28">
-        <h1 className="text-2xl font-semibold text-stone-800 mb-6">Insights</h1>
+        <PageIntro
+          title="Insights"
+          description="This section shows patterns in your thought records, depression checklist scores, and gratitude practice. As you add more data, you'll see trends emerge that can help you understand your thinking patterns and track your progress over time."
+        />
         <div className="text-center py-16">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-sage-100 flex items-center justify-center">
             <svg className="w-8 h-8 text-sage-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -113,7 +117,10 @@ export function InsightsView() {
 
   return (
     <div className="pb-28 space-y-4">
-      <h1 className="text-2xl font-semibold text-stone-800 mb-6">Insights</h1>
+      <PageIntro
+        title="Insights"
+        description="Track your progress and discover patterns. Seeing which cognitive distortions appear most often helps you focus your efforts. The average improvement shows how effective the thought record technique is for you. Depression scores over time reveal your overall trajectory."
+      />
 
       {stats && (
         <>

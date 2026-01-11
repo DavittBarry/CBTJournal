@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useAppStore } from '@/stores/appStore'
 import { DEPRESSION_ITEMS, type DepressionScores, type DepressionChecklistEntry, getDepressionLevel } from '@/types'
 import { format } from 'date-fns'
+import { PageIntro, InfoButton } from '@/components/InfoComponents'
+import { toast } from '@/stores/toastStore'
 
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
@@ -66,6 +68,7 @@ export function NewChecklistView() {
     }
 
     await addDepressionChecklist(entry)
+    toast.success('Checklist saved')
     setView('checklist')
   }
 
@@ -73,7 +76,7 @@ export function NewChecklistView() {
 
   return (
     <form onSubmit={handleSubmit} className="pb-28">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <button
           type="button"
           onClick={() => setView('checklist')}
@@ -84,9 +87,13 @@ export function NewChecklistView() {
           </svg>
           Back
         </button>
-        <h1 className="text-xl font-semibold text-stone-800">Depression checklist</h1>
         <div className="w-16" />
       </div>
+
+      <PageIntro
+        title="Depression checklist"
+        description="This 25-item checklist measures the severity of depression symptoms across five categories: thoughts and feelings, activities, relationships, physical symptoms, and suicidal urges. Answer based on how you've felt recently. Your score helps track your progress over time."
+      />
 
       <div className="sticky top-0 bg-warm-100/95 backdrop-blur py-4 -mx-5 px-5 mb-6 z-10">
         <div className="card p-4">
@@ -94,6 +101,10 @@ export function NewChecklistView() {
             <span className="text-2xl font-semibold text-stone-800">{total}</span>
             <span className="text-stone-400">/100</span>
             <span className="text-sm text-stone-600 ml-2">{level}</span>
+            <InfoButton
+              title="Understanding your score"
+              content="0-5: No depression. 6-10: Normal but unhappy. 11-25: Mild depression. 26-50: Moderate depression. 51-75: Severe depression. 76-100: Extreme depression. If you score above 25, consider speaking with a mental health professional."
+            />
           </div>
           <div className="h-1.5 bg-stone-200 rounded-full overflow-hidden">
             <div 

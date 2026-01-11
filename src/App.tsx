@@ -15,7 +15,7 @@ import { ToastContainer } from '@/components/Toast'
 import { logger } from '@/utils/logger'
 
 function App() {
-  const { currentView, isLoading, loadData } = useAppStore()
+  const { currentView, isLoading, loadData, selectedRecordId, thoughtRecords } = useAppStore()
 
   useEffect(() => {
     logger.debug('App', 'Loading initial data')
@@ -36,8 +36,12 @@ function App() {
     switch (currentView) {
       case 'home':
         return <HomeView />
-      case 'new-thought':
-        return <ThoughtRecordForm />
+      case 'new-thought': {
+        const existingRecord = selectedRecordId 
+          ? thoughtRecords.find(r => r.id === selectedRecordId) 
+          : undefined
+        return <ThoughtRecordForm key={selectedRecordId || 'new'} existingRecord={existingRecord} />
+      }
       case 'thought-detail':
         return <ThoughtDetailView />
       case 'gratitude':
