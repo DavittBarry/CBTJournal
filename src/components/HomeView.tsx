@@ -1,18 +1,59 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useAppStore } from '@/stores/appStore'
 import { COGNITIVE_DISTORTIONS } from '@/types'
-import { format, parseISO } from 'date-fns'
-import { PageIntro } from '@/components/InfoComponents'
+import { format, parseISO, isAfter, subDays, subMonths, subYears } from 'date-fns'
+import { PageIntro, SearchBar, TimeFilter } from '@/components/InfoComponents'
 import { toast } from '@/stores/toastStore'
 
 export function HomeView() {
   const { thoughtRecords, setView, setSelectedRecordId, deleteThoughtRecord } = useAppStore()
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [timeFilter, setTimeFilter] = useState('all')
 
   const getDistortionName = (id: number) => {
     return COGNITIVE_DISTORTIONS.find(d => d.id === id)?.shortName || ''
   }
+
+  const filteredRecords = useMemo(() => {
+    let filtered = thoughtRecords
+
+    if (timeFilter !== 'all') {
+      const now = new Date()
+      let cutoffDate: Date
+      switch (timeFilter) {
+        case 'week':
+          cutoffDate = subDays(now, 7)
+          break
+        case 'month':
+          cutoffDate = subMonths(now, 1)
+          break
+        case '3months':
+          cutoffDate = subMonths(now, 3)
+          break
+        case 'year':
+          cutoffDate = subYears(now, 1)
+          break
+        default:
+          cutoffDate = new Date(0)
+      }
+      filtered = filtered.filter(r => isAfter(parseISO(r.date), cutoffDate))
+    }
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(r => 
+        r.situation.toLowerCase().includes(query) ||
+        r.automaticThoughts.toLowerCase().includes(query) ||
+        r.rationalResponse.toLowerCase().includes(query) ||
+        r.emotions.some(e => e.name.toLowerCase().includes(query)) ||
+        r.distortions.some(id => getDistortionName(id).toLowerCase().includes(query))
+      )
+    }
+
+    return filtered
+  }, [thoughtRecords, searchQuery, timeFilter])
 
   const handleCardClick = (id: string) => {
     if (expandedId === id) {
@@ -53,7 +94,7 @@ export function HomeView() {
         ]}
       />
 
-      <div className="flex items-center justify-end mb-6">
+      <div className="flex items-center justify-center mb-4">
         <button
           onClick={() => {
             setSelectedRecordId(null)
@@ -64,6 +105,21 @@ export function HomeView() {
           New record
         </button>
       </div>
+
+      {thoughtRecords.length > 0 && (
+        <div className="flex gap-2 mb-4">
+          <div className="flex-1">
+            <SearchBar 
+              value={searchQuery} 
+              onChange={setSearchQuery} 
+              placeholder="Search records..."
+            />
+          </div>
+          <div className="w-36">
+            <TimeFilter value={timeFilter} onChange={setTimeFilter} />
+          </div>
+        </div>
+      )}
 
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -107,9 +163,19 @@ export function HomeView() {
             Create your first record
           </button>
         </div>
+      ) : filteredRecords.length === 0 ? (
+        <div className="text-center py-16">
+          <p className="text-stone-500">No records match your search</p>
+          <button
+            onClick={() => { setSearchQuery(''); setTimeFilter('all'); }}
+            className="text-sage-600 hover:text-sage-700 font-medium mt-2"
+          >
+            Clear filters
+          </button>
+        </div>
       ) : (
         <div className="space-y-3">
-          {thoughtRecords.map((record) => {
+          {filteredRecords.map((record) => {
             const maxEmotion = record.emotions.reduce(
               (max, e) => (e.intensity > max.intensity ? e : max),
               record.emotions[0]
@@ -130,7 +196,7 @@ export function HomeView() {
               >
                 <button
                   onClick={() => handleCardClick(record.id)}
-                  className="w-full text-left p-5"
+                  className="w-full text-left p-5 focus:ring-0 focus:ring-offset-0"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="text-sm text-stone-400">

@@ -10,7 +10,7 @@ export function SettingsView() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [importStep, setImportStep] = useState<ImportStep>('idle')
   const [pendingImportData, setPendingImportData] = useState<string | null>(null)
-  const [showDebug, setShowDebug] = useState(false)
+  const [showDevTools, setShowDevTools] = useState(false)
 
   const hasExistingData = thoughtRecords.length > 0 || depressionChecklists.length > 0 || gratitudeEntries.length > 0
   const isDev = import.meta.env.DEV
@@ -116,7 +116,7 @@ export function SettingsView() {
 
   return (
     <div className="pb-28">
-      <h1 className="text-2xl font-semibold text-stone-800 mb-8">Settings</h1>
+      <h1 className="text-2xl font-semibold text-stone-800 mb-8 text-center">Settings</h1>
 
       {importStep === 'choose-mode' && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -270,24 +270,25 @@ export function SettingsView() {
 
       {isDev && (
         <section>
-          <button
-            onClick={() => setShowDebug(!showDebug)}
-            className="text-base font-semibold text-stone-700 mb-4 flex items-center gap-2"
-          >
-            <span>Developer tools</span>
-            <svg 
-              className={`w-4 h-4 transition-transform ${showDebug ? 'rotate-180' : ''}`} 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2"
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-semibold text-stone-700">Developer tools</h2>
+            <button
+              onClick={() => setShowDevTools(!showDevTools)}
+              className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
+                showDevTools ? 'bg-sage-500' : 'bg-stone-300'
+              }`}
+              aria-label="Toggle developer tools"
             >
-              <path d="M6 9l6 6 6-6" />
-            </svg>
-          </button>
+              <span
+                className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 shadow-sm ${
+                  showDevTools ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
           
-          {showDebug && (
-            <div className="space-y-4">
+          {showDevTools && (
+            <div className="space-y-4 animate-fade-in">
               <div className="card p-5">
                 <div className="flex justify-between mb-4">
                   <span className="text-stone-500 text-sm">Total logs</span>

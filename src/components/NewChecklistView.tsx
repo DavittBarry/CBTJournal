@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAppStore } from '@/stores/appStore'
 import { DEPRESSION_ITEMS, type DepressionScores, type DepressionChecklistEntry, getDepressionLevel } from '@/types'
 import { format } from 'date-fns'
@@ -46,9 +46,28 @@ const scoreLabels = [
 ]
 
 export function NewChecklistView() {
-  const { addDepressionChecklist, setView } = useAppStore()
-  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'))
-  const [scores, setScores] = useState<DepressionScores>(initialScores)
+  const { 
+    depressionChecklists,
+    selectedChecklistId,
+    addDepressionChecklist, 
+    updateDepressionChecklist,
+    setView,
+    setSelectedChecklistId
+  } = useAppStore()
+  
+  const existingEntry = selectedChecklistId 
+    ? depressionChecklists.find(e => e.id === selectedChecklistId) 
+    : null
+
+  const [date, setDate] = useState(existingEntry?.date || format(new Date(), 'yyyy-MM-dd'))
+  const [scores, setScores] = useState<DepressionScores>(existingEntry?.scores || initialScores)
+
+  useEffect(() => {
+    if (existingEntry) {
+      setDate(existingEntry.date)
+      setScores(existingEntry.scores)
+    }
+  }, [existingEntry])
 
   const total = Object.values(scores).reduce((sum, val) => sum + val, 0)
   const { level } = getDepressionLevel(total)
@@ -57,18 +76,30 @@ export function NewChecklistView() {
     setScores(prev => ({ ...prev, [key]: value }))
   }
 
+  const handleBack = () => {
+    setSelectedChecklistId(null)
+    setView('checklist')
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     const entry: DepressionChecklistEntry = {
-      id: generateId(),
+      id: existingEntry?.id || generateId(),
       date,
       scores,
       total
     }
 
-    await addDepressionChecklist(entry)
-    toast.success('Checklist saved')
+    if (existingEntry) {
+      await updateDepressionChecklist(entry)
+      toast.success('Checklist updated')
+    } else {
+      await addDepressionChecklist(entry)
+      toast.success('Checklist saved')
+    }
+    
+    setSelectedChecklistId(null)
     setView('checklist')
   }
 
@@ -79,7 +110,7 @@ export function NewChecklistView() {
       <div className="flex items-center justify-between mb-4">
         <button
           type="button"
-          onClick={() => setView('checklist')}
+          onClick={handleBack}
           className="text-stone-500 hover:text-stone-700 flex items-center gap-1"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -91,8 +122,9 @@ export function NewChecklistView() {
       </div>
 
       <PageIntro
-        title="Depression checklist"
+        title={existingEntry ? 'Edit checklist' : 'Depression checklist'}
         description="This 25-item checklist measures the severity of depression symptoms across five categories: thoughts and feelings, activities, relationships, physical symptoms, and suicidal urges. Answer based on how you've felt recently. Your score helps track your progress over time."
+        centered={false}
       />
 
       <div className="sticky top-0 bg-warm-100/95 backdrop-blur py-4 -mx-5 px-5 mb-6 z-10">
@@ -145,7 +177,7 @@ export function NewChecklistView() {
                       key={value}
                       type="button"
                       onClick={() => updateScore(item.key, value)}
-                      className={`flex-1 py-2.5 text-xs rounded-lg border-2 transition-all duration-200 ${
+                      className={`flex-1 py-2.5 text-xs rounded-lg border-2 transition-all duration-200 focus:ring-0 focus:ring-offset-0 ${
                         scores[item.key] === value
                           ? 'bg-sage-50 border-sage-400 text-sage-700'
                           : 'bg-white border-stone-200 text-stone-500 hover:border-stone-300'
@@ -166,7 +198,7 @@ export function NewChecklistView() {
         type="submit"
         className="btn-primary w-full"
       >
-        Save checklist
+        {existingEntry ? 'Update checklist' : 'Save checklist'}
       </button>
     </form>
   )

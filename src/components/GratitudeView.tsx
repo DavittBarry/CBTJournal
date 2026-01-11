@@ -1,13 +1,50 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useAppStore } from '@/stores/appStore'
-import { format, parseISO } from 'date-fns'
-import { PageIntro } from '@/components/InfoComponents'
+import { format, parseISO, isAfter, subDays, subMonths, subYears } from 'date-fns'
+import { PageIntro, SearchBar, TimeFilter } from '@/components/InfoComponents'
 import { toast } from '@/stores/toastStore'
 
 export function GratitudeView() {
   const { gratitudeEntries, setView, setSelectedGratitudeId, deleteGratitudeEntry } = useAppStore()
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [timeFilter, setTimeFilter] = useState('all')
+
+  const filteredEntries = useMemo(() => {
+    let filtered = gratitudeEntries
+
+    if (timeFilter !== 'all') {
+      const now = new Date()
+      let cutoffDate: Date
+      switch (timeFilter) {
+        case 'week':
+          cutoffDate = subDays(now, 7)
+          break
+        case 'month':
+          cutoffDate = subMonths(now, 1)
+          break
+        case '3months':
+          cutoffDate = subMonths(now, 3)
+          break
+        case 'year':
+          cutoffDate = subYears(now, 1)
+          break
+        default:
+          cutoffDate = new Date(0)
+      }
+      filtered = filtered.filter(e => isAfter(parseISO(e.date), cutoffDate))
+    }
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(e => 
+        e.entries.some(item => item.toLowerCase().includes(query))
+      )
+    }
+
+    return filtered
+  }, [gratitudeEntries, searchQuery, timeFilter])
 
   const handleCardClick = (id: string) => {
     if (expandedId === id) {
@@ -33,7 +70,7 @@ export function GratitudeView() {
     <div className="pb-28">
       <PageIntro
         title="Gratitude"
-        description="Gratitude journaling is a simple but powerful practice. Research consistently shows that regularly noting things you are grateful for can increase happiness, reduce depression, improve sleep, and strengthen relationships. It works by training your brain to notice positive experiences you might otherwise overlook."
+        description="Gratitude journaling is a simple but powerful practice. Research consistently shows that regularly noting things you're grateful for can increase happiness, reduce depression, improve sleep, and strengthen relationships. It works by training your brain to notice positive experiences you might otherwise overlook."
         steps={[
           'At the end of each day, write 3-5 things you are grateful for.',
           'Be specific rather than general (not just "family" but "the conversation I had with my sister").',
@@ -42,7 +79,7 @@ export function GratitudeView() {
         ]}
       />
 
-      <div className="flex items-center justify-end mb-6">
+      <div className="flex items-center justify-center mb-4">
         <button
           onClick={() => {
             setSelectedGratitudeId(null)
@@ -53,6 +90,21 @@ export function GratitudeView() {
           New entry
         </button>
       </div>
+
+      {gratitudeEntries.length > 0 && (
+        <div className="flex gap-2 mb-4">
+          <div className="flex-1">
+            <SearchBar 
+              value={searchQuery} 
+              onChange={setSearchQuery} 
+              placeholder="Search entries..."
+            />
+          </div>
+          <div className="w-36">
+            <TimeFilter value={timeFilter} onChange={setTimeFilter} />
+          </div>
+        </div>
+      )}
 
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -95,9 +147,19 @@ export function GratitudeView() {
             Write your first entry
           </button>
         </div>
+      ) : filteredEntries.length === 0 ? (
+        <div className="text-center py-16">
+          <p className="text-stone-500">No entries match your search</p>
+          <button
+            onClick={() => { setSearchQuery(''); setTimeFilter('all'); }}
+            className="text-sage-600 hover:text-sage-700 font-medium mt-2"
+          >
+            Clear filters
+          </button>
+        </div>
       ) : (
         <div className="space-y-3">
-          {gratitudeEntries.map((entry) => {
+          {filteredEntries.map((entry) => {
             const isExpanded = expandedId === entry.id
 
             return (
@@ -109,7 +171,7 @@ export function GratitudeView() {
               >
                 <button
                   onClick={() => handleCardClick(entry.id)}
-                  className="w-full text-left p-5"
+                  className="w-full text-left p-5 focus:ring-0 focus:ring-offset-0"
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="text-sm text-stone-400">

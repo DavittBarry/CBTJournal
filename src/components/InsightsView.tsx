@@ -3,7 +3,7 @@ import { useAppStore } from '@/stores/appStore'
 import { COGNITIVE_DISTORTIONS, getDepressionLevel } from '@/types'
 import { format, parseISO, getDay } from 'date-fns'
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, BarChart, Bar } from 'recharts'
-import { PageIntro } from '@/components/InfoComponents'
+import { PageIntro, StatInfoButton } from '@/components/InfoComponents'
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -126,19 +126,41 @@ export function InsightsView() {
         <>
           <div className="grid grid-cols-2 gap-3">
             <div className="card p-5">
-              <div className="text-3xl font-semibold text-stone-800">{stats.totalRecords}</div>
-              <div className="text-sm text-stone-500 mt-1">Thought records</div>
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-3xl font-semibold text-stone-800">{stats.totalRecords}</div>
+                  <div className="text-sm text-stone-500 mt-1">Thought records</div>
+                </div>
+                <StatInfoButton
+                  title="Thought records"
+                  content="The total number of thought records you've completed. More records means more practice challenging negative thoughts and building healthier thinking patterns."
+                />
+              </div>
             </div>
             <div className="card p-5">
-              <div className="text-3xl font-semibold text-helpful-500">
-                {stats.averageImprovement > 0 ? `↓${stats.averageImprovement}%` : '—'}
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-3xl font-semibold text-helpful-500">
+                    {stats.averageImprovement > 0 ? `↓${stats.averageImprovement}%` : '—'}
+                  </div>
+                  <div className="text-sm text-stone-500 mt-1">Avg improvement</div>
+                </div>
+                <StatInfoButton
+                  title="Average improvement"
+                  content="The average reduction in emotional intensity after completing a thought record. This shows how much the cognitive restructuring process helps reduce the intensity of negative emotions. Higher is better."
+                />
               </div>
-              <div className="text-sm text-stone-500 mt-1">Avg improvement</div>
             </div>
           </div>
 
           <div className="card p-5">
-            <h2 className="text-base font-semibold text-stone-700 mb-4">Top cognitive distortions</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-semibold text-stone-700">Top cognitive distortions</h2>
+              <StatInfoButton
+                title="Top cognitive distortions"
+                content="These are the thinking patterns that appear most often in your thought records. Knowing your most common distortions helps you recognize them faster in daily life and challenge them more effectively."
+              />
+            </div>
             <div className="space-y-3">
               {stats.topDistortions.map((d, i) => (
                 <div key={d.id} className="flex items-center gap-3">
@@ -150,8 +172,51 @@ export function InsightsView() {
             </div>
           </div>
 
+          {depressionTrend.length > 0 && (
+            <div className="card p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold text-stone-700">Depression score trend</h2>
+                <StatInfoButton
+                  title="Depression score trend"
+                  content="Shows how your Burns Depression Checklist scores change over time. A downward trend indicates improvement. Look for overall direction rather than individual points, as scores naturally fluctuate day to day."
+                />
+              </div>
+              <div className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={depressionTrend}>
+                    <XAxis dataKey="date" stroke="#a8a29e" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#a8a29e" fontSize={12} domain={[0, 100]} tickLine={false} axisLine={false} />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: '#fff', 
+                        border: '1px solid #e7e5e4',
+                        borderRadius: '12px',
+                        boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.06)'
+                      }}
+                      labelStyle={{ color: '#44403c' }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="score" 
+                      stroke="#617161" 
+                      strokeWidth={2}
+                      dot={{ fill: '#617161', strokeWidth: 0, r: 4 }}
+                      activeDot={{ fill: '#617161', strokeWidth: 0, r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
           <div className="card p-5">
-            <h2 className="text-base font-semibold text-stone-700 mb-4">Records by day of week</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-semibold text-stone-700">Records by day of week</h2>
+              <StatInfoButton
+                title="Records by day of week"
+                content="Shows which days you tend to write thought records. This can reveal patterns, like if certain days are more emotionally difficult for you or when you're most likely to practice CBT techniques."
+              />
+            </div>
             <div className="h-40">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stats.dayOfWeekData}>
@@ -164,7 +229,13 @@ export function InsightsView() {
           </div>
 
           <div className="card p-5">
-            <h2 className="text-base font-semibold text-stone-700 mb-4">Most frequent emotions</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-semibold text-stone-700">Most frequent emotions</h2>
+              <StatInfoButton
+                title="Most frequent emotions"
+                content="The emotions that appear most often in your thought records. Understanding which emotions you experience most frequently can help you anticipate triggers and develop targeted coping strategies."
+              />
+            </div>
             <div className="flex flex-wrap gap-2">
               {stats.topEmotions.map(([emotion, count]) => (
                 <span key={emotion} className="bg-warm-200 text-stone-600 px-3 py-1.5 rounded-full text-sm">
@@ -178,7 +249,13 @@ export function InsightsView() {
 
       {gratitudeStats && (
         <div className="card p-5">
-          <h2 className="text-base font-semibold text-stone-700 mb-4">Gratitude practice</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-semibold text-stone-700">Gratitude practice</h2>
+            <StatInfoButton
+              title="Gratitude practice"
+              content="Tracks your gratitude journaling consistency. Research shows that writing 3-5 gratitude items daily for 2+ weeks can measurably increase happiness and reduce depression symptoms."
+            />
+          </div>
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
               <div className="text-2xl font-semibold text-stone-800">{gratitudeStats.totalDays}</div>
@@ -192,37 +269,6 @@ export function InsightsView() {
               <div className="text-2xl font-semibold text-stone-800">{gratitudeStats.avgPerDay}</div>
               <div className="text-xs text-stone-500 mt-1">Avg per day</div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {depressionTrend.length > 0 && (
-        <div className="card p-5">
-          <h2 className="text-base font-semibold text-stone-700 mb-4">Depression score trend</h2>
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={depressionTrend}>
-                <XAxis dataKey="date" stroke="#a8a29e" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#a8a29e" fontSize={12} domain={[0, 100]} tickLine={false} axisLine={false} />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#fff', 
-                    border: '1px solid #e7e5e4',
-                    borderRadius: '12px',
-                    boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.06)'
-                  }}
-                  labelStyle={{ color: '#44403c' }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="score" 
-                  stroke="#617161" 
-                  strokeWidth={2}
-                  dot={{ fill: '#617161', strokeWidth: 0, r: 4 }}
-                  activeDot={{ fill: '#617161', strokeWidth: 0, r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
           </div>
         </div>
       )}

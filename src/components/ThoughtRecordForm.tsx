@@ -113,6 +113,7 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
       <PageIntro
         title={existingRecord ? 'Edit record' : 'New thought record'}
         description="A thought record helps you examine upsetting thoughts and develop more balanced perspectives. By writing down and analyzing your thoughts, you can identify patterns that contribute to negative emotions and learn to respond more helpfully."
+        centered={false}
         steps={[
           'Notice an unpleasant emotion and describe what triggered it.',
           'Write down the automatic thoughts that accompanied the emotion.',

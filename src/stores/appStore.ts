@@ -7,15 +7,17 @@ interface AppState {
   depressionChecklists: DepressionChecklistEntry[]
   gratitudeEntries: GratitudeEntry[]
   isLoading: boolean
-  currentView: 'home' | 'new-thought' | 'thought-detail' | 'checklist' | 'new-checklist' | 'gratitude' | 'new-gratitude' | 'insights' | 'settings'
+  currentView: 'home' | 'new-thought' | 'thought-detail' | 'checklist' | 'new-checklist' | 'checklist-detail' | 'gratitude' | 'new-gratitude' | 'insights' | 'settings'
   selectedRecordId: string | null
   selectedGratitudeId: string | null
+  selectedChecklistId: string | null
 
   loadData: () => Promise<void>
   addThoughtRecord: (record: ThoughtRecord) => Promise<void>
   updateThoughtRecord: (record: ThoughtRecord) => Promise<void>
   deleteThoughtRecord: (id: string) => Promise<void>
   addDepressionChecklist: (entry: DepressionChecklistEntry) => Promise<void>
+  updateDepressionChecklist: (entry: DepressionChecklistEntry) => Promise<void>
   deleteDepressionChecklist: (id: string) => Promise<void>
   addGratitudeEntry: (entry: GratitudeEntry) => Promise<void>
   updateGratitudeEntry: (entry: GratitudeEntry) => Promise<void>
@@ -23,6 +25,7 @@ interface AppState {
   setView: (view: AppState['currentView']) => void
   setSelectedRecordId: (id: string | null) => void
   setSelectedGratitudeId: (id: string | null) => void
+  setSelectedChecklistId: (id: string | null) => void
   exportData: () => Promise<string>
   importData: (jsonString: string, mode?: 'merge' | 'replace') => Promise<void>
 }
@@ -35,6 +38,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   currentView: 'home',
   selectedRecordId: null,
   selectedGratitudeId: null,
+  selectedChecklistId: null,
 
   loadData: async () => {
     set({ isLoading: true })
@@ -74,6 +78,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     }))
   },
 
+  updateDepressionChecklist: async (entry) => {
+    await db.updateDepressionChecklist(entry)
+    set((state) => ({
+      depressionChecklists: state.depressionChecklists.map((e) => (e.id === entry.id ? entry : e))
+    }))
+  },
+
   deleteDepressionChecklist: async (id) => {
     await db.deleteDepressionChecklist(id)
     set((state) => ({
@@ -107,6 +118,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSelectedRecordId: (id) => set({ selectedRecordId: id }),
 
   setSelectedGratitudeId: (id) => set({ selectedGratitudeId: id }),
+
+  setSelectedChecklistId: (id) => set({ selectedChecklistId: id }),
 
   exportData: async () => {
     const data = await db.exportData()
