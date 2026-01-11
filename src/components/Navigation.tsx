@@ -48,7 +48,7 @@ function SettingsIcon({ className }: { className?: string }) {
 }
 
 export function Navigation() {
-  const { currentView, setView, setSelectedGratitudeId } = useAppStore()
+  const { currentView, setView, setSelectedGratitudeId, setSelectedChecklistId, setSelectedRecordId } = useAppStore()
 
   const navItems = [
     { id: 'home' as const, label: 'Records', Icon: RecordsIcon },
@@ -61,7 +61,7 @@ export function Navigation() {
   const isActive = (id: string) => {
     if (id === 'home') return currentView === 'home' || currentView === 'new-thought' || currentView === 'thought-detail'
     if (id === 'gratitude') return currentView === 'gratitude' || currentView === 'new-gratitude'
-    if (id === 'checklist') return currentView === 'checklist' || currentView === 'new-checklist'
+    if (id === 'checklist') return currentView === 'checklist' || currentView === 'new-checklist' || currentView === 'checklist-detail'
     return currentView === id
   }
 
@@ -69,29 +69,71 @@ export function Navigation() {
     if (id === 'gratitude') {
       setSelectedGratitudeId(null)
     }
+    if (id === 'checklist') {
+      setSelectedChecklistId(null)
+    }
+    if (id === 'home') {
+      setSelectedRecordId(null)
+    }
     setView(id)
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-stone-200/80 px-2 py-2 z-50">
-      <div className="max-w-lg mx-auto flex justify-around">
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => handleNavClick(item.id)}
-            className={`flex flex-col items-center py-2 px-3 rounded-xl transition-all duration-200 ${
-              isActive(item.id)
-                ? 'text-sage-600'
-                : 'text-stone-400 hover:text-stone-600'
-            }`}
-          >
-            <item.Icon className="w-5 h-5" />
-            <span className={`text-[10px] mt-1.5 ${isActive(item.id) ? 'font-medium' : ''}`}>
-              {item.label}
-            </span>
-          </button>
-        ))}
-      </div>
-    </nav>
+    <>
+      {/* Mobile bottom navigation */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-stone-200/80 px-2 py-2 z-50">
+        <div className="max-w-lg mx-auto flex justify-around">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => handleNavClick(item.id)}
+              className={`flex flex-col items-center py-2 px-3 rounded-xl transition-all duration-200 focus:ring-0 focus:ring-offset-0 ${
+                isActive(item.id)
+                  ? 'text-sage-600'
+                  : 'text-stone-400 hover:text-stone-600'
+              }`}
+            >
+              <item.Icon className="w-5 h-5" />
+              <span className={`text-[10px] mt-1.5 ${isActive(item.id) ? 'font-medium' : ''}`}>
+                {item.label}
+              </span>
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      {/* Desktop sidebar navigation */}
+      <nav className="hidden lg:flex fixed left-0 top-0 bottom-0 w-64 bg-white border-r border-stone-200 flex-col z-50">
+        <div className="p-6 border-b border-stone-100">
+          <h1 className="text-xl font-semibold text-sage-700">Untwist</h1>
+          <p className="text-xs text-stone-400 mt-1">CBT thought journal</p>
+        </div>
+        
+        <div className="flex-1 py-4 px-3">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => handleNavClick(item.id)}
+              className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-200 mb-1 focus:ring-0 focus:ring-offset-0 ${
+                isActive(item.id)
+                  ? 'bg-sage-50 text-sage-700'
+                  : 'text-stone-500 hover:bg-stone-50 hover:text-stone-700'
+              }`}
+            >
+              <item.Icon className="w-5 h-5" />
+              <span className={`text-sm ${isActive(item.id) ? 'font-medium' : ''}`}>
+                {item.label}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        <div className="p-4 border-t border-stone-100">
+          <p className="text-xs text-stone-400 text-center">
+            Based on "Feeling Good" by David D. Burns
+          </p>
+        </div>
+      </nav>
+    </>
   )
 }

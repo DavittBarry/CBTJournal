@@ -124,3 +124,91 @@ select:focus {
 .whitespace-pre-wrap {
   white-space: pre-wrap;
 }
+
+/* Safe area insets for notched phones */
+@supports (padding: max(0px)) {
+  .pb-safe {
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* Landscape mobile adjustments */
+@media (max-height: 500px) and (orientation: landscape) {
+  /* Reduce nav padding in landscape */
+  nav.fixed.bottom-0 {
+    @apply py-1;
+  }
+  
+  nav.fixed.bottom-0 button {
+    @apply py-1;
+  }
+  
+  nav.fixed.bottom-0 svg {
+    @apply w-4 h-4;
+  }
+  
+  nav.fixed.bottom-0 span {
+    @apply text-[8px] mt-0.5;
+  }
+  
+  /* Reduce main content bottom padding */
+  main {
+    padding-bottom: 4rem !important;
+  }
+}
+
+/* Tablet landscape adjustments */
+@media (min-width: 768px) and (max-width: 1023px) and (orientation: landscape) {
+  main {
+    padding-bottom: 5rem;
+  }
+}
+
+/* Focus visible only for keyboard navigation */
+@media (hover: hover) {
+  button:focus:not(:focus-visible),
+  input:focus:not(:focus-visible),
+  textarea:focus:not(:focus-visible) {
+    @apply ring-0 ring-offset-0;
+  }
+}
+
+/* Desktop hover states */
+@media (hover: hover) {
+  .card {
+    @apply transition-shadow duration-200;
+  }
+  
+  .card:hover {
+    @apply shadow-soft-lg;
+  }
+}
+
+/* Print styles */
+@media print {
+  nav {
+    display: none !important;
+  }
+  
+  main {
+    padding-bottom: 0 !important;
+    margin-left: 0 !important;
+  }
+  
+  .card {
+    break-inside: avoid;
+    box-shadow: none;
+    border: 1px solid #e7e5e4;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

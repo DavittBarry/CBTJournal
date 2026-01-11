@@ -8,6 +8,7 @@ import { GratitudeView } from '@/components/GratitudeView'
 import { NewGratitudeView } from '@/components/NewGratitudeView'
 import { ChecklistView } from '@/components/ChecklistView'
 import { NewChecklistView } from '@/components/NewChecklistView'
+import { ChecklistDetailView } from '@/components/ChecklistDetailView'
 import { InsightsView } from '@/components/InsightsView'
 import { SettingsView } from '@/components/SettingsView'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
@@ -15,7 +16,7 @@ import { ToastContainer } from '@/components/Toast'
 import { logger } from '@/utils/logger'
 
 function App() {
-  const { currentView, isLoading, loadData, selectedRecordId, thoughtRecords } = useAppStore()
+  const { currentView, isLoading, loadData, selectedRecordId, thoughtRecords, selectedChecklistId } = useAppStore()
 
   useEffect(() => {
     logger.debug('App', 'Loading initial data')
@@ -51,7 +52,9 @@ function App() {
       case 'checklist':
         return <ChecklistView />
       case 'new-checklist':
-        return <NewChecklistView />
+        return <NewChecklistView key={selectedChecklistId || 'new'} />
+      case 'checklist-detail':
+        return <ChecklistDetailView />
       case 'insights':
         return <InsightsView />
       case 'settings':
@@ -64,10 +67,20 @@ function App() {
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-warm-100 text-stone-800">
-        <main className="max-w-lg mx-auto px-5 py-8">
-          {renderView()}
-        </main>
         <Navigation />
+        
+        {/* Main content area with responsive margins */}
+        <main className="
+          pb-24 lg:pb-8
+          lg:ml-64
+          px-4 sm:px-6 lg:px-8
+          py-6 lg:py-8
+        ">
+          <div className="max-w-4xl mx-auto">
+            {renderView()}
+          </div>
+        </main>
+        
         <ToastContainer />
       </div>
     </ErrorBoundary>

@@ -125,7 +125,7 @@ export function NewGratitudeView() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="pb-28">
+    <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <button
           type="button"
@@ -153,6 +153,7 @@ export function NewGratitudeView() {
       <PageIntro
         title={existingEntry ? 'Edit entry' : 'New gratitude entry'}
         description="Take a moment to notice the good things in your life, however small. Studies show that people who regularly practice gratitude experience more positive emotions, sleep better, express more compassion, and even have stronger immune systems."
+        centered={false}
       />
 
       {showDeleteConfirm && (

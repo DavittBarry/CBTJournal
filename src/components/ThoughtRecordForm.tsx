@@ -95,7 +95,7 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="pb-28">
+    <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <button
           type="button"
@@ -113,6 +113,7 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
       <PageIntro
         title={existingRecord ? 'Edit record' : 'New thought record'}
         description="A thought record helps you examine upsetting thoughts and develop more balanced perspectives. By writing down and analyzing your thoughts, you can identify patterns that contribute to negative emotions and learn to respond more helpfully."
+        centered={false}
         steps={[
           'Notice an unpleasant emotion and describe what triggered it.',
           'Write down the automatic thoughts that accompanied the emotion.',
@@ -275,47 +276,49 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
                 {distortions.length} selected
               </span>
             </div>
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {COGNITIVE_DISTORTIONS.map((distortion) => (
-                <div key={distortion.id}>
-                  <button
-                    type="button"
-                    onClick={() => toggleDistortion(distortion.id)}
-                    className={`w-full text-left p-3.5 rounded-xl border-2 transition-all duration-200 ${
-                      distortions.includes(distortion.id)
-                        ? 'bg-sage-50 border-sage-400'
-                        : 'bg-white border-stone-200 hover:border-stone-300'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className={`font-medium text-sm ${distortions.includes(distortion.id) ? 'text-sage-700' : 'text-stone-700'}`}>
-                        {distortion.id}. {distortion.shortName}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setExpandedDistortion(expandedDistortion === distortion.id ? null : distortion.id)
-                        }}
-                        className="text-stone-400 hover:text-stone-600 p-1"
-                      >
-                        <svg 
-                          className={`w-4 h-4 transition-transform ${expandedDistortion === distortion.id ? 'rotate-180' : ''}`} 
-                          viewBox="0 0 24 24" 
-                          fill="none" 
-                          stroke="currentColor" 
-                          strokeWidth="2"
+                <div key={distortion.id} className="sm:contents">
+                  <div className={expandedDistortion === distortion.id ? 'sm:col-span-2' : ''}>
+                    <button
+                      type="button"
+                      onClick={() => toggleDistortion(distortion.id)}
+                      className={`w-full text-left p-3.5 rounded-xl border-2 transition-all duration-200 ${
+                        distortions.includes(distortion.id)
+                          ? 'bg-sage-50 border-sage-400'
+                          : 'bg-white border-stone-200 hover:border-stone-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className={`font-medium text-sm ${distortions.includes(distortion.id) ? 'text-sage-700' : 'text-stone-700'}`}>
+                          {distortion.id}. {distortion.shortName}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setExpandedDistortion(expandedDistortion === distortion.id ? null : distortion.id)
+                          }}
+                          className="text-stone-400 hover:text-stone-600 p-1"
                         >
-                          <path d="M6 9l6 6 6-6" />
-                        </svg>
-                      </button>
-                    </div>
-                  </button>
-                  {expandedDistortion === distortion.id && (
-                    <div className="mt-1 ml-4 p-3 bg-stone-50 rounded-lg text-sm text-stone-600 animate-fade-in">
-                      {distortion.description}
-                    </div>
-                  )}
+                          <svg 
+                            className={`w-4 h-4 transition-transform ${expandedDistortion === distortion.id ? 'rotate-180' : ''}`} 
+                            viewBox="0 0 24 24" 
+                            fill="none" 
+                            stroke="currentColor" 
+                            strokeWidth="2"
+                          >
+                            <path d="M6 9l6 6 6-6" />
+                          </svg>
+                        </button>
+                      </div>
+                    </button>
+                    {expandedDistortion === distortion.id && (
+                      <div className="mt-1 ml-4 p-3 bg-stone-50 rounded-lg text-sm text-stone-600 animate-fade-in">
+                        {distortion.description}
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
