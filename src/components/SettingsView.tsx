@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react'
 import { useAppStore } from '@/stores/appStore'
+import { logger } from '@/utils/logger'
+import { toast } from '@/stores/toastStore'
 
 type ImportStep = 'idle' | 'choose-mode' | 'confirm-replace'
 
@@ -8,18 +10,25 @@ export function SettingsView() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [importStep, setImportStep] = useState<ImportStep>('idle')
   const [pendingImportData, setPendingImportData] = useState<string | null>(null)
+  const [showDebug, setShowDebug] = useState(false)
 
   const hasExistingData = thoughtRecords.length > 0 || depressionChecklists.length > 0 || gratitudeEntries.length > 0
+  const isDev = import.meta.env.DEV
 
   const handleExport = async () => {
-    const data = await exportData()
-    const blob = new Blob([data], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `untwist-export-${new Date().toISOString().split('T')[0]}.json`
-    a.click()
-    URL.revokeObjectURL(url)
+    try {
+      const data = await exportData()
+      const blob = new Blob([data], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `untwist-export-${new Date().toISOString().split('T')[0]}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success('Data exported successfully')
+    } catch {
+      toast.error('Failed to export data')
+    }
   }
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -31,7 +40,7 @@ export function SettingsView() {
     try {
       JSON.parse(text)
     } catch {
-      alert('Invalid JSON file.')
+      toast.error('Invalid JSON file')
       if (fileInputRef.current) fileInputRef.current.value = ''
       return
     }
@@ -50,9 +59,9 @@ export function SettingsView() {
   const doImport = async (data: string, mode: 'merge' | 'replace') => {
     try {
       await importData(data, mode)
-      alert('Data imported successfully!')
-    } catch (err) {
-      alert('Failed to import data. Make sure the file format is correct.')
+      toast.success('Data imported successfully')
+    } catch {
+      toast.error('Failed to import data. Check file format.')
     }
     resetImportState()
   }
@@ -84,6 +93,26 @@ export function SettingsView() {
     setImportStep('idle')
     setPendingImportData(null)
   }
+
+  const handleExportLogs = () => {
+    const logs = logger.exportLogs()
+    const blob = new Blob([logs], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `untwist-logs-${new Date().toISOString().split('T')[0]}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success('Logs exported')
+  }
+
+  const handleClearLogs = () => {
+    logger.clearLogs()
+    toast.info('Logs cleared')
+  }
+
+  const recentErrors = logger.getRecentErrors(5)
+  const allLogs = logger.getLogs()
 
   return (
     <div className="pb-28">
@@ -215,7 +244,7 @@ export function SettingsView() {
         </div>
       </section>
 
-      <section>
+      <section className="mb-8">
         <h2 className="text-base font-semibold text-stone-700 mb-4">Resources</h2>
         <div className="space-y-3">
           <a
@@ -238,6 +267,96 @@ export function SettingsView() {
           </a>
         </div>
       </section>
+
+      {isDev && (
+        <section>
+          <button
+            onClick={() => setShowDebug(!showDebug)}
+            className="text-base font-semibold text-stone-700 mb-4 flex items-center gap-2"
+          >
+            <span>Developer tools</span>
+            <svg 
+              className={`w-4 h-4 transition-transform ${showDebug ? 'rotate-180' : ''}`} 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2"
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+          
+          {showDebug && (
+            <div className="space-y-4">
+              <div className="card p-5">
+                <div className="flex justify-between mb-4">
+                  <span className="text-stone-500 text-sm">Total logs</span>
+                  <span className="text-stone-800 font-mono text-sm">{allLogs.length}</span>
+                </div>
+                <div className="flex justify-between mb-4">
+                  <span className="text-stone-500 text-sm">Recent errors</span>
+                  <span className="text-stone-800 font-mono text-sm">{recentErrors.length}</span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleExportLogs}
+                    className="btn-secondary flex-1 py-2 text-sm"
+                  >
+                    Export logs
+                  </button>
+                  <button
+                    onClick={handleClearLogs}
+                    className="btn-secondary flex-1 py-2 text-sm"
+                  >
+                    Clear logs
+                  </button>
+                </div>
+              </div>
+
+              {recentErrors.length > 0 && (
+                <div className="card p-5">
+                  <h3 className="text-sm font-medium text-stone-700 mb-3">Recent errors</h3>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {recentErrors.map((log, i) => (
+                      <div key={i} className="bg-critical-50 rounded-lg p-3 text-xs">
+                        <div className="text-critical-600 font-mono mb-1">[{log.context}]</div>
+                        <div className="text-critical-700">{log.message}</div>
+                        <div className="text-critical-400 mt-1">
+                          {new Date(log.timestamp).toLocaleString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="card p-5">
+                <h3 className="text-sm font-medium text-stone-700 mb-3">Test actions</h3>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => toast.success('Test success message')}
+                    className="btn-secondary w-full py-2 text-sm"
+                  >
+                    Test success toast
+                  </button>
+                  <button
+                    onClick={() => toast.error('Test error message')}
+                    className="btn-secondary w-full py-2 text-sm"
+                  >
+                    Test error toast
+                  </button>
+                  <button
+                    onClick={() => logger.error('Test', 'Manual test error')}
+                    className="btn-secondary w-full py-2 text-sm"
+                  >
+                    Log test error
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
     </div>
   )
 }

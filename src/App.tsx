@@ -10,12 +10,18 @@ import { ChecklistView } from '@/components/ChecklistView'
 import { NewChecklistView } from '@/components/NewChecklistView'
 import { InsightsView } from '@/components/InsightsView'
 import { SettingsView } from '@/components/SettingsView'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { ToastContainer } from '@/components/Toast'
+import { logger } from '@/utils/logger'
 
 function App() {
   const { currentView, isLoading, loadData } = useAppStore()
 
   useEffect(() => {
-    loadData()
+    logger.debug('App', 'Loading initial data')
+    loadData().catch((error) => {
+      logger.error('App', 'Failed to load initial data', error)
+    })
   }, [loadData])
 
   if (isLoading) {
@@ -52,12 +58,15 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-warm-100 text-stone-800">
-      <main className="max-w-lg mx-auto px-5 py-8">
-        {renderView()}
-      </main>
-      <Navigation />
-    </div>
+    <ErrorBoundary>
+      <div className="min-h-screen bg-warm-100 text-stone-800">
+        <main className="max-w-lg mx-auto px-5 py-8">
+          {renderView()}
+        </main>
+        <Navigation />
+        <ToastContainer />
+      </div>
+    </ErrorBoundary>
   )
 }
 
