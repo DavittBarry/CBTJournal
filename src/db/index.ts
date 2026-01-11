@@ -95,9 +95,14 @@ export const db = {
     }
   },
 
-  async importData(data: { thoughtRecords?: ThoughtRecord[]; depressionChecklists?: DepressionChecklistEntry[] }): Promise<void> {
+  async importData(data: { thoughtRecords?: ThoughtRecord[]; depressionChecklists?: DepressionChecklistEntry[] }, mode: 'merge' | 'replace' = 'merge'): Promise<void> {
     const database = await getDB()
     const tx = database.transaction(['thoughtRecords', 'depressionChecklists'], 'readwrite')
+    
+    if (mode === 'replace') {
+      await tx.objectStore('thoughtRecords').clear()
+      await tx.objectStore('depressionChecklists').clear()
+    }
     
     if (data.thoughtRecords) {
       for (const record of data.thoughtRecords) {
@@ -111,6 +116,14 @@ export const db = {
       }
     }
     
+    await tx.done
+  },
+
+  async clearAllData(): Promise<void> {
+    const database = await getDB()
+    const tx = database.transaction(['thoughtRecords', 'depressionChecklists'], 'readwrite')
+    await tx.objectStore('thoughtRecords').clear()
+    await tx.objectStore('depressionChecklists').clear()
     await tx.done
   }
 }

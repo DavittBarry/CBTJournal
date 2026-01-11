@@ -1,9 +1,15 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { useAppStore } from '@/stores/appStore'
+
+type ImportStep = 'idle' | 'choose-mode' | 'confirm-replace'
 
 export function SettingsView() {
   const { exportData, importData, thoughtRecords, depressionChecklists } = useAppStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [importStep, setImportStep] = useState<ImportStep>('idle')
+  const [pendingImportData, setPendingImportData] = useState<string | null>(null)
+
+  const hasExistingData = thoughtRecords.length > 0 || depressionChecklists.length > 0
 
   const handleExport = async () => {
     const data = await exportData()
@@ -16,26 +22,136 @@ export function SettingsView() {
     URL.revokeObjectURL(url)
   }
 
-  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
     const text = await file.text()
+    
     try {
-      await importData(text)
-      alert('Data imported successfully!')
-    } catch (err) {
-      alert('Failed to import data. Make sure the file is valid.')
+      JSON.parse(text)
+    } catch {
+      alert('Invalid JSON file.')
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
+
+    setPendingImportData(text)
+    
+    if (hasExistingData) {
+      setImportStep('choose-mode')
+    } else {
+      await doImport(text, 'replace')
     }
     
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const doImport = async (data: string, mode: 'merge' | 'replace') => {
+    try {
+      await importData(data, mode)
+      alert('Data imported successfully!')
+    } catch (err) {
+      alert('Failed to import data. Make sure the file format is correct.')
     }
+    resetImportState()
+  }
+
+  const handleMerge = async () => {
+    if (pendingImportData) {
+      await doImport(pendingImportData, 'merge')
+    }
+  }
+
+  const handleReplaceChosen = () => {
+    setImportStep('confirm-replace')
+  }
+
+  const handleExportThenReplace = async () => {
+    await handleExport()
+    if (pendingImportData) {
+      await doImport(pendingImportData, 'replace')
+    }
+  }
+
+  const handleReplaceWithoutBackup = async () => {
+    if (pendingImportData) {
+      await doImport(pendingImportData, 'replace')
+    }
+  }
+
+  const resetImportState = () => {
+    setImportStep('idle')
+    setPendingImportData(null)
   }
 
   return (
     <div className="pb-28">
       <h1 className="text-2xl font-semibold text-stone-800 mb-8">Settings</h1>
+
+      {importStep === 'choose-mode' && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="card p-6 max-w-sm w-full">
+            <h3 className="text-lg font-semibold text-stone-800 mb-2">Import data</h3>
+            <p className="text-stone-500 text-sm mb-5">
+              You already have {thoughtRecords.length} thought record{thoughtRecords.length !== 1 ? 's' : ''} and {depressionChecklists.length} checklist{depressionChecklists.length !== 1 ? 's' : ''}. How would you like to import?
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={handleMerge}
+                className="btn-secondary w-full text-left px-4"
+              >
+                <div className="font-medium text-stone-700">Merge</div>
+                <div className="text-sm text-stone-500">Add imported data to your existing records</div>
+              </button>
+              <button
+                onClick={handleReplaceChosen}
+                className="btn-secondary w-full text-left px-4"
+              >
+                <div className="font-medium text-stone-700">Replace</div>
+                <div className="text-sm text-stone-500">Clear existing data and use only imported data</div>
+              </button>
+              <button
+                onClick={resetImportState}
+                className="w-full text-stone-500 hover:text-stone-700 py-2 text-sm font-medium"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {importStep === 'confirm-replace' && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="card p-6 max-w-sm w-full">
+            <h3 className="text-lg font-semibold text-stone-800 mb-2">Save a backup first?</h3>
+            <p className="text-stone-500 text-sm mb-5">
+              Replacing will permanently delete your current data. Would you like to export a backup before continuing?
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={handleExportThenReplace}
+                className="btn-primary w-full"
+              >
+                Export backup, then replace
+              </button>
+              <button
+                onClick={handleReplaceWithoutBackup}
+                className="btn-secondary w-full text-critical-600 hover:text-critical-700"
+              >
+                Replace without backup
+              </button>
+              <button
+                onClick={() => setImportStep('choose-mode')}
+                className="w-full text-stone-500 hover:text-stone-700 py-2 text-sm font-medium"
+              >
+                Go back
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <section className="mb-8">
         <h2 className="text-base font-semibold text-stone-700 mb-4">Your data</h2>
@@ -65,7 +181,7 @@ export function SettingsView() {
             ref={fileInputRef}
             type="file"
             accept=".json"
-            onChange={handleImport}
+            onChange={handleFileSelect}
             className="hidden"
             id="import-file"
           />

@@ -18,7 +18,7 @@ interface AppState {
   setView: (view: AppState['currentView']) => void
   setSelectedRecordId: (id: string | null) => void
   exportData: () => Promise<string>
-  importData: (jsonString: string) => Promise<void>
+  importData: (jsonString: string, mode?: 'merge' | 'replace') => Promise<void>
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -81,9 +81,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     return JSON.stringify(data, null, 2)
   },
 
-  importData: async (jsonString) => {
+  importData: async (jsonString, mode: 'merge' | 'replace' = 'merge') => {
     const data = JSON.parse(jsonString)
-    await db.importData(data)
+    await db.importData(data, mode)
     await get().loadData()
   }
 }))
