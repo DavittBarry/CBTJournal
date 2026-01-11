@@ -7,7 +7,6 @@ Untwist your thinking with cognitive behavioral therapy techniques based on "Fee
 - **Daily thought records**: Log situations, emotions, automatic thoughts, cognitive distortions, and rational responses.
 - **Depression checklist**: Track symptoms using the Burns Depression Checklist (25 items, scored 0-100).
 - **Pattern insights**: Visualize your most common cognitive distortions, emotional patterns, and trends over time.
-- **Inner voice tagging**: Tag thoughts as coming from your helpful or critical inner voice.
 - **Offline-first**: Works without internet connection, all data stays on your device.
 - **PWA support**: Install as an app on your phone or desktop.
 - **Data export**: Export your data as JSON for backup or analysis.
