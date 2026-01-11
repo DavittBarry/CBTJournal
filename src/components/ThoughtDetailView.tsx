@@ -13,11 +13,11 @@ export function ThoughtDetailView() {
 
   if (!record) {
     return (
-      <div className="text-center py-12">
-        <div className="text-slate-500">Record not found</div>
+      <div className="text-center py-16">
+        <p className="text-stone-500 mb-4">Record not found</p>
         <button
           onClick={() => setView('home')}
-          className="text-blue-400 hover:text-blue-300 mt-4"
+          className="text-sage-600 hover:text-sage-700 font-medium"
         >
           Go back
         </button>
@@ -48,24 +48,27 @@ export function ThoughtDetailView() {
     : null
 
   return (
-    <div className="pb-24">
+    <div className="pb-28">
       <div className="flex items-center justify-between mb-6">
         <button
           onClick={() => setView('home')}
-          className="text-slate-400 hover:text-white"
+          className="text-stone-500 hover:text-stone-700 flex items-center gap-1"
         >
-          ← Back
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+          Back
         </button>
         <div className="flex gap-2">
           <button
             onClick={() => setIsEditing(true)}
-            className="text-blue-400 hover:text-blue-300 px-3 py-1"
+            className="text-sage-600 hover:text-sage-700 px-3 py-1 font-medium"
           >
             Edit
           </button>
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="text-red-400 hover:text-red-300 px-3 py-1"
+            className="text-critical-500 hover:text-critical-600 px-3 py-1 font-medium"
           >
             Delete
           </button>
@@ -73,20 +76,20 @@ export function ThoughtDetailView() {
       </div>
 
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-lg p-6 max-w-sm w-full">
-            <h3 className="text-lg font-semibold mb-2">Delete this record?</h3>
-            <p className="text-slate-400 text-sm mb-4">This action cannot be undone.</p>
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="card p-6 max-w-sm w-full">
+            <h3 className="text-lg font-semibold text-stone-800 mb-2">Delete this record?</h3>
+            <p className="text-stone-500 text-sm mb-5">This action cannot be undone.</p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg"
+                className="btn-secondary flex-1"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDelete}
-                className="flex-1 bg-red-600 hover:bg-red-500 text-white py-2 rounded-lg"
+                className="flex-1 bg-critical-500 hover:bg-critical-600 text-white font-medium py-3 px-6 rounded-xl transition-colors"
               >
                 Delete
               </button>
@@ -95,91 +98,93 @@ export function ThoughtDetailView() {
         </div>
       )}
 
-      <div className="flex items-center gap-3 mb-4">
-        <div className="text-slate-400">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="text-stone-500 text-sm">
           {format(parseISO(record.date), 'EEEE, MMMM d, yyyy')}
         </div>
         {record.voiceTag && (
-          <span className={`text-xs px-2 py-0.5 rounded ${
+          <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
             record.voiceTag === 'helpful' 
-              ? 'bg-green-500/20 text-green-400' 
-              : 'bg-red-500/20 text-red-400'
+              ? 'bg-helpful-100 text-helpful-600' 
+              : 'bg-critical-100 text-critical-600'
           }`}>
             {record.voiceTag === 'helpful' ? 'Helpful' : 'Critical'}
           </span>
         )}
       </div>
 
-      <section className="mb-6">
-        <h2 className="text-sm font-medium text-slate-400 mb-2">Situation</h2>
-        <p className="text-white">{record.situation}</p>
-      </section>
+      <div className="space-y-4">
+        <section className="card p-5">
+          <h2 className="text-xs font-medium text-stone-400 uppercase tracking-wide mb-2">Situation</h2>
+          <p className="text-stone-700 leading-relaxed">{record.situation}</p>
+        </section>
 
-      <section className="mb-6">
-        <h2 className="text-sm font-medium text-slate-400 mb-2">Initial emotions</h2>
-        <div className="flex flex-wrap gap-2">
-          {record.emotions.map((emotion, i) => (
-            <div key={i} className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2">
-              <span className="text-white">{emotion.name}</span>
-              <span className="text-slate-400 ml-2">{emotion.intensity}%</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="mb-6">
-        <h2 className="text-sm font-medium text-slate-400 mb-2">Automatic thoughts</h2>
-        <p className="text-white whitespace-pre-wrap">{record.automaticThoughts}</p>
-      </section>
-
-      <section className="mb-6">
-        <h2 className="text-sm font-medium text-slate-400 mb-2">Cognitive distortions</h2>
-        <div className="space-y-2">
-          {record.distortions.map((id) => {
-            const distortion = getDistortion(id)
-            return distortion ? (
-              <div key={id} className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
-                <div className="text-blue-300 font-medium text-sm">
-                  {distortion.id}. {distortion.name}
-                </div>
-                <div className="text-slate-400 text-sm mt-1">{distortion.description}</div>
+        <section className="card p-5">
+          <h2 className="text-xs font-medium text-stone-400 uppercase tracking-wide mb-3">Initial emotions</h2>
+          <div className="flex flex-wrap gap-2">
+            {record.emotions.map((emotion, i) => (
+              <div key={i} className="bg-warm-200 rounded-full px-3 py-1.5">
+                <span className="text-stone-700 text-sm">{emotion.name}</span>
+                <span className="text-stone-500 text-sm ml-1.5">{emotion.intensity}%</span>
               </div>
-            ) : null
-          })}
-        </div>
-      </section>
-
-      <section className="mb-6">
-        <h2 className="text-sm font-medium text-slate-400 mb-2">Rational response</h2>
-        <p className="text-white whitespace-pre-wrap">{record.rationalResponse}</p>
-      </section>
-
-      <section className="mb-6">
-        <h2 className="text-sm font-medium text-slate-400 mb-2">Outcome emotions</h2>
-        <div className="flex flex-wrap gap-2">
-          {record.outcomeEmotions.map((emotion, i) => (
-            <div key={i} className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2">
-              <span className="text-white">{emotion.name}</span>
-              <span className="text-slate-400 ml-2">{emotion.intensity}%</span>
-            </div>
-          ))}
-        </div>
-        {maxInitialEmotion && maxOutcomeEmotion && (
-          <div className="mt-3 text-sm">
-            {maxInitialEmotion.intensity > maxOutcomeEmotion.intensity ? (
-              <span className="text-green-400">
-                ↓ Reduced by {maxInitialEmotion.intensity - maxOutcomeEmotion.intensity}%
-              </span>
-            ) : maxInitialEmotion.intensity < maxOutcomeEmotion.intensity ? (
-              <span className="text-orange-400">
-                ↑ Increased by {maxOutcomeEmotion.intensity - maxInitialEmotion.intensity}%
-              </span>
-            ) : (
-              <span className="text-slate-400">No change</span>
-            )}
+            ))}
           </div>
-        )}
-      </section>
+        </section>
+
+        <section className="card p-5">
+          <h2 className="text-xs font-medium text-stone-400 uppercase tracking-wide mb-2">Automatic thoughts</h2>
+          <p className="text-stone-700 whitespace-pre-wrap leading-relaxed">{record.automaticThoughts}</p>
+        </section>
+
+        <section className="card p-5">
+          <h2 className="text-xs font-medium text-stone-400 uppercase tracking-wide mb-3">Cognitive distortions</h2>
+          <div className="space-y-2">
+            {record.distortions.map((id) => {
+              const distortion = getDistortion(id)
+              return distortion ? (
+                <div key={id} className="bg-sage-50 border border-sage-200 rounded-xl p-4">
+                  <div className="text-sage-700 font-medium text-sm">
+                    {distortion.id}. {distortion.name}
+                  </div>
+                  <div className="text-stone-500 text-sm mt-1 leading-relaxed">{distortion.description}</div>
+                </div>
+              ) : null
+            })}
+          </div>
+        </section>
+
+        <section className="card p-5">
+          <h2 className="text-xs font-medium text-stone-400 uppercase tracking-wide mb-2">Rational response</h2>
+          <p className="text-stone-700 whitespace-pre-wrap leading-relaxed">{record.rationalResponse}</p>
+        </section>
+
+        <section className="card p-5">
+          <h2 className="text-xs font-medium text-stone-400 uppercase tracking-wide mb-3">Outcome emotions</h2>
+          <div className="flex flex-wrap gap-2">
+            {record.outcomeEmotions.map((emotion, i) => (
+              <div key={i} className="bg-warm-200 rounded-full px-3 py-1.5">
+                <span className="text-stone-700 text-sm">{emotion.name}</span>
+                <span className="text-stone-500 text-sm ml-1.5">{emotion.intensity}%</span>
+              </div>
+            ))}
+          </div>
+          {maxInitialEmotion && maxOutcomeEmotion && (
+            <div className="mt-4 text-sm font-medium">
+              {maxInitialEmotion.intensity > maxOutcomeEmotion.intensity ? (
+                <span className="text-helpful-500">
+                  ↓ Reduced by {maxInitialEmotion.intensity - maxOutcomeEmotion.intensity}%
+                </span>
+              ) : maxInitialEmotion.intensity < maxOutcomeEmotion.intensity ? (
+                <span className="text-coral-500">
+                  ↑ Increased by {maxOutcomeEmotion.intensity - maxInitialEmotion.intensity}%
+                </span>
+              ) : (
+                <span className="text-stone-400">No change</span>
+              )}
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   )
 }

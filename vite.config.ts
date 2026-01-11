@@ -8,13 +8,13 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'Untwist',
         short_name: 'Untwist',
         description: 'Untwist your thinking with cognitive behavioral therapy techniques based on Feeling Good by David D. Burns',
-        theme_color: '#3b82f6',
-        background_color: '#0f172a',
+        theme_color: '#617161',
+        background_color: '#f9f6f3',
         display: 'standalone',
         icons: [
           {

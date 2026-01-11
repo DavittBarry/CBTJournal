@@ -11,7 +11,7 @@ export function SettingsView() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `cbt-tracker-export-${new Date().toISOString().split('T')[0]}.json`
+    a.download = `untwist-export-${new Date().toISOString().split('T')[0]}.json`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -34,29 +34,29 @@ export function SettingsView() {
   }
 
   return (
-    <div className="pb-24">
-      <h1 className="text-2xl font-bold mb-6">Settings</h1>
+    <div className="pb-28">
+      <h1 className="text-2xl font-semibold text-stone-800 mb-8">Settings</h1>
 
       <section className="mb-8">
-        <h2 className="text-lg font-semibold mb-4">Your data</h2>
-        <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 space-y-4">
+        <h2 className="text-base font-semibold text-stone-700 mb-4">Your data</h2>
+        <div className="card p-5 space-y-4">
           <div className="flex justify-between">
-            <span className="text-slate-400">Thought records</span>
-            <span className="text-white font-medium">{thoughtRecords.length}</span>
+            <span className="text-stone-500">Thought records</span>
+            <span className="text-stone-800 font-medium">{thoughtRecords.length}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-slate-400">Depression checklists</span>
-            <span className="text-white font-medium">{depressionChecklists.length}</span>
+            <span className="text-stone-500">Depression checklists</span>
+            <span className="text-stone-800 font-medium">{depressionChecklists.length}</span>
           </div>
         </div>
       </section>
 
       <section className="mb-8">
-        <h2 className="text-lg font-semibold mb-4">Export & import</h2>
+        <h2 className="text-base font-semibold text-stone-700 mb-4">Export & import</h2>
         <div className="space-y-3">
           <button
             onClick={handleExport}
-            className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white py-3 rounded-lg transition-colors"
+            className="btn-secondary w-full"
           >
             Export data as JSON
           </button>
@@ -71,24 +71,24 @@ export function SettingsView() {
           />
           <label
             htmlFor="import-file"
-            className="block w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white py-3 rounded-lg text-center cursor-pointer transition-colors"
+            className="btn-secondary block w-full text-center cursor-pointer"
           >
             Import data from JSON
           </label>
         </div>
-        <p className="text-slate-500 text-sm mt-2">
+        <p className="text-stone-500 text-sm mt-3 leading-relaxed">
           Your data is stored locally on your device. Export regularly to back up your data.
         </p>
       </section>
 
       <section className="mb-8">
-        <h2 className="text-lg font-semibold mb-4">About</h2>
-        <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
-          <p className="text-slate-300 mb-3">
+        <h2 className="text-base font-semibold text-stone-700 mb-4">About</h2>
+        <div className="card p-5">
+          <p className="text-stone-600 mb-3 leading-relaxed">
             Untwist is based on the cognitive behavioral therapy techniques from 
             "Feeling Good" by David D. Burns, M.D.
           </p>
-          <p className="text-slate-400 text-sm">
+          <p className="text-stone-500 text-sm leading-relaxed">
             This app is not a replacement for professional mental health care. 
             If you're struggling, please reach out to a mental health professional.
           </p>
@@ -96,25 +96,25 @@ export function SettingsView() {
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold mb-4">Resources</h2>
-        <div className="space-y-2">
+        <h2 className="text-base font-semibold text-stone-700 mb-4">Resources</h2>
+        <div className="space-y-3">
           <a
             href="https://feelinggood.com/"
             target="_blank"
             rel="noopener noreferrer"
-            className="block bg-slate-800/50 border border-slate-700 rounded-lg p-4 hover:bg-slate-800 transition-colors"
+            className="card block p-5 hover:shadow-soft-lg transition-shadow duration-200"
           >
-            <div className="text-white">Feeling Good (David D. Burns)</div>
-            <div className="text-slate-400 text-sm">Official website with resources and podcasts</div>
+            <div className="text-stone-800 font-medium">Feeling Good (David D. Burns)</div>
+            <div className="text-stone-500 text-sm mt-1">Official website with resources and podcasts</div>
           </a>
           <a
             href="https://www.findahelpline.com/"
             target="_blank"
             rel="noopener noreferrer"
-            className="block bg-slate-800/50 border border-slate-700 rounded-lg p-4 hover:bg-slate-800 transition-colors"
+            className="card block p-5 hover:shadow-soft-lg transition-shadow duration-200"
           >
-            <div className="text-white">Find a Helpline</div>
-            <div className="text-slate-400 text-sm">Free emotional support helplines worldwide</div>
+            <div className="text-stone-800 font-medium">Find a Helpline</div>
+            <div className="text-stone-500 text-sm mt-1">Free emotional support helplines worldwide</div>
           </a>
         </div>
       </section>

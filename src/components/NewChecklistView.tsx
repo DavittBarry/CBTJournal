@@ -49,7 +49,7 @@ export function NewChecklistView() {
   const [scores, setScores] = useState<DepressionScores>(initialScores)
 
   const total = Object.values(scores).reduce((sum, val) => sum + val, 0)
-  const { level, color } = getDepressionLevel(total)
+  const { level } = getDepressionLevel(total)
 
   const updateScore = (key: keyof DepressionScores, value: number) => {
     setScores(prev => ({ ...prev, [key]: value }))
@@ -72,68 +72,76 @@ export function NewChecklistView() {
   const categories = [...new Set(DEPRESSION_ITEMS.map(item => item.category))]
 
   return (
-    <form onSubmit={handleSubmit} className="pb-24">
+    <form onSubmit={handleSubmit} className="pb-28">
       <div className="flex items-center justify-between mb-6">
         <button
           type="button"
           onClick={() => setView('checklist')}
-          className="text-slate-400 hover:text-white"
+          className="text-stone-500 hover:text-stone-700 flex items-center gap-1"
         >
-          ← Back
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+          Back
         </button>
-        <h1 className="text-xl font-semibold">Depression checklist</h1>
-        <div className="w-12" />
+        <h1 className="text-xl font-semibold text-stone-800">Depression checklist</h1>
+        <div className="w-16" />
       </div>
 
-      <div className="sticky top-0 bg-slate-900/95 backdrop-blur py-3 -mx-4 px-4 mb-4 border-b border-slate-800 z-10">
-        <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-bold text-white">{total}</span>
-          <span className="text-slate-500">/100</span>
-          <span className={`text-sm ${color} ml-2`}>{level}</span>
-        </div>
-        <div className="mt-2 h-2 bg-slate-700 rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 transition-all"
-            style={{ width: `${total}%` }}
-          />
+      <div className="sticky top-0 bg-warm-100/95 backdrop-blur py-4 -mx-5 px-5 mb-6 z-10">
+        <div className="card p-4">
+          <div className="flex items-baseline gap-2 mb-2">
+            <span className="text-2xl font-semibold text-stone-800">{total}</span>
+            <span className="text-stone-400">/100</span>
+            <span className="text-sm text-stone-600 ml-2">{level}</span>
+          </div>
+          <div className="h-1.5 bg-stone-200 rounded-full overflow-hidden">
+            <div 
+              className="h-full rounded-full transition-all duration-300"
+              style={{ 
+                width: `${total}%`,
+                background: `linear-gradient(90deg, #5a8a5a 0%, #d4a84a 50%, #c97b70 100%)`
+              }}
+            />
+          </div>
         </div>
       </div>
 
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-slate-300 mb-2">Date</label>
+      <div className="card p-5 mb-6">
+        <label className="label">Date</label>
         <input
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white"
+          className="input-field"
         />
       </div>
 
-      <p className="text-slate-400 text-sm mb-6">
+      <p className="text-stone-500 text-sm mb-6 leading-relaxed">
         Rate each item from 0 (not at all) to 4 (extremely) based on how you've felt recently.
       </p>
 
       {categories.map(category => (
         <div key={category} className="mb-8">
-          <h2 className="text-lg font-semibold text-white mb-4">{category}</h2>
-          <div className="space-y-4">
-            {DEPRESSION_ITEMS.filter(item => item.category === category).map((item, index) => (
-              <div key={item.key} className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
-                <div className="text-white mb-3">{item.label}</div>
-                <div className="flex gap-2">
+          <h2 className="text-base font-semibold text-stone-700 mb-4 px-1">{category}</h2>
+          <div className="space-y-3">
+            {DEPRESSION_ITEMS.filter(item => item.category === category).map((item) => (
+              <div key={item.key} className="card p-4">
+                <div className="text-stone-700 mb-3 text-sm leading-relaxed">{item.label}</div>
+                <div className="flex gap-1.5">
                   {scoreLabels.map(({ value, label }) => (
                     <button
                       key={value}
                       type="button"
                       onClick={() => updateScore(item.key, value)}
-                      className={`flex-1 py-2 text-xs rounded-lg border transition-colors ${
+                      className={`flex-1 py-2.5 text-xs rounded-lg border-2 transition-all duration-200 ${
                         scores[item.key] === value
-                          ? 'bg-blue-500/20 border-blue-500 text-blue-300'
-                          : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'
+                          ? 'bg-sage-50 border-sage-400 text-sage-700'
+                          : 'bg-white border-stone-200 text-stone-500 hover:border-stone-300'
                       }`}
                     >
-                      <div className="font-bold">{value}</div>
-                      <div className="hidden sm:block text-[10px] mt-0.5">{label}</div>
+                      <div className="font-semibold">{value}</div>
+                      <div className="hidden sm:block text-[10px] mt-0.5 opacity-75">{label}</div>
                     </button>
                   ))}
                 </div>
@@ -145,7 +153,7 @@ export function NewChecklistView() {
 
       <button
         type="submit"
-        className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 rounded-lg transition-colors"
+        className="btn-primary w-full"
       >
         Save checklist
       </button>

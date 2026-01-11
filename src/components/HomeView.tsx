@@ -15,23 +15,29 @@ export function HomeView() {
   }
 
   return (
-    <div className="pb-24">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Thought records</h1>
+    <div className="pb-28">
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-2xl font-semibold text-stone-800">Thought records</h1>
         <button
           onClick={() => setView('new-thought')}
-          className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+          className="btn-primary text-sm py-2.5 px-4"
         >
-          + New
+          New record
         </button>
       </div>
 
       {thoughtRecords.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="text-slate-500 mb-4">No thought records yet</div>
+        <div className="text-center py-16">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-sage-100 flex items-center justify-center">
+            <svg className="w-8 h-8 text-sage-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14,2 14,8 20,8" />
+            </svg>
+          </div>
+          <p className="text-stone-500 mb-4">No thought records yet</p>
           <button
             onClick={() => setView('new-thought')}
-            className="text-blue-400 hover:text-blue-300"
+            className="text-sage-600 hover:text-sage-700 font-medium"
           >
             Create your first record
           </button>
@@ -51,50 +57,50 @@ export function HomeView() {
               <button
                 key={record.id}
                 onClick={() => handleRecordClick(record.id)}
-                className="w-full text-left bg-slate-800/50 hover:bg-slate-800 border border-slate-700 rounded-lg p-4 transition-colors"
+                className="w-full text-left card p-5 hover:shadow-soft-lg transition-shadow duration-200"
               >
-                <div className="flex items-start justify-between mb-2">
-                  <div className="text-sm text-slate-400">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="text-sm text-stone-400">
                     {format(parseISO(record.date), 'MMM d, yyyy')}
                   </div>
                   <div className="flex items-center gap-2">
                     {record.voiceTag && (
-                      <span className={`text-xs px-2 py-0.5 rounded ${
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
                         record.voiceTag === 'helpful' 
-                          ? 'bg-green-500/20 text-green-400' 
-                          : 'bg-red-500/20 text-red-400'
+                          ? 'bg-helpful-100 text-helpful-600' 
+                          : 'bg-critical-100 text-critical-600'
                       }`}>
                         {record.voiceTag === 'helpful' ? 'Helpful' : 'Critical'}
                       </span>
                     )}
                     {improvement > 0 && (
-                      <span className="text-xs text-green-400">
-                        ↓{improvement}%
+                      <span className="text-xs text-helpful-500 font-medium">
+                        ↓ {improvement}%
                       </span>
                     )}
                   </div>
                 </div>
                 
-                <div className="text-white font-medium mb-2 line-clamp-2">
+                <div className="text-stone-700 font-medium mb-3 line-clamp-2 leading-relaxed">
                   {record.situation}
                 </div>
                 
-                <div className="flex flex-wrap gap-1 mb-2">
+                <div className="flex flex-wrap gap-1.5 mb-3">
                   {record.emotions.slice(0, 3).map((emotion, i) => (
-                    <span key={i} className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded">
+                    <span key={i} className="text-xs bg-warm-200 text-stone-600 px-2.5 py-1 rounded-full">
                       {emotion.name} {emotion.intensity}%
                     </span>
                   ))}
                 </div>
 
-                <div className="flex flex-wrap gap-1">
+                <div className="flex flex-wrap gap-x-2 gap-y-1">
                   {record.distortions.slice(0, 3).map((id) => (
-                    <span key={id} className="text-xs text-blue-400">
-                      #{getDistortionName(id)}
+                    <span key={id} className="text-xs text-sage-500">
+                      {getDistortionName(id)}
                     </span>
                   ))}
                   {record.distortions.length > 3 && (
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs text-stone-400">
                       +{record.distortions.length - 3} more
                     </span>
                   )}

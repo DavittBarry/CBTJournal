@@ -77,218 +77,235 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 pb-24">
-      <div className="flex items-center justify-between mb-6">
+    <form onSubmit={handleSubmit} className="pb-28">
+      <div className="flex items-center justify-between mb-8">
         <button
           type="button"
           onClick={() => setView('home')}
-          className="text-slate-400 hover:text-white"
+          className="text-stone-500 hover:text-stone-700 flex items-center gap-1"
         >
-          ← Back
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+          Back
         </button>
-        <h1 className="text-xl font-semibold">
-          {existingRecord ? 'Edit thought record' : 'New thought record'}
+        <h1 className="text-xl font-semibold text-stone-800">
+          {existingRecord ? 'Edit record' : 'New record'}
         </h1>
-        <div className="w-12" />
+        <div className="w-16" />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-slate-300 mb-2">Date</label>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white"
-        />
-      </div>
+      <div className="space-y-6">
+        <div className="card p-5">
+          <label className="label">Date</label>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="input-field"
+          />
+        </div>
 
-      <div>
-        <label className="block text-sm font-medium text-slate-300 mb-2">
-          Situation
-          <span className="text-slate-500 font-normal ml-2">What triggered the emotion?</span>
-        </label>
-        <textarea
-          value={situation}
-          onChange={(e) => setSituation(e.target.value)}
-          rows={3}
-          className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white resize-none"
-          placeholder="Describe the event or situation..."
-        />
-      </div>
+        <div className="card p-5">
+          <label className="label">
+            Situation
+            <span className="label-hint">What triggered the emotion?</span>
+          </label>
+          <textarea
+            value={situation}
+            onChange={(e) => setSituation(e.target.value)}
+            rows={3}
+            className="input-field resize-none"
+            placeholder="Describe the event or situation..."
+          />
+        </div>
 
-      <div>
-        <label className="block text-sm font-medium text-slate-300 mb-2">
-          Emotions
-          <span className="text-slate-500 font-normal ml-2">Rate intensity 0-100%</span>
-        </label>
-        {emotions.map((emotion, index) => (
-          <div key={index} className="flex gap-2 mb-2">
-            <input
-              type="text"
-              value={emotion.name}
-              onChange={(e) => updateEmotion(index, 'name', e.target.value, false)}
-              placeholder="Emotion name"
-              className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white"
-            />
-            <input
-              type="number"
-              min="0"
-              max="100"
-              value={emotion.intensity}
-              onChange={(e) => updateEmotion(index, 'intensity', parseInt(e.target.value) || 0, false)}
-              className="w-20 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-center"
-            />
-            <span className="flex items-center text-slate-500">%</span>
-            {emotions.length > 1 && (
-              <button
-                type="button"
-                onClick={() => removeEmotion(index, false)}
-                className="text-red-400 hover:text-red-300 px-2"
-              >
-                ×
-              </button>
-            )}
+        <div className="card p-5">
+          <label className="label">
+            Emotions
+            <span className="label-hint">Rate intensity 0-100%</span>
+          </label>
+          <div className="space-y-2">
+            {emotions.map((emotion, index) => (
+              <div key={index} className="flex gap-2">
+                <input
+                  type="text"
+                  value={emotion.name}
+                  onChange={(e) => updateEmotion(index, 'name', e.target.value, false)}
+                  placeholder="Emotion name"
+                  className="input-field flex-1"
+                />
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={emotion.intensity}
+                    onChange={(e) => updateEmotion(index, 'intensity', parseInt(e.target.value) || 0, false)}
+                    className="input-field w-16 text-center"
+                  />
+                  <span className="text-stone-400 text-sm">%</span>
+                </div>
+                {emotions.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeEmotion(index, false)}
+                    className="text-stone-400 hover:text-critical-500 px-2 transition-colors"
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
-        ))}
-        <button
-          type="button"
-          onClick={() => addEmotion(false)}
-          className="text-blue-400 hover:text-blue-300 text-sm mt-1"
-        >
-          + Add emotion
-        </button>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-slate-300 mb-2">
-          Automatic thoughts
-          <span className="text-slate-500 font-normal ml-2">What went through your mind?</span>
-        </label>
-        <textarea
-          value={automaticThoughts}
-          onChange={(e) => setAutomaticThoughts(e.target.value)}
-          rows={4}
-          className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white resize-none"
-          placeholder="Write the automatic thoughts..."
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-slate-300 mb-2">
-          Voice tag
-          <span className="text-slate-500 font-normal ml-2">Is this your helpful or critical inner voice?</span>
-        </label>
-        <div className="flex gap-3">
           <button
             type="button"
-            onClick={() => setVoiceTag(voiceTag === 'helpful' ? null : 'helpful')}
-            className={`flex-1 py-2 rounded-lg border transition-colors ${
-              voiceTag === 'helpful'
-                ? 'bg-green-500/20 border-green-500 text-green-400'
-                : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'
-            }`}
+            onClick={() => addEmotion(false)}
+            className="text-sage-600 hover:text-sage-700 text-sm font-medium mt-3"
           >
-            Helpful
-          </button>
-          <button
-            type="button"
-            onClick={() => setVoiceTag(voiceTag === 'critical' ? null : 'critical')}
-            className={`flex-1 py-2 rounded-lg border transition-colors ${
-              voiceTag === 'critical'
-                ? 'bg-red-500/20 border-red-500 text-red-400'
-                : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'
-            }`}
-          >
-            Critical
+            + Add emotion
           </button>
         </div>
-      </div>
 
-      <div>
-        <label className="block text-sm font-medium text-slate-300 mb-2">
-          Cognitive distortions
-        </label>
-        <div className="grid grid-cols-1 gap-2">
-          {COGNITIVE_DISTORTIONS.map((distortion) => (
+        <div className="card p-5">
+          <label className="label">
+            Automatic thoughts
+            <span className="label-hint">What went through your mind?</span>
+          </label>
+          <textarea
+            value={automaticThoughts}
+            onChange={(e) => setAutomaticThoughts(e.target.value)}
+            rows={4}
+            className="input-field resize-none"
+            placeholder="Write the automatic thoughts..."
+          />
+        </div>
+
+        <div className="card p-5">
+          <label className="label">
+            Voice tag
+            <span className="label-hint">Is this your helpful or critical inner voice?</span>
+          </label>
+          <div className="flex gap-3">
             <button
-              key={distortion.id}
               type="button"
-              onClick={() => toggleDistortion(distortion.id)}
-              className={`text-left p-3 rounded-lg border transition-colors ${
-                distortions.includes(distortion.id)
-                  ? 'bg-blue-500/20 border-blue-500 text-blue-300'
-                  : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'
+              onClick={() => setVoiceTag(voiceTag === 'helpful' ? null : 'helpful')}
+              className={`flex-1 py-3 rounded-xl border-2 font-medium transition-all duration-200 ${
+                voiceTag === 'helpful'
+                  ? 'bg-helpful-50 border-helpful-500 text-helpful-600'
+                  : 'bg-white border-stone-200 text-stone-500 hover:border-stone-300'
               }`}
             >
-              <div className="font-medium text-sm">{distortion.id}. {distortion.shortName}</div>
+              Helpful
             </button>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-slate-300 mb-2">
-          Rational response
-          <span className="text-slate-500 font-normal ml-2">Challenge the automatic thoughts</span>
-        </label>
-        <textarea
-          value={rationalResponse}
-          onChange={(e) => setRationalResponse(e.target.value)}
-          rows={4}
-          className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white resize-none"
-          placeholder="Write your rational response..."
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-slate-300 mb-2">
-          Outcome emotions
-          <span className="text-slate-500 font-normal ml-2">How do you feel now? (0-100%)</span>
-        </label>
-        {outcomeEmotions.map((emotion, index) => (
-          <div key={index} className="flex gap-2 mb-2">
-            <input
-              type="text"
-              value={emotion.name}
-              onChange={(e) => updateEmotion(index, 'name', e.target.value, true)}
-              placeholder="Emotion name"
-              className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white"
-            />
-            <input
-              type="number"
-              min="0"
-              max="100"
-              value={emotion.intensity}
-              onChange={(e) => updateEmotion(index, 'intensity', parseInt(e.target.value) || 0, true)}
-              className="w-20 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-center"
-            />
-            <span className="flex items-center text-slate-500">%</span>
-            {outcomeEmotions.length > 1 && (
-              <button
-                type="button"
-                onClick={() => removeEmotion(index, true)}
-                className="text-red-400 hover:text-red-300 px-2"
-              >
-                ×
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setVoiceTag(voiceTag === 'critical' ? null : 'critical')}
+              className={`flex-1 py-3 rounded-xl border-2 font-medium transition-all duration-200 ${
+                voiceTag === 'critical'
+                  ? 'bg-critical-50 border-critical-500 text-critical-600'
+                  : 'bg-white border-stone-200 text-stone-500 hover:border-stone-300'
+              }`}
+            >
+              Critical
+            </button>
           </div>
-        ))}
+        </div>
+
+        <div className="card p-5">
+          <label className="label">Cognitive distortions</label>
+          <div className="space-y-2">
+            {COGNITIVE_DISTORTIONS.map((distortion) => (
+              <button
+                key={distortion.id}
+                type="button"
+                onClick={() => toggleDistortion(distortion.id)}
+                className={`w-full text-left p-3.5 rounded-xl border-2 transition-all duration-200 ${
+                  distortions.includes(distortion.id)
+                    ? 'bg-sage-50 border-sage-400 text-sage-700'
+                    : 'bg-white border-stone-200 text-stone-600 hover:border-stone-300'
+                }`}
+              >
+                <span className="font-medium text-sm">{distortion.id}. {distortion.shortName}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="card p-5">
+          <label className="label">
+            Rational response
+            <span className="label-hint">Challenge the automatic thoughts</span>
+          </label>
+          <textarea
+            value={rationalResponse}
+            onChange={(e) => setRationalResponse(e.target.value)}
+            rows={4}
+            className="input-field resize-none"
+            placeholder="Write your rational response..."
+          />
+        </div>
+
+        <div className="card p-5">
+          <label className="label">
+            Outcome emotions
+            <span className="label-hint">How do you feel now? (0-100%)</span>
+          </label>
+          <div className="space-y-2">
+            {outcomeEmotions.map((emotion, index) => (
+              <div key={index} className="flex gap-2">
+                <input
+                  type="text"
+                  value={emotion.name}
+                  onChange={(e) => updateEmotion(index, 'name', e.target.value, true)}
+                  placeholder="Emotion name"
+                  className="input-field flex-1"
+                />
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={emotion.intensity}
+                    onChange={(e) => updateEmotion(index, 'intensity', parseInt(e.target.value) || 0, true)}
+                    className="input-field w-16 text-center"
+                  />
+                  <span className="text-stone-400 text-sm">%</span>
+                </div>
+                {outcomeEmotions.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeEmotion(index, true)}
+                    className="text-stone-400 hover:text-critical-500 px-2 transition-colors"
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => addEmotion(true)}
+            className="text-sage-600 hover:text-sage-700 text-sm font-medium mt-3"
+          >
+            + Add emotion
+          </button>
+        </div>
+
         <button
-          type="button"
-          onClick={() => addEmotion(true)}
-          className="text-blue-400 hover:text-blue-300 text-sm mt-1"
+          type="submit"
+          className="btn-primary w-full"
         >
-          + Add emotion
+          {existingRecord ? 'Update record' : 'Save record'}
         </button>
       </div>
-
-      <button
-        type="submit"
-        className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 rounded-lg transition-colors"
-      >
-        {existingRecord ? 'Update record' : 'Save record'}
-      </button>
     </form>
   )
 }

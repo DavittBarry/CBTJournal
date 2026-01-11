@@ -18,8 +18,8 @@ function App() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="text-slate-400">Loading...</div>
+      <div className="min-h-screen bg-warm-100 flex items-center justify-center">
+        <div className="text-stone-400">Loading...</div>
       </div>
     )
   }
@@ -46,8 +46,8 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white">
-      <main className="max-w-lg mx-auto px-4 py-6">
+    <div className="min-h-screen bg-warm-100 text-stone-800">
+      <main className="max-w-lg mx-auto px-5 py-8">
         {renderView()}
       </main>
       <Navigation />
