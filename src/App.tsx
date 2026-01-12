@@ -33,7 +33,7 @@ function App() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-warm-100 dark:bg-stone-900 flex items-center justify-center">
+      <div className="min-h-screen bg-warm-200 dark:bg-stone-900 flex items-center justify-center">
         <div className="text-stone-400 dark:text-stone-500">Loading...</div>
       </div>
     )
@@ -72,7 +72,7 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-warm-100 dark:bg-stone-900 text-stone-800 dark:text-stone-100">
+      <div className="min-h-screen bg-warm-200 dark:bg-stone-900 text-stone-800 dark:text-stone-100">
         <Navigation />
         
         <main className="

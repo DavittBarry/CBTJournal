@@ -13,7 +13,7 @@ html {
 }
 
 body {
-  @apply bg-warm-100 text-stone-800 antialiased;
+  @apply bg-warm-200 text-stone-800 antialiased;
   @apply dark:bg-stone-900 dark:text-stone-100;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
@@ -39,12 +39,12 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 input:focus, textarea:focus, button:focus {
-  @apply outline-none ring-2 ring-sage-300/60 ring-offset-2 ring-offset-warm-100;
+  @apply outline-none ring-2 ring-sage-400/70 ring-offset-2 ring-offset-warm-200;
   @apply dark:ring-sage-600/60 dark:ring-offset-stone-900;
 }
 
 select:focus {
-  @apply outline-none ring-2 ring-sage-300/60;
+  @apply outline-none ring-2 ring-sage-400/70;
   @apply dark:ring-sage-600/60;
 }
 
@@ -68,20 +68,26 @@ select:focus {
 
 @layer components {
   .card {
-    @apply bg-white rounded-2xl shadow-soft;
-    @apply dark:bg-stone-800;
+    @apply bg-white rounded-2xl border border-stone-200/50;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 2px 6px -1px rgba(0, 0, 0, 0.06);
   }
   
   .dark .card {
+    @apply bg-stone-800 border-stone-700/50;
     box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.3), 0 4px 16px -4px rgba(0, 0, 0, 0.3);
   }
   
   .btn-primary {
-    @apply bg-sage-600 hover:bg-sage-700 text-white font-medium py-3 px-6 rounded-xl transition-all duration-200 shadow-soft hover:shadow-soft-lg;
-    @apply dark:bg-sage-600 dark:hover:bg-sage-500;
+    @apply bg-sage-600 hover:bg-sage-700 text-white font-medium py-3 px-6 rounded-xl transition-all duration-200;
+    box-shadow: 0 1px 3px 0 rgba(97, 113, 97, 0.15), 0 2px 6px -1px rgba(97, 113, 97, 0.15);
+  }
+  
+  .btn-primary:hover {
+    box-shadow: 0 2px 6px 0 rgba(97, 113, 97, 0.2), 0 4px 12px -2px rgba(97, 113, 97, 0.2);
   }
   
   .dark .btn-primary {
+    @apply bg-sage-600 hover:bg-sage-500;
     box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.3), 0 4px 16px -4px rgba(0, 0, 0, 0.3);
   }
   
@@ -90,13 +96,13 @@ select:focus {
   }
   
   .btn-secondary {
-    @apply bg-white hover:bg-stone-50 text-stone-700 font-medium py-3 px-6 rounded-xl border border-stone-200 transition-colors;
+    @apply bg-white hover:bg-warm-50 text-stone-700 font-medium py-3 px-6 rounded-xl border border-stone-200 transition-colors;
     @apply dark:bg-stone-700 dark:hover:bg-stone-600 dark:text-stone-200 dark:border-stone-600;
   }
   
   .input-field {
-    @apply w-full bg-white border border-stone-200 rounded-xl px-4 py-3 text-stone-800 placeholder:text-stone-400 transition-colors hover:border-stone-300;
-    @apply dark:bg-stone-800 dark:border-stone-600 dark:text-stone-100 dark:placeholder:text-stone-500 dark:hover:border-stone-500;
+    @apply w-full bg-white border border-stone-200 rounded-xl px-4 py-3 text-stone-800 placeholder:text-stone-400 transition-colors hover:border-stone-300 focus:border-sage-400;
+    @apply dark:bg-stone-800 dark:border-stone-600 dark:text-stone-100 dark:placeholder:text-stone-500 dark:hover:border-stone-500 dark:focus:border-sage-500;
   }
   
   .label {
@@ -105,7 +111,7 @@ select:focus {
   }
   
   .label-hint {
-    @apply text-stone-400 font-normal ml-1;
+    @apply text-stone-500 font-normal ml-1;
     @apply dark:text-stone-500;
   }
 }
@@ -202,7 +208,7 @@ select:focus {
   }
   
   .card:hover {
-    @apply shadow-soft-lg;
+    box-shadow: 0 2px 6px 0 rgba(0, 0, 0, 0.06), 0 4px 12px -2px rgba(0, 0, 0, 0.08);
   }
   
   .dark .card:hover {
