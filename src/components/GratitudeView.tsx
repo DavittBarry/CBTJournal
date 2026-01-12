@@ -171,7 +171,7 @@ export function GratitudeView() {
               >
                 <button
                   onClick={() => handleCardClick(entry.id)}
-                  className="w-full text-left p-5 focus:outline-none focus:ring-2 focus:ring-sage-400/50 dark:focus:ring-sage-500/50 rounded-xl flex flex-col justify-between h-full overflow-hidden"
+                  className="w-full text-left p-5 focus:outline-none focus:ring-2 focus:ring-sage-400/50 dark:focus:ring-sage-500/50 rounded-xl flex flex-col h-full overflow-hidden"
                   type="button"
                 >
                   <div className="flex items-center justify-between mb-3 flex-shrink-0">

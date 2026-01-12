@@ -76,11 +76,11 @@ select:focus {
   }
   
   .card.card-thought-record {
-    height: 280px;
+    height: 300px;
   }
   
   .card.card-gratitude {
-    height: 240px;
+    height: 220px;
   }
   
   .dark .card {
