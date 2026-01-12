@@ -188,7 +188,7 @@ export function ChecklistView() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="card-grid grid-cols-1 md:grid-cols-2">
           {filteredChecklists.map((entry) => {
             const { level, color } = getDepressionLevel(entry.total)
             const prevEntry = getPrevEntry(entry)

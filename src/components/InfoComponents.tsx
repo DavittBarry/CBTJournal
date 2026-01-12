@@ -9,7 +9,7 @@ interface InfoButtonProps {
 export function InfoButton({ title, content, example }: InfoButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLSpanElement>(null)
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const timeoutRef = useRef<number | null>(null)
 
   const handleMouseEnter = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current)
@@ -93,7 +93,7 @@ interface StatInfoButtonProps {
 export function StatInfoButton({ title, content }: StatInfoButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLSpanElement>(null)
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const timeoutRef = useRef<number | null>(null)
 
   const handleMouseEnter = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current)
@@ -172,7 +172,7 @@ interface PageIntroProps {
 export function PageIntro({ title, description, steps, centered = true }: PageIntroProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const timeoutRef = useRef<number | null>(null)
 
   const handleMouseEnter = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current)

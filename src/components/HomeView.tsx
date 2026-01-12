@@ -56,19 +56,17 @@ export function HomeView() {
   }, [thoughtRecords, searchQuery, timeFilter])
 
   const handleCardClick = (id: string) => {
-    if (expandedId === id) {
-      setExpandedId(null)
-    } else {
-      setExpandedId(id)
-    }
+    setExpandedId(current => current === id ? null : id)
   }
 
-  const handleView = (id: string) => {
+  const handleView = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
     setSelectedRecordId(id)
     setView('thought-detail')
   }
 
-  const handleEdit = (id: string) => {
+  const handleEdit = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
     setSelectedRecordId(id)
     setView('new-thought')
   }
@@ -78,6 +76,11 @@ export function HomeView() {
     setShowDeleteConfirm(null)
     setExpandedId(null)
     toast.success('Record deleted')
+  }
+
+  const handleDeleteClick = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setShowDeleteConfirm(id)
   }
 
   return (
@@ -174,7 +177,7 @@ export function HomeView() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="card-grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 items-start">
           {filteredRecords.map((record) => {
             const maxEmotion = record.emotions.reduce(
               (max, e) => (e.intensity > max.intensity ? e : max),
@@ -190,71 +193,72 @@ export function HomeView() {
             return (
               <div
                 key={record.id}
-                className={`card overflow-hidden transition-all duration-300 ${
-                  isExpanded ? 'shadow-soft-lg dark:shadow-soft-lg-dark md:col-span-2' : 'hover:shadow-soft-lg dark:hover:shadow-soft-lg-dark'
-                }`}
+                className={`card overflow-hidden transition-all duration-300 hover:shadow-soft-lg dark:hover:shadow-soft-lg-dark ${!isExpanded ? 'card-thought-record' : ''}`}
               >
                 <button
                   onClick={() => handleCardClick(record.id)}
-                  className="w-full text-left p-5 focus:ring-0 focus:ring-offset-0"
+                  className="w-full text-left p-5 focus:outline-none focus:ring-2 focus:ring-sage-400/50 dark:focus:ring-sage-500/50 rounded-xl flex flex-col justify-between h-full overflow-hidden"
+                  type="button"
                 >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="text-sm text-stone-400 dark:text-stone-500">
-                      {format(parseISO(record.date), 'MMM d, yyyy')}
-                    </div>
-                    <svg 
-                      className={`w-5 h-5 text-stone-400 dark:text-stone-500 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                      viewBox="0 0 24 24" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      strokeWidth="1.5"
-                    >
-                      <path d="M6 9l6 6 6-6" />
-                    </svg>
-                  </div>
-                  
-                  <div className={`text-stone-700 dark:text-stone-200 font-medium mb-3 leading-relaxed ${isExpanded ? '' : 'line-clamp-2'}`}>
-                    {record.situation}
-                  </div>
-                  
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    {record.emotions.map((emotion, i) => (
-                      <span key={i} className="text-xs bg-warm-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-2.5 py-1 rounded-full">
-                        {emotion.name} {emotion.intensity}%
-                      </span>
-                    ))}
-                  </div>
-
-                  {maxEmotion && hasOutcome && (
-                    <div className="flex items-center gap-3 mb-3 py-2 px-3 bg-stone-50 dark:bg-stone-700/50 rounded-lg">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium">Before</span>
-                        <span className="text-sm font-semibold text-critical-500 dark:text-critical-400">{maxEmotion.intensity}%</span>
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="text-sm text-stone-400 dark:text-stone-500">
+                        {format(parseISO(record.date), 'MMM d, yyyy')}
                       </div>
-                      <svg className="w-4 h-4 text-stone-300 dark:text-stone-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M5 12h14M12 5l7 7-7 7" />
+                      <svg 
+                        className={`w-5 h-5 text-stone-400 dark:text-stone-500 transition-transform duration-200 flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`}
+                        viewBox="0 0 24 24" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        strokeWidth="1.5"
+                      >
+                        <path d="M6 9l6 6 6-6" />
                       </svg>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium">After</span>
-                        <span className="text-sm font-semibold text-helpful-600 dark:text-helpful-500">{outcomeIntensity}%</span>
-                      </div>
-                      {improvement > 0 && (
-                        <span className="ml-auto text-xs font-medium text-stone-500 dark:text-stone-400">
-                          {improvement}% better
-                        </span>
-                      )}
                     </div>
-                  )}
+                    
+                    <div className={`text-stone-700 dark:text-stone-200 font-medium leading-relaxed ${isExpanded ? '' : 'line-clamp-2'}`}>
+                      {record.situation}
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-1.5">
+                      {record.emotions.map((emotion, i) => (
+                        <span key={i} className="text-xs bg-warm-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-2.5 py-1 rounded-full">
+                          {emotion.name} {emotion.intensity}%
+                        </span>
+                      ))}
+                    </div>
 
-                  <div className="flex flex-wrap gap-x-2 gap-y-1">
-                    {(isExpanded ? record.distortions : record.distortions.slice(0, 3)).map((id) => (
-                      <span key={id} className="text-xs text-sage-500 dark:text-sage-400">
+                    {maxEmotion && hasOutcome && (
+                      <div className="flex items-center gap-2 py-2 px-3 bg-stone-50 dark:bg-stone-700/50 rounded-lg text-xs">
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium">Before</span>
+                          <span className="font-semibold text-critical-500 dark:text-critical-400">{maxEmotion.intensity}%</span>
+                        </div>
+                        <svg className="w-3 h-3 text-stone-300 dark:text-stone-600 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium">After</span>
+                          <span className="font-semibold text-helpful-600 dark:text-helpful-500">{outcomeIntensity}%</span>
+                        </div>
+                        {improvement > 0 && (
+                          <span className="ml-auto font-medium text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                            {improvement}% better
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs pt-3">
+                    {(isExpanded ? record.distortions : record.distortions.slice(0, 2)).map((id) => (
+                      <span key={id} className="text-sage-500 dark:text-sage-400">
                         {getDistortionName(id)}
                       </span>
                     ))}
-                    {!isExpanded && record.distortions.length > 3 && (
-                      <span className="text-xs text-stone-400 dark:text-stone-500">
-                        +{record.distortions.length - 3} more
+                    {!isExpanded && record.distortions.length > 2 && (
+                      <span className="text-stone-400 dark:text-stone-500">
+                        +{record.distortions.length - 2} more
                       </span>
                     )}
                   </div>
@@ -262,21 +266,19 @@ export function HomeView() {
 
                 {isExpanded && (
                   <div className="px-5 pb-5 space-y-4">
-                    <div className="md:grid md:grid-cols-2 md:gap-6">
-                      {record.automaticThoughts && (
-                        <div className="pt-4 border-t border-stone-100 dark:border-stone-700 md:border-t-0 md:pt-0">
-                          <h4 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide mb-2">Automatic thoughts</h4>
-                          <p className="text-stone-700 dark:text-stone-300 text-sm leading-relaxed whitespace-pre-wrap">{record.automaticThoughts}</p>
-                        </div>
-                      )}
-                      
-                      {record.rationalResponse && (
-                        <div className="pt-4 border-t border-stone-100 dark:border-stone-700 md:border-t-0 md:pt-0">
-                          <h4 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide mb-2">Rational response</h4>
-                          <p className="text-stone-700 dark:text-stone-300 text-sm leading-relaxed whitespace-pre-wrap">{record.rationalResponse}</p>
-                        </div>
-                      )}
-                    </div>
+                    {record.automaticThoughts && (
+                      <div className="pt-4 border-t border-stone-100 dark:border-stone-700">
+                        <h4 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide mb-2">Automatic thoughts</h4>
+                        <p className="text-stone-700 dark:text-stone-300 text-sm leading-relaxed whitespace-pre-wrap">{record.automaticThoughts}</p>
+                      </div>
+                    )}
+                    
+                    {record.rationalResponse && (
+                      <div className="pt-4 border-t border-stone-100 dark:border-stone-700">
+                        <h4 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide mb-2">Rational response</h4>
+                        <p className="text-stone-700 dark:text-stone-300 text-sm leading-relaxed whitespace-pre-wrap">{record.rationalResponse}</p>
+                      </div>
+                    )}
 
                     {record.outcomeEmotions.length > 0 && record.outcomeEmotions[0].name && (
                       <div className="pt-4 border-t border-stone-100 dark:border-stone-700">
@@ -293,29 +295,23 @@ export function HomeView() {
 
                     <div className="flex gap-2 pt-4 border-t border-stone-100 dark:border-stone-700">
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleView(record.id)
-                        }}
-                        className="flex-1 btn-secondary py-2.5 text-sm"
+                        onClick={(e) => handleView(record.id, e)}
+                        className="flex-1 btn-secondary py-2 text-sm"
+                        type="button"
                       >
-                        View details
+                        View
                       </button>
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleEdit(record.id)
-                        }}
-                        className="flex-1 btn-secondary py-2.5 text-sm"
+                        onClick={(e) => handleEdit(record.id, e)}
+                        className="flex-1 btn-secondary py-2 text-sm"
+                        type="button"
                       >
                         Edit
                       </button>
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setShowDeleteConfirm(record.id)
-                        }}
-                        className="px-4 py-2.5 text-sm font-medium text-critical-500 dark:text-critical-400 hover:text-critical-600 dark:hover:text-critical-300 hover:bg-critical-50 dark:hover:bg-critical-500/10 rounded-xl transition-colors"
+                        onClick={(e) => handleDeleteClick(record.id, e)}
+                        className="px-3 py-2 text-sm font-medium text-critical-500 dark:text-critical-400 hover:text-critical-600 dark:hover:text-critical-300 hover:bg-critical-50 dark:hover:bg-critical-500/10 rounded-xl transition-colors"
+                        type="button"
                       >
                         Delete
                       </button>

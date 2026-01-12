@@ -1,11 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <circle cx="16" cy="16" r="16" fill="#617161"/>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" width="32" height="32"><svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" width="32" height="32"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <circle cx="16" cy="16" r="16" fill="#617161"></circle>
   <g fill="none" stroke="white" stroke-linecap="round" stroke-linejoin="round">
     <!-- Twisted/spiral that unwinds to straight -->
-    <path d="M8 16c0-4.4 3.6-8 8-8" stroke-width="2.5" opacity="0.5"/>
-    <path d="M12 16c0-2.2 1.8-4 4-4" stroke-width="2.5" opacity="0.75"/>
-    <path d="M16 16h10" stroke-width="2.5"/>
+    <path d="M8 16c0-4.4 3.6-8 8-8" stroke-width="2.5" opacity="0.5"></path>
+    <path d="M12 16c0-2.2 1.8-4 4-4" stroke-width="2.5" opacity="0.75"></path>
+    <path d="M16 16h10" stroke-width="2.5"></path>
     <!-- Arrow indicating direction -->
-    <path d="M23 13l3 3-3 3" stroke-width="2"/>
+    <path d="M23 13l3 3-3 3" stroke-width="2"></path>
   </g>
-</svg>
+</svg></svg><style>@media (prefers-color-scheme: light) { :root { filter: none; } }
+@media (prefers-color-scheme: dark) { :root { filter: none; } }
+</style></svg>

@@ -47,14 +47,11 @@ export function GratitudeView() {
   }, [gratitudeEntries, searchQuery, timeFilter])
 
   const handleCardClick = (id: string) => {
-    if (expandedId === id) {
-      setExpandedId(null)
-    } else {
-      setExpandedId(id)
-    }
+    setExpandedId(current => current === id ? null : id)
   }
 
-  const handleEdit = (id: string) => {
+  const handleEdit = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
     setSelectedGratitudeId(id)
     setView('new-gratitude')
   }
@@ -64,6 +61,11 @@ export function GratitudeView() {
     setShowDeleteConfirm(null)
     setExpandedId(null)
     toast.success('Entry deleted')
+  }
+
+  const handleDeleteClick = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setShowDeleteConfirm(id)
   }
 
   return (
@@ -158,31 +160,30 @@ export function GratitudeView() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="card-grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 items-start">
           {filteredEntries.map((entry) => {
             const isExpanded = expandedId === entry.id
 
             return (
               <div
                 key={entry.id}
-                className={`card overflow-hidden transition-all duration-300 ${
-                  isExpanded ? 'shadow-soft-lg dark:shadow-soft-lg-dark md:col-span-2 lg:col-span-3' : 'hover:shadow-soft-lg dark:hover:shadow-soft-lg-dark'
-                }`}
+                className={`card overflow-hidden transition-all duration-300 hover:shadow-soft-lg dark:hover:shadow-soft-lg-dark ${!isExpanded ? 'card-gratitude' : ''}`}
               >
                 <button
                   onClick={() => handleCardClick(entry.id)}
-                  className="w-full text-left p-5 focus:ring-0 focus:ring-offset-0"
+                  className="w-full text-left p-5 focus:outline-none focus:ring-2 focus:ring-sage-400/50 dark:focus:ring-sage-500/50 rounded-xl flex flex-col justify-between h-full overflow-hidden"
+                  type="button"
                 >
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center justify-between mb-3 flex-shrink-0">
                     <div className="text-sm text-stone-400 dark:text-stone-500">
                       {format(parseISO(entry.date), 'MMM d, yyyy')}
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-sage-500 dark:text-sage-400 font-medium">
+                      <span className="text-xs text-sage-500 dark:text-sage-400 font-medium whitespace-nowrap">
                         {entry.entries.length} item{entry.entries.length !== 1 ? 's' : ''}
                       </span>
                       <svg 
-                        className={`w-5 h-5 text-stone-400 dark:text-stone-500 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                        className={`w-5 h-5 text-stone-400 dark:text-stone-500 transition-transform duration-200 flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`}
                         viewBox="0 0 24 24" 
                         fill="none" 
                         stroke="currentColor" 
@@ -212,20 +213,16 @@ export function GratitudeView() {
                   <div className="px-5 pb-5">
                     <div className="flex gap-2 pt-4 border-t border-stone-100 dark:border-stone-700">
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleEdit(entry.id)
-                        }}
-                        className="flex-1 btn-secondary py-2.5 text-sm"
+                        onClick={(e) => handleEdit(entry.id, e)}
+                        className="flex-1 btn-secondary py-2 text-sm"
+                        type="button"
                       >
                         Edit
                       </button>
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setShowDeleteConfirm(entry.id)
-                        }}
-                        className="px-4 py-2.5 text-sm font-medium text-critical-500 dark:text-critical-400 hover:text-critical-600 dark:hover:text-critical-300 hover:bg-critical-50 dark:hover:bg-critical-500/10 rounded-xl transition-colors"
+                        onClick={(e) => handleDeleteClick(entry.id, e)}
+                        className="px-3 py-2 text-sm font-medium text-critical-500 dark:text-critical-400 hover:text-critical-600 dark:hover:text-critical-300 hover:bg-critical-50 dark:hover:bg-critical-500/10 rounded-xl transition-colors"
+                        type="button"
                       >
                         Delete
                       </button>
