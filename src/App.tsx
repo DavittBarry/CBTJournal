@@ -78,10 +78,10 @@ function App() {
         <main className="
           pb-24 lg:pb-8
           lg:ml-64
-          px-4 sm:px-6 lg:px-8
+          px-4 sm:px-6 lg:px-8 xl:px-12
           py-6 lg:py-8
         ">
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-[1600px] mx-auto">
             {renderView()}
           </div>
         </main>

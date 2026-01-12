@@ -70,11 +70,34 @@ select:focus {
   .card {
     @apply bg-white rounded-2xl border border-stone-200/50;
     box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 2px 6px -1px rgba(0, 0, 0, 0.06);
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .card.card-thought-record {
+    height: 280px;
+  }
+  
+  .card.card-gratitude {
+    height: 240px;
   }
   
   .dark .card {
     @apply bg-stone-800 border-stone-700/50;
     box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.3), 0 4px 16px -4px rgba(0, 0, 0, 0.3);
+  }
+  
+  .card-grid {
+    @apply grid gap-3;
+    grid-template-rows: masonry;
+    align-items: start;
+  }
+  
+  @supports not (grid-template-rows: masonry) {
+    .card-grid {
+      grid-auto-rows: min-content;
+    }
   }
   
   .btn-primary {
