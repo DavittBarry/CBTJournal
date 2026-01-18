@@ -55,7 +55,8 @@ export function HomeView() {
     return filtered
   }, [thoughtRecords, searchQuery, timeFilter])
 
-  const handleCardClick = (id: string) => {
+  const handleCardClick = (id: string, e: React.MouseEvent<HTMLButtonElement>) => {
+    e.currentTarget.blur()
     setExpandedId(current => current === id ? null : id)
   }
 
@@ -193,14 +194,14 @@ export function HomeView() {
             return (
               <div
                 key={record.id}
-                className={`card overflow-hidden transition-all duration-300 hover:shadow-soft-lg dark:hover:shadow-soft-lg-dark ${!isExpanded ? 'card-thought-record' : ''}`}
+                className={`card overflow-hidden transition-all duration-300 hover:shadow-soft-lg dark:hover:shadow-soft-lg-dark ${!isExpanded ? 'card-thought-record' : 'h-auto'}`}
               >
                 <button
-                  onClick={() => handleCardClick(record.id)}
-                  className="w-full text-left p-5 focus:outline-none focus:ring-2 focus:ring-sage-400/50 dark:focus:ring-sage-500/50 rounded-xl flex flex-col justify-between h-full overflow-hidden"
+                  onClick={(e) => handleCardClick(record.id, e)}
+                  className={`w-full text-left p-5 focus:outline-none focus:ring-2 focus:ring-sage-400/50 dark:focus:ring-sage-500/50 rounded-t-xl overflow-hidden ${!isExpanded ? 'flex flex-col h-full rounded-xl' : ''}`}
                   type="button"
                 >
-                  <div className="space-y-3">
+                  <div className={`flex-shrink-0 space-y-3 ${!isExpanded ? 'h-24' : ''}`}>
                     <div className="flex items-start justify-between">
                       <div className="text-sm text-stone-400 dark:text-stone-500">
                         {format(parseISO(record.date), 'MMM d, yyyy')}
@@ -219,7 +220,9 @@ export function HomeView() {
                     <div className={`text-stone-700 dark:text-stone-200 font-medium leading-relaxed ${isExpanded ? '' : 'line-clamp-2'}`}>
                       {record.situation}
                     </div>
-                    
+                  </div>
+
+                  <div className={`flex-shrink-0 ${!isExpanded ? 'mt-3' : 'mt-6'}`}>
                     <div className="flex flex-wrap gap-1.5">
                       {record.emotions.map((emotion, i) => (
                         <span key={i} className="text-xs bg-warm-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-2.5 py-1 rounded-full">
@@ -227,7 +230,11 @@ export function HomeView() {
                         </span>
                       ))}
                     </div>
+                  </div>
 
+                  {!isExpanded && <div className="flex-grow" />}
+
+                  <div className={`flex-shrink-0 space-y-3 ${!isExpanded ? '' : 'mt-6'}`}>
                     {maxEmotion && hasOutcome && (
                       <div className="flex items-center gap-2 py-2 px-3 bg-stone-50 dark:bg-stone-700/50 rounded-lg text-xs">
                         <div className="flex items-center gap-1">
@@ -248,24 +255,48 @@ export function HomeView() {
                         )}
                       </div>
                     )}
-                  </div>
 
-                  <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs pt-3">
-                    {(isExpanded ? record.distortions : record.distortions.slice(0, 2)).map((id) => (
-                      <span key={id} className="text-sage-500 dark:text-sage-400">
-                        {getDistortionName(id)}
-                      </span>
-                    ))}
-                    {!isExpanded && record.distortions.length > 2 && (
-                      <span className="text-stone-400 dark:text-stone-500">
-                        +{record.distortions.length - 2} more
-                      </span>
-                    )}
+                    <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs">
+                      {(isExpanded ? record.distortions : record.distortions.slice(0, 2)).map((id) => (
+                        <span key={id} className="text-sage-500 dark:text-sage-400">
+                          {getDistortionName(id)}
+                        </span>
+                      ))}
+                      {!isExpanded && record.distortions.length > 2 && (
+                        <span className="text-stone-400 dark:text-stone-500">
+                          +{record.distortions.length - 2} more
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </button>
 
                 {isExpanded && (
-                  <div className="px-5 pb-5 space-y-4">
+                  <div className="px-5 pb-3 space-y-4">
+                    <div className="flex gap-2 pb-4 border-b border-stone-100 dark:border-stone-700">
+                      <button
+                        onClick={(e) => handleView(record.id, e)}
+                        className="flex-1 btn-secondary py-2 text-sm"
+                        type="button"
+                      >
+                        View
+                      </button>
+                      <button
+                        onClick={(e) => handleEdit(record.id, e)}
+                        className="flex-1 btn-secondary py-2 text-sm"
+                        type="button"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={(e) => handleDeleteClick(record.id, e)}
+                        className="px-3 py-2 text-sm font-medium text-critical-500 dark:text-critical-400 hover:text-critical-600 dark:hover:text-critical-300 hover:bg-critical-50 dark:hover:bg-critical-500/10 rounded-xl transition-colors"
+                        type="button"
+                      >
+                        Delete
+                      </button>
+                    </div>
+
                     {record.automaticThoughts && (
                       <div className="pt-4 border-t border-stone-100 dark:border-stone-700">
                         <h4 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide mb-2">Automatic thoughts</h4>
@@ -292,30 +323,6 @@ export function HomeView() {
                         </div>
                       </div>
                     )}
-
-                    <div className="flex gap-2 pt-4 border-t border-stone-100 dark:border-stone-700">
-                      <button
-                        onClick={(e) => handleView(record.id, e)}
-                        className="flex-1 btn-secondary py-2 text-sm"
-                        type="button"
-                      >
-                        View
-                      </button>
-                      <button
-                        onClick={(e) => handleEdit(record.id, e)}
-                        className="flex-1 btn-secondary py-2 text-sm"
-                        type="button"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={(e) => handleDeleteClick(record.id, e)}
-                        className="px-3 py-2 text-sm font-medium text-critical-500 dark:text-critical-400 hover:text-critical-600 dark:hover:text-critical-300 hover:bg-critical-50 dark:hover:bg-critical-500/10 rounded-xl transition-colors"
-                        type="button"
-                      >
-                        Delete
-                      </button>
-                    </div>
                   </div>
                 )}
               </div>

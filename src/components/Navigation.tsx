@@ -1,4 +1,7 @@
 import { useAppStore } from '@/stores/appStore'
+import { useBackupStore } from '@/stores/backupStore'
+import { downloadBackup } from '@/utils/backup'
+import { toast } from '@/stores/toastStore'
 
 function RecordsIcon({ className }: { className?: string }) {
   return (
@@ -47,6 +50,16 @@ function SettingsIcon({ className }: { className?: string }) {
   )
 }
 
+function DownloadIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  )
+}
+
 function AppLogo({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 32 32" fill="none">
@@ -62,7 +75,8 @@ function AppLogo({ className }: { className?: string }) {
 }
 
 export function Navigation() {
-  const { currentView, setView, setSelectedGratitudeId, setSelectedChecklistId, setSelectedRecordId } = useAppStore()
+  const { currentView, setView, setSelectedGratitudeId, setSelectedChecklistId, setSelectedRecordId, thoughtRecords, depressionChecklists, gratitudeEntries, exportData } = useAppStore()
+  const { setLastBackupDate, setTotalEntriesAtLastBackup } = useBackupStore()
 
   const navItems = [
     { id: 'home' as const, label: 'Records', Icon: RecordsIcon },
@@ -92,6 +106,21 @@ export function Navigation() {
     setView(id)
   }
 
+  const handleQuickExport = async () => {
+    try {
+      const jsonData = await exportData()
+      await downloadBackup(jsonData)
+      
+      const totalEntries = thoughtRecords.length + depressionChecklists.length + gratitudeEntries.length
+      setLastBackupDate(new Date().toISOString())
+      setTotalEntriesAtLastBackup(totalEntries)
+      
+      toast.success('Backup saved successfully')
+    } catch (error) {
+      toast.error('Failed to create backup')
+    }
+  }
+
   return (
     <>
       {/* Mobile bottom navigation */}
@@ -115,6 +144,15 @@ export function Navigation() {
           ))}
         </div>
       </nav>
+
+      {/* Mobile quick export FAB */}
+      <button
+        onClick={handleQuickExport}
+        className="lg:hidden fixed bottom-20 right-4 bg-sage-600 hover:bg-sage-700 dark:bg-sage-600 dark:hover:bg-sage-500 text-white p-4 rounded-full shadow-lg transition-colors z-40 focus:ring-0 focus:ring-offset-0"
+        aria-label="Quick export"
+      >
+        <DownloadIcon className="w-5 h-5" />
+      </button>
 
       {/* Desktop sidebar navigation */}
       <nav className="hidden lg:flex fixed left-0 top-0 bottom-0 w-64 bg-white dark:bg-stone-800 border-r border-stone-200 dark:border-stone-700 flex-col z-50">
@@ -147,7 +185,14 @@ export function Navigation() {
           ))}
         </div>
 
-        <div className="p-4 border-t border-stone-100 dark:border-stone-700">
+        <div className="p-3 border-t border-stone-100 dark:border-stone-700 space-y-3">
+          <button
+            onClick={handleQuickExport}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-sage-100 hover:bg-sage-200 dark:bg-sage-900/30 dark:hover:bg-sage-900/50 text-sage-700 dark:text-sage-400 transition-colors text-sm font-medium focus:ring-0 focus:ring-offset-0"
+          >
+            <DownloadIcon className="w-4 h-4" />
+            Quick export
+          </button>
           <p className="text-xs text-stone-400 dark:text-stone-500 text-center">
             Based on "Feeling Good" by David D. Burns
           </p>
