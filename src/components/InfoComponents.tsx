@@ -17,7 +17,7 @@ export function InfoButton({ title, content, example }: InfoButtonProps) {
   }
 
   const handleMouseLeave = () => {
-    timeoutRef.current = setTimeout(() => setIsOpen(false), 150)
+    timeoutRef.current = window.setTimeout(() => setIsOpen(false), 150)
   }
 
   useEffect(() => {
@@ -101,7 +101,7 @@ export function StatInfoButton({ title, content }: StatInfoButtonProps) {
   }
 
   const handleMouseLeave = () => {
-    timeoutRef.current = setTimeout(() => setIsOpen(false), 150)
+    timeoutRef.current = window.setTimeout(() => setIsOpen(false), 150)
   }
 
   useEffect(() => {
@@ -180,7 +180,7 @@ export function PageIntro({ title, description, steps, centered = true }: PageIn
   }
 
   const handleMouseLeave = () => {
-    timeoutRef.current = setTimeout(() => setIsExpanded(false), 200)
+    timeoutRef.current = window.setTimeout(() => setIsExpanded(false), 200)
   }
 
   useEffect(() => {

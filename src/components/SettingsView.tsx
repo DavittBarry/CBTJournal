@@ -16,7 +16,6 @@ export function SettingsView() {
   const [importStep, setImportStep] = useState<ImportStep>('idle')
   const [pendingImportData, setPendingImportData] = useState<string | null>(null)
   const [showDevTools, setShowDevTools] = useState(false)
-  const [fileHandle, setFileHandle] = useState<FileSystemFileHandle | null>(null)
 
   const hasExistingData = thoughtRecords.length > 0 || depressionChecklists.length > 0 || gratitudeEntries.length > 0
   const isDev = import.meta.env.DEV
@@ -158,7 +157,6 @@ export function SettingsView() {
   const handleSetupAutoSave = async () => {
     const handle = await setupAutoSave()
     if (handle) {
-      setFileHandle(handle)
       ;(window as any).__autoSaveFileHandle = handle
       setAutoSaveEnabled(true)
       
@@ -175,7 +173,6 @@ export function SettingsView() {
 
   const handleDisableAutoSave = () => {
     setAutoSaveEnabled(false)
-    setFileHandle(null)
     ;(window as any).__autoSaveFileHandle = null
     toast.info('Auto-save disabled')
   }

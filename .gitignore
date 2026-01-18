@@ -9,3 +9,8 @@ dist-ssr
 
 # Test/development data
 src/data/
+
+# Capacitor
+ios/
+android/
+.capacitor/

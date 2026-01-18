@@ -30,6 +30,7 @@ interface AppState {
   setSelectedChecklistId: (id: string | null) => void
   exportData: () => Promise<string>
   importData: (jsonString: string, mode?: 'merge' | 'replace') => Promise<void>
+  tryAutoSave: () => Promise<void>
 }
 
 export const useAppStore = create<AppState>((set, get) => ({

@@ -16,7 +16,6 @@ export function BackupReminder() {
   } = useBackupStore()
   
   const [isVisible, setIsVisible] = useState(false)
-  const [fileHandle, setFileHandle] = useState<FileSystemFileHandle | null>(null)
   
   const totalEntries = thoughtRecords.length + depressionChecklists.length + gratitudeEntries.length
 
@@ -43,7 +42,6 @@ export function BackupReminder() {
   const handleSetupAutoSave = async () => {
     const handle = await setupAutoSave()
     if (handle) {
-      setFileHandle(handle)
       ;(window as any).__autoSaveFileHandle = handle
       setAutoSaveEnabled(true)
       

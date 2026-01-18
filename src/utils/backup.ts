@@ -1,7 +1,8 @@
 import { toast } from '@/stores/toastStore'
+import { supportsFileSystemAccess } from '@/utils/platform'
 
 export const hasFileSystemAccess = (): boolean => {
-  return 'showSaveFilePicker' in window
+  return supportsFileSystemAccess()
 }
 
 export const downloadBackup = async (jsonData: string): Promise<void> => {
