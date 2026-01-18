@@ -36,10 +36,10 @@ function ToastIcon({ type }: { type: ToastType }) {
 }
 
 const typeStyles: Record<ToastType, string> = {
-  success: 'bg-helpful-50 dark:bg-helpful-500/20 border-helpful-200 dark:border-helpful-500/30 text-helpful-700 dark:text-helpful-100',
-  error: 'bg-critical-50 dark:bg-critical-500/20 border-critical-200 dark:border-critical-500/30 text-critical-700 dark:text-critical-100',
-  warning: 'bg-amber-50 dark:bg-amber-500/20 border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-100',
-  info: 'bg-sage-50 dark:bg-sage-500/20 border-sage-200 dark:border-sage-500/30 text-sage-700 dark:text-sage-100'
+  success: 'bg-helpful-100 dark:bg-helpful-900/90 border-helpful-300 dark:border-helpful-700 text-helpful-800 dark:text-helpful-100',
+  error: 'bg-critical-100 dark:bg-critical-900/90 border-critical-300 dark:border-critical-700 text-critical-800 dark:text-critical-100',
+  warning: 'bg-amber-100 dark:bg-amber-900/90 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-100',
+  info: 'bg-sage-100 dark:bg-sage-900/90 border-sage-300 dark:border-sage-700 text-sage-800 dark:text-sage-100'
 }
 
 export function ToastContainer() {

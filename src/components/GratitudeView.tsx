@@ -46,7 +46,8 @@ export function GratitudeView() {
     return filtered
   }, [gratitudeEntries, searchQuery, timeFilter])
 
-  const handleCardClick = (id: string) => {
+  const handleCardClick = (id: string, e: React.MouseEvent<HTMLButtonElement>) => {
+    e.currentTarget.blur()
     setExpandedId(current => current === id ? null : id)
   }
 
@@ -170,7 +171,7 @@ export function GratitudeView() {
                 className={`card overflow-hidden transition-all duration-300 hover:shadow-soft-lg dark:hover:shadow-soft-lg-dark ${!isExpanded ? 'card-gratitude' : ''}`}
               >
                 <button
-                  onClick={() => handleCardClick(entry.id)}
+                  onClick={(e) => handleCardClick(entry.id, e)}
                   className="w-full text-left p-5 focus:outline-none focus:ring-2 focus:ring-sage-400/50 dark:focus:ring-sage-500/50 rounded-xl flex flex-col h-full overflow-hidden"
                   type="button"
                 >

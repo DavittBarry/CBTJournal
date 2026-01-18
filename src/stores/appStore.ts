@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { db } from '@/db'
 import type { ThoughtRecord, DepressionChecklistEntry, GratitudeEntry } from '@/types'
+import { useBackupStore } from '@/stores/backupStore'
+import { saveToFile } from '@/utils/backup'
 
 interface AppState {
   thoughtRecords: ThoughtRecord[]
@@ -55,6 +57,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({
       thoughtRecords: [record, ...state.thoughtRecords]
     }))
+    await get().tryAutoSave()
   },
 
   updateThoughtRecord: async (record) => {
@@ -62,6 +65,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({
       thoughtRecords: state.thoughtRecords.map((r) => (r.id === record.id ? record : r))
     }))
+    await get().tryAutoSave()
   },
 
   deleteThoughtRecord: async (id) => {
@@ -69,6 +73,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({
       thoughtRecords: state.thoughtRecords.filter((r) => r.id !== id)
     }))
+    await get().tryAutoSave()
   },
 
   addDepressionChecklist: async (entry) => {
@@ -76,6 +81,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({
       depressionChecklists: [entry, ...state.depressionChecklists]
     }))
+    await get().tryAutoSave()
   },
 
   updateDepressionChecklist: async (entry) => {
@@ -83,6 +89,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({
       depressionChecklists: state.depressionChecklists.map((e) => (e.id === entry.id ? entry : e))
     }))
+    await get().tryAutoSave()
   },
 
   deleteDepressionChecklist: async (id) => {
@@ -90,6 +97,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({
       depressionChecklists: state.depressionChecklists.filter((e) => e.id !== id)
     }))
+    await get().tryAutoSave()
   },
 
   addGratitudeEntry: async (entry) => {
@@ -97,6 +105,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({
       gratitudeEntries: [entry, ...state.gratitudeEntries]
     }))
+    await get().tryAutoSave()
   },
 
   updateGratitudeEntry: async (entry) => {
@@ -104,6 +113,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({
       gratitudeEntries: state.gratitudeEntries.map((e) => (e.id === entry.id ? entry : e))
     }))
+    await get().tryAutoSave()
   },
 
   deleteGratitudeEntry: async (id) => {
@@ -111,6 +121,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({
       gratitudeEntries: state.gratitudeEntries.filter((e) => e.id !== id)
     }))
+    await get().tryAutoSave()
   },
 
   setView: (view) => set({ currentView: view }),
@@ -130,5 +141,20 @@ export const useAppStore = create<AppState>((set, get) => ({
     const data = JSON.parse(jsonString)
     await db.importData(data, mode)
     await get().loadData()
+  },
+
+  tryAutoSave: async () => {
+    const backupState = useBackupStore.getState()
+    if (!backupState.autoSaveEnabled) return
+
+    const fileHandle = (window as any).__autoSaveFileHandle
+    if (!fileHandle) return
+
+    try {
+      const jsonData = await get().exportData()
+      await saveToFile(fileHandle, jsonData)
+    } catch (error) {
+      console.error('Auto-save failed:', error)
+    }
   }
 }))

@@ -1,21 +1,30 @@
 import { useRef, useState } from 'react'
 import { useAppStore } from '@/stores/appStore'
+import { useBackupStore } from '@/stores/backupStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { logger } from '@/utils/logger'
 import { toast } from '@/stores/toastStore'
+import { hasFileSystemAccess, setupAutoSave, saveToFile, loadMultipleFiles } from '@/utils/backup'
 
 type ImportStep = 'idle' | 'choose-mode' | 'confirm-replace'
 
 export function SettingsView() {
   const { exportData, importData, thoughtRecords, depressionChecklists, gratitudeEntries } = useAppStore()
   const { theme, setTheme } = useThemeStore()
+  const { lastBackupDate, autoSaveEnabled, setAutoSaveEnabled, setLastBackupDate, setTotalEntriesAtLastBackup } = useBackupStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [importStep, setImportStep] = useState<ImportStep>('idle')
   const [pendingImportData, setPendingImportData] = useState<string | null>(null)
   const [showDevTools, setShowDevTools] = useState(false)
+  const [fileHandle, setFileHandle] = useState<FileSystemFileHandle | null>(null)
 
   const hasExistingData = thoughtRecords.length > 0 || depressionChecklists.length > 0 || gratitudeEntries.length > 0
   const isDev = import.meta.env.DEV
+  const totalEntries = thoughtRecords.length + depressionChecklists.length + gratitudeEntries.length
+
+  const daysSinceBackup = lastBackupDate
+    ? Math.floor((Date.now() - new Date(lastBackupDate).getTime()) / (1000 * 60 * 60 * 24))
+    : null
 
   const handleExport = async () => {
     try {
@@ -27,6 +36,10 @@ export function SettingsView() {
       a.download = `untwist-export-${new Date().toISOString().split('T')[0]}.json`
       a.click()
       URL.revokeObjectURL(url)
+      
+      setLastBackupDate(new Date().toISOString())
+      setTotalEntriesAtLastBackup(totalEntries)
+      
       toast.success('Data exported successfully')
     } catch {
       toast.error('Failed to export data')
@@ -56,6 +69,52 @@ export function SettingsView() {
     }
     
     if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleMultipleFilesImport = async () => {
+    const files = await loadMultipleFiles()
+    
+    if (files.length === 0) return
+
+    try {
+      let mergedData: any = {
+        thoughtRecords: [],
+        depressionChecklists: [],
+        gratitudeEntries: []
+      }
+
+      for (const fileContent of files) {
+        const parsed = JSON.parse(fileContent)
+        if (parsed.thoughtRecords) mergedData.thoughtRecords.push(...parsed.thoughtRecords)
+        if (parsed.depressionChecklists) mergedData.depressionChecklists.push(...parsed.depressionChecklists)
+        if (parsed.gratitudeEntries) mergedData.gratitudeEntries.push(...parsed.gratitudeEntries)
+      }
+
+      const uniqueThoughts = Array.from(
+        new Map(mergedData.thoughtRecords.map((item: any) => [item.id, item])).values()
+      )
+      const uniqueChecklists = Array.from(
+        new Map(mergedData.depressionChecklists.map((item: any) => [item.id, item])).values()
+      )
+      const uniqueGratitude = Array.from(
+        new Map(mergedData.gratitudeEntries.map((item: any) => [item.id, item])).values()
+      )
+
+      mergedData.thoughtRecords = uniqueThoughts
+      mergedData.depressionChecklists = uniqueChecklists
+      mergedData.gratitudeEntries = uniqueGratitude
+
+      setPendingImportData(JSON.stringify(mergedData))
+      
+      if (hasExistingData) {
+        setImportStep('choose-mode')
+      } else {
+        await importData(JSON.stringify(mergedData), 'replace')
+        toast.success(`Imported from ${files.length} files successfully`)
+      }
+    } catch {
+      toast.error('Failed to import files. Check file format.')
+    }
   }
 
   const doImport = async (data: string, mode: 'merge' | 'replace') => {
@@ -94,6 +153,31 @@ export function SettingsView() {
   const resetImportState = () => {
     setImportStep('idle')
     setPendingImportData(null)
+  }
+
+  const handleSetupAutoSave = async () => {
+    const handle = await setupAutoSave()
+    if (handle) {
+      setFileHandle(handle)
+      ;(window as any).__autoSaveFileHandle = handle
+      setAutoSaveEnabled(true)
+      
+      const jsonData = await exportData()
+      const success = await saveToFile(handle, jsonData)
+      
+      if (success) {
+        setLastBackupDate(new Date().toISOString())
+        setTotalEntriesAtLastBackup(totalEntries)
+        toast.success('Auto-save configured')
+      }
+    }
+  }
+
+  const handleDisableAutoSave = () => {
+    setAutoSaveEnabled(false)
+    setFileHandle(null)
+    ;(window as any).__autoSaveFileHandle = null
+    toast.info('Auto-save disabled')
   }
 
   const handleExportLogs = () => {
@@ -200,6 +284,14 @@ export function SettingsView() {
               <span className="text-stone-500 dark:text-stone-400">Depression checklists</span>
               <span className="text-stone-800 dark:text-stone-100 font-medium">{depressionChecklists.length}</span>
             </div>
+            {lastBackupDate && (
+              <div className="pt-3 border-t border-stone-100 dark:border-stone-700">
+                <div className="text-sm text-stone-500 dark:text-stone-400">Last backup</div>
+                <div className="text-sm text-stone-700 dark:text-stone-300 mt-1">
+                  {daysSinceBackup === 0 ? 'Today' : daysSinceBackup === 1 ? 'Yesterday' : `${daysSinceBackup} days ago`}
+                </div>
+              </div>
+            )}
           </div>
         </section>
 
@@ -225,14 +317,62 @@ export function SettingsView() {
               htmlFor="import-file"
               className="btn-secondary block w-full text-center cursor-pointer"
             >
-              Import data from JSON
+              Import from single file
             </label>
+
+            {hasFileSystemAccess() && (
+              <button
+                onClick={handleMultipleFilesImport}
+                className="btn-secondary w-full"
+              >
+                Import & merge multiple files
+              </button>
+            )}
           </div>
           <p className="text-stone-500 dark:text-stone-400 text-sm mt-3 leading-relaxed">
-            Your data is stored locally on your device. Export regularly to back up your data.
+            Your data is stored locally in your browser. Export regularly to back up your data.
           </p>
         </section>
       </div>
+
+      {hasFileSystemAccess() && (
+        <section className="mt-6">
+          <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300 mb-4">Auto-save (Chrome/Edge only)</h2>
+          <div className="card p-5">
+            {!autoSaveEnabled ? (
+              <>
+                <p className="text-stone-600 dark:text-stone-300 text-sm mb-4 leading-relaxed">
+                  Set up auto-save to automatically save your data to a file on your computer. This provides an extra layer of protection.
+                </p>
+                <button
+                  onClick={handleSetupAutoSave}
+                  className="btn-primary w-full"
+                >
+                  Set up auto-save
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 text-helpful-600 dark:text-helpful-500 mb-4">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="font-medium">Auto-save is enabled</span>
+                </div>
+                <p className="text-stone-600 dark:text-stone-300 text-sm mb-4 leading-relaxed">
+                  Your data is automatically saved to your chosen file location when you make changes.
+                </p>
+                <button
+                  onClick={handleDisableAutoSave}
+                  className="btn-secondary w-full"
+                >
+                  Disable auto-save
+                </button>
+              </>
+            )}
+          </div>
+        </section>
+      )}
 
       <section className="mt-8">
         <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300 mb-4">Appearance</h2>

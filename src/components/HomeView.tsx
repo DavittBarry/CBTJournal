@@ -55,7 +55,8 @@ export function HomeView() {
     return filtered
   }, [thoughtRecords, searchQuery, timeFilter])
 
-  const handleCardClick = (id: string) => {
+  const handleCardClick = (id: string, e: React.MouseEvent<HTMLButtonElement>) => {
+    e.currentTarget.blur()
     setExpandedId(current => current === id ? null : id)
   }
 
@@ -196,8 +197,8 @@ export function HomeView() {
                 className={`card overflow-hidden transition-all duration-300 hover:shadow-soft-lg dark:hover:shadow-soft-lg-dark ${!isExpanded ? 'card-thought-record' : 'h-auto'}`}
               >
                 <button
-                  onClick={() => handleCardClick(record.id)}
-                  className={`w-full text-left p-5 focus:outline-none focus:ring-2 focus:ring-sage-400/50 dark:focus:ring-sage-500/50 rounded-xl overflow-hidden ${!isExpanded ? 'flex flex-col h-full' : ''}`}
+                  onClick={(e) => handleCardClick(record.id, e)}
+                  className={`w-full text-left p-5 focus:outline-none focus:ring-2 focus:ring-sage-400/50 dark:focus:ring-sage-500/50 rounded-t-xl overflow-hidden ${!isExpanded ? 'flex flex-col h-full rounded-xl' : ''}`}
                   type="button"
                 >
                   <div className={`flex-shrink-0 space-y-3 ${!isExpanded ? 'h-24' : ''}`}>
@@ -271,7 +272,31 @@ export function HomeView() {
                 </button>
 
                 {isExpanded && (
-                  <div className="px-5 pb-5 space-y-4">
+                  <div className="px-5 pb-3 space-y-4">
+                    <div className="flex gap-2 pb-4 border-b border-stone-100 dark:border-stone-700">
+                      <button
+                        onClick={(e) => handleView(record.id, e)}
+                        className="flex-1 btn-secondary py-2 text-sm"
+                        type="button"
+                      >
+                        View
+                      </button>
+                      <button
+                        onClick={(e) => handleEdit(record.id, e)}
+                        className="flex-1 btn-secondary py-2 text-sm"
+                        type="button"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={(e) => handleDeleteClick(record.id, e)}
+                        className="px-3 py-2 text-sm font-medium text-critical-500 dark:text-critical-400 hover:text-critical-600 dark:hover:text-critical-300 hover:bg-critical-50 dark:hover:bg-critical-500/10 rounded-xl transition-colors"
+                        type="button"
+                      >
+                        Delete
+                      </button>
+                    </div>
+
                     {record.automaticThoughts && (
                       <div className="pt-4 border-t border-stone-100 dark:border-stone-700">
                         <h4 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide mb-2">Automatic thoughts</h4>
@@ -298,30 +323,6 @@ export function HomeView() {
                         </div>
                       </div>
                     )}
-
-                    <div className="flex gap-2 pt-4 border-t border-stone-100 dark:border-stone-700">
-                      <button
-                        onClick={(e) => handleView(record.id, e)}
-                        className="flex-1 btn-secondary py-2 text-sm"
-                        type="button"
-                      >
-                        View
-                      </button>
-                      <button
-                        onClick={(e) => handleEdit(record.id, e)}
-                        className="flex-1 btn-secondary py-2 text-sm"
-                        type="button"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={(e) => handleDeleteClick(record.id, e)}
-                        className="px-3 py-2 text-sm font-medium text-critical-500 dark:text-critical-400 hover:text-critical-600 dark:hover:text-critical-300 hover:bg-critical-50 dark:hover:bg-critical-500/10 rounded-xl transition-colors"
-                        type="button"
-                      >
-                        Delete
-                      </button>
-                    </div>
                   </div>
                 )}
               </div>

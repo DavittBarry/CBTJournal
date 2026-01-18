@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useAppStore } from '@/stores/appStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { Navigation } from '@/components/Navigation'
+import { BackupReminder } from '@/components/BackupReminder'
 import { HomeView } from '@/components/HomeView'
 import { ThoughtRecordForm } from '@/components/ThoughtRecordForm'
 import { ThoughtDetailView } from '@/components/ThoughtDetailView'
@@ -74,6 +75,7 @@ function App() {
     <ErrorBoundary>
       <div className="min-h-screen bg-warm-200 dark:bg-stone-900 text-stone-800 dark:text-stone-100">
         <Navigation />
+        <BackupReminder />
         
         <main className="
           pb-24 lg:pb-8
