@@ -19,7 +19,14 @@ import { ToastContainer } from '@/components/Toast'
 import { logger } from '@/utils/logger'
 
 function App() {
-  const { currentView, isLoading, loadData, selectedRecordId, thoughtRecords, selectedChecklistId } = useAppStore()
+  const {
+    currentView,
+    isLoading,
+    loadData,
+    selectedRecordId,
+    thoughtRecords,
+    selectedChecklistId,
+  } = useAppStore()
   const initTheme = useThemeStore((state) => state.initTheme)
 
   useEffect(() => {
@@ -32,6 +39,10 @@ function App() {
       logger.error('App', 'Failed to load initial data', error)
     })
   }, [loadData])
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [currentView])
 
   if (isLoading) {
     return (
@@ -46,8 +57,8 @@ function App() {
       case 'home':
         return <HomeView />
       case 'new-thought': {
-        const existingRecord = selectedRecordId 
-          ? thoughtRecords.find(r => r.id === selectedRecordId) 
+        const existingRecord = selectedRecordId
+          ? thoughtRecords.find((r) => r.id === selectedRecordId)
           : undefined
         return <ThoughtRecordForm key={selectedRecordId || 'new'} existingRecord={existingRecord} />
       }
@@ -78,18 +89,18 @@ function App() {
         <OnboardingFlow />
         <Navigation />
         <BackupReminder />
-        
-        <main className="
+
+        <main
+          className="
           pb-24 lg:pb-8
           lg:ml-64
           px-4 sm:px-6 lg:px-8 xl:px-12
           py-6 lg:py-8
-        ">
-          <div className="max-w-[1600px] mx-auto">
-            {renderView()}
-          </div>
+        "
+        >
+          <div className="max-w-[1600px] mx-auto">{renderView()}</div>
         </main>
-        
+
         <ToastContainer />
       </div>
     </ErrorBoundary>
@@ -97,3 +108,4 @@ function App() {
 }
 
 export default App
+// test comment
