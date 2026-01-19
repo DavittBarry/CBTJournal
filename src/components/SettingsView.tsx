@@ -575,7 +575,6 @@ export function SettingsView() {
             <input
               ref={fileInputRef}
               type="file"
-              accept="*/*"
               onChange={handleFileSelect}
               className="hidden"
               id="import-file"
@@ -599,6 +598,10 @@ export function SettingsView() {
           </div>
           <p className="text-stone-500 dark:text-stone-400 text-sm mt-3 leading-relaxed">
             Your data is stored locally in your browser. Export regularly to back up your data.
+            <span className="block mt-2 text-stone-600 dark:text-stone-300 font-medium">
+              On mobile: If the file picker doesn't show your JSON file, use "Paste JSON data"
+              instead.
+            </span>
           </p>
         </section>
       </div>
