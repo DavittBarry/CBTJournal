@@ -40,6 +40,10 @@ function App() {
     })
   }, [loadData])
 
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [currentView])
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-warm-200 dark:bg-stone-900 flex items-center justify-center">
