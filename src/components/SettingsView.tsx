@@ -69,16 +69,36 @@ export function SettingsView() {
     console.log('File selected:', file.name, 'Type:', file.type, 'Size:', file.size)
 
     try {
-      const text = await file.text()
-      console.log('File content length:', text.length)
+      const rawText = await file.text()
+      console.log('File content length:', rawText.length)
+
+      const text = rawText
+        .trim()
+        .replace(/^\uFEFF/, '')
+        .replace(/^\u00EF\u00BB\u00BF/, '')
+
+      console.log('Cleaned content length:', text.length)
       console.log('First 100 chars:', text.substring(0, 100))
 
       try {
         const parsed = JSON.parse(text)
         console.log('JSON parsed successfully:', parsed)
+
+        if (!parsed || typeof parsed !== 'object') {
+          toast.error('Invalid data format: expected an object')
+          if (fileInputRef.current) fileInputRef.current.value = ''
+          return
+        }
+
+        if (!parsed.thoughtRecords && !parsed.depressionChecklists && !parsed.gratitudeEntries) {
+          toast.error('Invalid backup format: missing expected data fields')
+          if (fileInputRef.current) fileInputRef.current.value = ''
+          return
+        }
       } catch (e) {
         console.error('JSON parse error:', e)
-        toast.error('Invalid JSON file')
+        const errorMessage = e instanceof SyntaxError ? e.message : 'Unknown error'
+        toast.error(`Invalid JSON file: ${errorMessage}`)
         if (fileInputRef.current) fileInputRef.current.value = ''
         return
       }
@@ -157,9 +177,26 @@ export function SettingsView() {
   const doImport = async (data: string, mode: 'merge' | 'replace') => {
     try {
       console.log('Starting import, mode:', mode, 'data length:', data.length)
+
+      const parsed = JSON.parse(data)
+      const counts = {
+        thoughts: parsed.thoughtRecords?.length ?? 0,
+        checklists: parsed.depressionChecklists?.length ?? 0,
+        gratitude: parsed.gratitudeEntries?.length ?? 0,
+      }
+      console.log('Import counts:', counts)
+
+      if (counts.thoughts === 0 && counts.checklists === 0 && counts.gratitude === 0) {
+        toast.warning('The backup file contains no entries')
+        resetImportState()
+        return
+      }
+
       await importData(data, mode)
       console.log('Import completed successfully')
-      toast.success('Data imported successfully')
+
+      const total = counts.thoughts + counts.checklists + counts.gratitude
+      toast.success(`Imported ${total} entries successfully`)
     } catch (e) {
       console.error('Import failed:', e)
       toast.error(`Failed to import data: ${e instanceof Error ? e.message : 'Unknown error'}`)
@@ -197,16 +234,36 @@ export function SettingsView() {
 
   const handlePasteImport = async () => {
     console.log('Attempting paste import, text length:', pasteText.length)
+
+    const cleanedText = pasteText
+      .trim()
+      .replace(/^\uFEFF/, '')
+      .replace(/^\u00EF\u00BB\u00BF/, '')
+
+    console.log('Cleaned text length:', cleanedText.length)
+    console.log('First 100 chars:', cleanedText.substring(0, 100))
+
     try {
-      const parsed = JSON.parse(pasteText)
+      const parsed = JSON.parse(cleanedText)
       console.log('Pasted JSON parsed successfully:', parsed)
+
+      if (!parsed || typeof parsed !== 'object') {
+        toast.error('Invalid data format: expected an object')
+        return
+      }
+
+      if (!parsed.thoughtRecords && !parsed.depressionChecklists && !parsed.gratitudeEntries) {
+        toast.error('Invalid backup format: missing expected data fields')
+        return
+      }
     } catch (e) {
       console.error('Paste JSON parse error:', e)
-      toast.error('Invalid JSON format')
+      const errorMessage = e instanceof SyntaxError ? e.message : 'Unknown error'
+      toast.error(`Invalid JSON format: ${errorMessage}`)
       return
     }
 
-    setPendingImportData(pasteText)
+    setPendingImportData(cleanedText)
     setShowPasteModal(false)
     setPasteText('')
 
@@ -215,7 +272,7 @@ export function SettingsView() {
       setImportStep('choose-mode')
     } else {
       console.log('No existing data, importing directly')
-      await doImport(pasteText, 'replace')
+      await doImport(cleanedText, 'replace')
     }
   }
 
@@ -597,6 +654,7 @@ export function SettingsView() {
             <input
               ref={fileInputRef}
               type="file"
+              accept=".json,application/json,text/plain"
               onChange={handleFileSelect}
               className="hidden"
               id="import-file"
