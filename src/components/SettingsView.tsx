@@ -9,7 +9,7 @@ import { hasFileSystemAccess, setupAutoSave, saveToFile, loadMultipleFiles } fro
 type ImportStep = 'idle' | 'choose-mode' | 'confirm-replace'
 
 interface WindowWithAutoSave extends Window {
-  __autoSaveFileHandle?: FileSystemFileHandle
+  __autoSaveFileHandle?: FileSystemFileHandle | null
 }
 
 export function SettingsView() {
