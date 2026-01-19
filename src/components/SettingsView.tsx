@@ -521,7 +521,7 @@ export function SettingsView() {
             <input
               ref={fileInputRef}
               type="file"
-              accept="application/json,.json"
+              accept="*/*"
               onChange={handleFileSelect}
               className="hidden"
               id="import-file"
