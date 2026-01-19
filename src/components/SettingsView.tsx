@@ -28,6 +28,8 @@ export function SettingsView() {
   const [pendingImportData, setPendingImportData] = useState<string | null>(null)
   const [showDevTools, setShowDevTools] = useState(false)
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false)
+  const [showPasteModal, setShowPasteModal] = useState(false)
+  const [pasteText, setPasteText] = useState('')
 
   const hasExistingData =
     thoughtRecords.length > 0 || depressionChecklists.length > 0 || gratitudeEntries.length > 0
@@ -176,6 +178,25 @@ export function SettingsView() {
     setPendingImportData(null)
   }
 
+  const handlePasteImport = async () => {
+    try {
+      JSON.parse(pasteText)
+    } catch {
+      toast.error('Invalid JSON format')
+      return
+    }
+
+    setPendingImportData(pasteText)
+    setShowPasteModal(false)
+    setPasteText('')
+
+    if (hasExistingData) {
+      setImportStep('choose-mode')
+    } else {
+      await doImport(pasteText, 'replace')
+    }
+  }
+
   const handleSetupAutoSave = async () => {
     const handle = await setupAutoSave()
     if (handle) {
@@ -283,6 +304,39 @@ export function SettingsView() {
                 className="w-full text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 py-2 text-sm font-medium"
               >
                 Go back
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPasteModal && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="card p-6 max-w-lg w-full">
+            <h3 className="text-lg font-semibold text-stone-800 dark:text-stone-100 mb-2">
+              Paste JSON data
+            </h3>
+            <p className="text-stone-500 dark:text-stone-400 text-sm mb-4">
+              Paste your exported JSON data below.
+            </p>
+            <textarea
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+              placeholder='{"thoughtRecords":[],...}'
+              className="w-full h-48 p-3 rounded-lg border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-100 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sage-500 mb-4"
+            />
+            <div className="flex gap-3">
+              <button onClick={handlePasteImport} className="btn-primary flex-1">
+                Import
+              </button>
+              <button
+                onClick={() => {
+                  setShowPasteModal(false)
+                  setPasteText('')
+                }}
+                className="btn-secondary flex-1"
+              >
+                Cancel
               </button>
             </div>
           </div>
@@ -530,8 +584,12 @@ export function SettingsView() {
               htmlFor="import-file"
               className="btn-secondary block w-full text-center cursor-pointer"
             >
-              Import from single file
+              Import from file
             </label>
+
+            <button onClick={() => setShowPasteModal(true)} className="btn-secondary w-full">
+              Paste JSON data
+            </button>
 
             {hasFileSystemAccess() && (
               <button onClick={handleMultipleFilesImport} className="btn-secondary w-full">
