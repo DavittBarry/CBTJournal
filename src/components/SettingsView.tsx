@@ -66,25 +66,39 @@ export function SettingsView() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    const text = await file.text()
+    console.log('File selected:', file.name, 'Type:', file.type, 'Size:', file.size)
 
     try {
-      JSON.parse(text)
-    } catch {
-      toast.error('Invalid JSON file')
+      const text = await file.text()
+      console.log('File content length:', text.length)
+      console.log('First 100 chars:', text.substring(0, 100))
+
+      try {
+        const parsed = JSON.parse(text)
+        console.log('JSON parsed successfully:', parsed)
+      } catch (e) {
+        console.error('JSON parse error:', e)
+        toast.error('Invalid JSON file')
+        if (fileInputRef.current) fileInputRef.current.value = ''
+        return
+      }
+
+      setPendingImportData(text)
+
+      if (hasExistingData) {
+        console.log('Has existing data, showing mode selection')
+        setImportStep('choose-mode')
+      } else {
+        console.log('No existing data, importing directly')
+        await doImport(text, 'replace')
+      }
+
       if (fileInputRef.current) fileInputRef.current.value = ''
-      return
+    } catch (e) {
+      console.error('File reading error:', e)
+      toast.error('Failed to read file')
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
-
-    setPendingImportData(text)
-
-    if (hasExistingData) {
-      setImportStep('choose-mode')
-    } else {
-      await doImport(text, 'replace')
-    }
-
-    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   const handleMultipleFilesImport = async () => {
@@ -142,10 +156,13 @@ export function SettingsView() {
 
   const doImport = async (data: string, mode: 'merge' | 'replace') => {
     try {
+      console.log('Starting import, mode:', mode, 'data length:', data.length)
       await importData(data, mode)
+      console.log('Import completed successfully')
       toast.success('Data imported successfully')
-    } catch {
-      toast.error('Failed to import data. Check file format.')
+    } catch (e) {
+      console.error('Import failed:', e)
+      toast.error(`Failed to import data: ${e instanceof Error ? e.message : 'Unknown error'}`)
     }
     resetImportState()
   }
@@ -179,9 +196,12 @@ export function SettingsView() {
   }
 
   const handlePasteImport = async () => {
+    console.log('Attempting paste import, text length:', pasteText.length)
     try {
-      JSON.parse(pasteText)
-    } catch {
+      const parsed = JSON.parse(pasteText)
+      console.log('Pasted JSON parsed successfully:', parsed)
+    } catch (e) {
+      console.error('Paste JSON parse error:', e)
       toast.error('Invalid JSON format')
       return
     }
@@ -191,8 +211,10 @@ export function SettingsView() {
     setPasteText('')
 
     if (hasExistingData) {
+      console.log('Has existing data, showing mode selection')
       setImportStep('choose-mode')
     } else {
+      console.log('No existing data, importing directly')
       await doImport(pasteText, 'replace')
     }
   }
