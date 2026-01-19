@@ -13,7 +13,7 @@ export function HomeView() {
   const [timeFilter, setTimeFilter] = useState('all')
 
   const getDistortionName = (id: number) => {
-    return COGNITIVE_DISTORTIONS.find(d => d.id === id)?.shortName || ''
+    return COGNITIVE_DISTORTIONS.find((d) => d.id === id)?.shortName || ''
   }
 
   const filteredRecords = useMemo(() => {
@@ -38,17 +38,18 @@ export function HomeView() {
         default:
           cutoffDate = new Date(0)
       }
-      filtered = filtered.filter(r => isAfter(parseISO(r.date), cutoffDate))
+      filtered = filtered.filter((r) => isAfter(parseISO(r.date), cutoffDate))
     }
 
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(r => 
-        r.situation.toLowerCase().includes(query) ||
-        r.automaticThoughts.toLowerCase().includes(query) ||
-        r.rationalResponse.toLowerCase().includes(query) ||
-        r.emotions.some(e => e.name.toLowerCase().includes(query)) ||
-        r.distortions.some(id => getDistortionName(id).toLowerCase().includes(query))
+      filtered = filtered.filter(
+        (r) =>
+          r.situation.toLowerCase().includes(query) ||
+          r.automaticThoughts.toLowerCase().includes(query) ||
+          r.rationalResponse.toLowerCase().includes(query) ||
+          r.emotions.some((e) => e.name.toLowerCase().includes(query)) ||
+          r.distortions.some((id) => getDistortionName(id).toLowerCase().includes(query))
       )
     }
 
@@ -57,7 +58,7 @@ export function HomeView() {
 
   const handleCardClick = (id: string, e: React.MouseEvent<HTMLButtonElement>) => {
     e.currentTarget.blur()
-    setExpandedId(current => current === id ? null : id)
+    setExpandedId((current) => (current === id ? null : id))
   }
 
   const handleView = (id: string, e: React.MouseEvent) => {
@@ -94,7 +95,7 @@ export function HomeView() {
           'Write down the situation and your automatic thoughts.',
           'Identify which cognitive distortions are present.',
           'Create a more balanced, rational response.',
-          'Track your progress over time in the Insights section.'
+          'Track your progress over time in the Insights section.',
         ]}
       />
 
@@ -113,9 +114,9 @@ export function HomeView() {
       {thoughtRecords.length > 0 && (
         <div className="flex flex-col sm:flex-row gap-2 mb-4 max-w-2xl mx-auto">
           <div className="flex-1">
-            <SearchBar 
-              value={searchQuery} 
-              onChange={setSearchQuery} 
+            <SearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
               placeholder="Search records..."
             />
           </div>
@@ -128,13 +129,14 @@ export function HomeView() {
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="card p-6 max-w-sm w-full">
-            <h3 className="text-lg font-semibold text-stone-800 dark:text-stone-100 mb-2">Delete this record?</h3>
-            <p className="text-stone-500 dark:text-stone-400 text-sm mb-5">This action cannot be undone.</p>
+            <h3 className="text-lg font-semibold text-stone-800 dark:text-stone-100 mb-2">
+              Delete this record?
+            </h3>
+            <p className="text-stone-500 dark:text-stone-400 text-sm mb-5">
+              This action cannot be undone.
+            </p>
             <div className="flex gap-3">
-              <button
-                onClick={() => setShowDeleteConfirm(null)}
-                className="btn-secondary flex-1"
-              >
+              <button onClick={() => setShowDeleteConfirm(null)} className="btn-secondary flex-1">
                 Cancel
               </button>
               <button
@@ -151,7 +153,13 @@ export function HomeView() {
       {thoughtRecords.length === 0 ? (
         <div className="text-center py-16">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-sage-100 dark:bg-sage-900/30 flex items-center justify-center">
-            <svg className="w-8 h-8 text-sage-400 dark:text-sage-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <svg
+              className="w-8 h-8 text-sage-400 dark:text-sage-500"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14,2 14,8 20,8" />
             </svg>
@@ -171,7 +179,10 @@ export function HomeView() {
         <div className="text-center py-16">
           <p className="text-stone-500 dark:text-stone-400">No records match your search</p>
           <button
-            onClick={() => { setSearchQuery(''); setTimeFilter('all'); }}
+            onClick={() => {
+              setSearchQuery('')
+              setTimeFilter('all')
+            }}
             className="text-sage-600 dark:text-sage-400 hover:text-sage-700 dark:hover:text-sage-300 font-medium mt-2"
           >
             Clear filters
@@ -186,15 +197,16 @@ export function HomeView() {
             )
             const hasOutcome = record.outcomeEmotions.length > 0 && record.outcomeEmotions[0].name
             const outcomeIntensity = hasOutcome ? record.outcomeEmotions[0].intensity : null
-            const improvement = maxEmotion && outcomeIntensity !== null
-              ? maxEmotion.intensity - outcomeIntensity
-              : 0
+            const improvement =
+              maxEmotion && outcomeIntensity !== null ? maxEmotion.intensity - outcomeIntensity : 0
             const isExpanded = expandedId === record.id
 
             return (
               <div
                 key={record.id}
-                className={`card overflow-hidden transition-all duration-300 hover:shadow-soft-lg dark:hover:shadow-soft-lg-dark ${!isExpanded ? 'card-thought-record' : 'h-auto'}`}
+                className={`card overflow-hidden transition-all duration-300 hover:shadow-soft-lg dark:hover:shadow-soft-lg-dark ${
+                  !isExpanded ? 'card-thought-record' : 'h-auto col-span-full'
+                }`}
               >
                 <button
                   onClick={(e) => handleCardClick(record.id, e)}
@@ -206,18 +218,20 @@ export function HomeView() {
                       <div className="text-sm text-stone-400 dark:text-stone-500">
                         {format(parseISO(record.date), 'MMM d, yyyy')}
                       </div>
-                      <svg 
+                      <svg
                         className={`w-5 h-5 text-stone-400 dark:text-stone-500 transition-transform duration-200 flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`}
-                        viewBox="0 0 24 24" 
-                        fill="none" 
-                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
                         strokeWidth="1.5"
                       >
                         <path d="M6 9l6 6 6-6" />
                       </svg>
                     </div>
-                    
-                    <div className={`text-stone-700 dark:text-stone-200 font-medium leading-relaxed ${isExpanded ? '' : 'line-clamp-2'}`}>
+
+                    <div
+                      className={`text-stone-700 dark:text-stone-200 font-medium leading-relaxed ${isExpanded ? '' : 'line-clamp-2'}`}
+                    >
                       {record.situation}
                     </div>
                   </div>
@@ -225,7 +239,10 @@ export function HomeView() {
                   <div className={`flex-shrink-0 ${!isExpanded ? 'mt-3' : 'mt-6'}`}>
                     <div className="flex flex-wrap gap-1.5">
                       {record.emotions.map((emotion, i) => (
-                        <span key={i} className="text-xs bg-warm-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-2.5 py-1 rounded-full">
+                        <span
+                          key={i}
+                          className="text-xs bg-warm-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-2.5 py-1 rounded-full"
+                        >
                           {emotion.name} {emotion.intensity}%
                         </span>
                       ))}
@@ -238,15 +255,29 @@ export function HomeView() {
                     {maxEmotion && hasOutcome && (
                       <div className="flex items-center gap-2 py-2 px-3 bg-stone-50 dark:bg-stone-700/50 rounded-lg text-xs">
                         <div className="flex items-center gap-1">
-                          <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium">Before</span>
-                          <span className="font-semibold text-critical-500 dark:text-critical-400">{maxEmotion.intensity}%</span>
+                          <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium">
+                            Before
+                          </span>
+                          <span className="font-semibold text-critical-500 dark:text-critical-400">
+                            {maxEmotion.intensity}%
+                          </span>
                         </div>
-                        <svg className="w-3 h-3 text-stone-300 dark:text-stone-600 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg
+                          className="w-3 h-3 text-stone-300 dark:text-stone-600 flex-shrink-0"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
                           <path d="M5 12h14M12 5l7 7-7 7" />
                         </svg>
                         <div className="flex items-center gap-1">
-                          <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium">After</span>
-                          <span className="font-semibold text-helpful-600 dark:text-helpful-500">{outcomeIntensity}%</span>
+                          <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium">
+                            After
+                          </span>
+                          <span className="font-semibold text-helpful-600 dark:text-helpful-500">
+                            {outcomeIntensity}%
+                          </span>
                         </div>
                         {improvement > 0 && (
                           <span className="ml-auto font-medium text-stone-500 dark:text-stone-400 whitespace-nowrap">
@@ -257,11 +288,13 @@ export function HomeView() {
                     )}
 
                     <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs">
-                      {(isExpanded ? record.distortions : record.distortions.slice(0, 2)).map((id) => (
-                        <span key={id} className="text-sage-500 dark:text-sage-400">
-                          {getDistortionName(id)}
-                        </span>
-                      ))}
+                      {(isExpanded ? record.distortions : record.distortions.slice(0, 2)).map(
+                        (id) => (
+                          <span key={id} className="text-sage-500 dark:text-sage-400">
+                            {getDistortionName(id)}
+                          </span>
+                        )
+                      )}
                       {!isExpanded && record.distortions.length > 2 && (
                         <span className="text-stone-400 dark:text-stone-500">
                           +{record.distortions.length - 2} more
@@ -299,24 +332,37 @@ export function HomeView() {
 
                     {record.automaticThoughts && (
                       <div className="pt-4 border-t border-stone-100 dark:border-stone-700">
-                        <h4 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide mb-2">Automatic thoughts</h4>
-                        <p className="text-stone-700 dark:text-stone-300 text-sm leading-relaxed whitespace-pre-wrap">{record.automaticThoughts}</p>
+                        <h4 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide mb-2">
+                          Automatic thoughts
+                        </h4>
+                        <p className="text-stone-700 dark:text-stone-300 text-sm leading-relaxed whitespace-pre-wrap">
+                          {record.automaticThoughts}
+                        </p>
                       </div>
                     )}
-                    
+
                     {record.rationalResponse && (
                       <div className="pt-4 border-t border-stone-100 dark:border-stone-700">
-                        <h4 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide mb-2">Rational response</h4>
-                        <p className="text-stone-700 dark:text-stone-300 text-sm leading-relaxed whitespace-pre-wrap">{record.rationalResponse}</p>
+                        <h4 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide mb-2">
+                          Rational response
+                        </h4>
+                        <p className="text-stone-700 dark:text-stone-300 text-sm leading-relaxed whitespace-pre-wrap">
+                          {record.rationalResponse}
+                        </p>
                       </div>
                     )}
 
                     {record.outcomeEmotions.length > 0 && record.outcomeEmotions[0].name && (
                       <div className="pt-4 border-t border-stone-100 dark:border-stone-700">
-                        <h4 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide mb-2">Outcome emotions</h4>
+                        <h4 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide mb-2">
+                          Outcome emotions
+                        </h4>
                         <div className="flex flex-wrap gap-1.5">
                           {record.outcomeEmotions.map((emotion, i) => (
-                            <span key={i} className="text-xs bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-2.5 py-1 rounded-full">
+                            <span
+                              key={i}
+                              className="text-xs bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-2.5 py-1 rounded-full"
+                            >
                               {emotion.name} {emotion.intensity}%
                             </span>
                           ))}
