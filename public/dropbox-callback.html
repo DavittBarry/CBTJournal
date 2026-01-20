@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dropbox Authorization</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background: #f5f5f4;
+    }
+    .message {
+      text-align: center;
+      padding: 2rem;
+    }
+    .message h1 {
+      color: #44403c;
+      font-size: 1.25rem;
+      margin-bottom: 0.5rem;
+    }
+    .message p {
+      color: #78716c;
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="message">
+    <h1>Authorization complete</h1>
+    <p>This window will close automatically...</p>
+  </div>
+  <script>
+    (function() {
+      const hash = window.location.hash.substring(1);
+      const params = new URLSearchParams(hash);
+      const accessToken = params.get('access_token');
+      const state = params.get('state');
+      const error = params.get('error');
+      
+      const storedState = sessionStorage.getItem('dropbox_state');
+      
+      if (error) {
+        if (window.opener) {
+          window.opener.postMessage({ type: 'dropbox-auth', error }, window.location.origin);
+        }
+        window.close();
+        return;
+      }
+      
+      if (accessToken && state === storedState) {
+        sessionStorage.setItem('dropbox_token', accessToken);
+        if (window.opener) {
+          window.opener.postMessage({ type: 'dropbox-auth', token: accessToken }, window.location.origin);
+        }
+      } else {
+        if (window.opener) {
+          window.opener.postMessage({ type: 'dropbox-auth', error: 'State mismatch or missing token' }, window.location.origin);
+        }
+      }
+      
+      setTimeout(() => window.close(), 1000);
+    })();
+  </script>
+</body>
+</html>

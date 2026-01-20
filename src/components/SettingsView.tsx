@@ -1,27 +1,57 @@
-import { useRef, useState, useMemo } from 'react'
+import { useRef, useState, useMemo, useEffect } from 'react'
 import { useAppStore } from '@/stores/appStore'
-import { useBackupStore } from '@/stores/backupStore'
+import { useBackupStore, SyncMode } from '@/stores/backupStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { logger } from '@/utils/logger'
 import { toast } from '@/stores/toastStore'
-import { hasFileSystemAccess, setupAutoSave, saveToFile, loadMultipleFiles } from '@/utils/backup'
+import {
+  hasFileSystemAccess,
+  setupAutoSave,
+  saveToFile,
+  loadMultipleFiles,
+  getStoredFileName,
+  clearStoredFileHandle,
+  downloadBackup,
+} from '@/utils/backup'
+import {
+  isGoogleDriveConfigured,
+  isDropboxConfigured,
+  initGoogleDriveAuth,
+  findOrCreateGoogleDriveFile,
+  initDropboxAuth,
+  disconnectCloud as disconnectCloudProvider,
+} from '@/utils/cloudSync'
 
 type ImportStep = 'idle' | 'choose-mode' | 'confirm-replace'
 
-interface WindowWithAutoSave extends Window {
-  __autoSaveFileHandle?: FileSystemFileHandle | null
-}
-
 export function SettingsView() {
-  const { exportData, importData, thoughtRecords, depressionChecklists, gratitudeEntries } =
-    useAppStore()
+  const {
+    exportData,
+    importData,
+    thoughtRecords,
+    depressionChecklists,
+    gratitudeEntries,
+    fileHandle,
+    setFileHandle,
+    syncToCloud,
+    syncFromCloud,
+  } = useAppStore()
   const { theme, setTheme } = useThemeStore()
   const {
     lastBackupDate,
     autoSaveEnabled,
+    storedFileName,
+    cloudConnection,
+    isSyncing,
+    lastCloudSyncError,
     setAutoSaveEnabled,
     setLastBackupDate,
     setTotalEntriesAtLastBackup,
+    setStoredFileName,
+    setCloudConnection,
+    setSyncMode,
+    setSyncOnStartup,
+    disconnectCloud,
   } = useBackupStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [importStep, setImportStep] = useState<ImportStep>('idle')
@@ -30,6 +60,8 @@ export function SettingsView() {
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false)
   const [showPasteModal, setShowPasteModal] = useState(false)
   const [pasteText, setPasteText] = useState('')
+  const [isConnectingCloud, setIsConnectingCloud] = useState(false)
+  const [showCloudSyncOptions, setShowCloudSyncOptions] = useState(false)
 
   const hasExistingData =
     thoughtRecords.length > 0 || depressionChecklists.length > 0 || gratitudeEntries.length > 0
@@ -38,25 +70,63 @@ export function SettingsView() {
 
   const daysSinceBackup = useMemo(() => {
     if (!lastBackupDate) return null
-    // eslint-disable-next-line react-hooks/purity
     return Math.floor((Date.now() - new Date(lastBackupDate).getTime()) / (1000 * 60 * 60 * 24))
   }, [lastBackupDate])
+
+  const lastCloudSync = useMemo(() => {
+    if (!cloudConnection?.lastSyncAt) return null
+    const diff = Date.now() - new Date(cloudConnection.lastSyncAt).getTime()
+    const minutes = Math.floor(diff / (1000 * 60))
+    if (minutes < 1) return 'Just now'
+    if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`
+    const hours = Math.floor(minutes / 60)
+    if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`
+    const days = Math.floor(hours / 24)
+    return `${days} day${days === 1 ? '' : 's'} ago`
+  }, [cloudConnection?.lastSyncAt])
+
+  useEffect(() => {
+    const checkStoredFile = async () => {
+      if (autoSaveEnabled && !storedFileName) {
+        const name = await getStoredFileName()
+        if (name) {
+          setStoredFileName(name)
+        }
+      }
+    }
+    checkStoredFile()
+  }, [autoSaveEnabled, storedFileName, setStoredFileName])
 
   const handleExport = async () => {
     try {
       const data = await exportData()
-      const blob = new Blob([data], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `cbtjournal-export-${new Date().toISOString().split('T')[0]}.json`
-      a.click()
-      URL.revokeObjectURL(url)
 
+      if (autoSaveEnabled && fileHandle) {
+        const success = await saveToFile(fileHandle, data)
+        if (success) {
+          setLastBackupDate(new Date().toISOString())
+          setTotalEntriesAtLastBackup(totalEntries)
+          toast.success('Saved to ' + (storedFileName || 'file'))
+          return
+        }
+      }
+
+      await downloadBackup(data)
       setLastBackupDate(new Date().toISOString())
       setTotalEntriesAtLastBackup(totalEntries)
-
       toast.success('Data exported successfully')
+    } catch {
+      toast.error('Failed to export data')
+    }
+  }
+
+  const handleExportNewFile = async () => {
+    try {
+      const data = await exportData()
+      await downloadBackup(data)
+      setLastBackupDate(new Date().toISOString())
+      setTotalEntriesAtLastBackup(totalEntries)
+      toast.success('Data exported to new file')
     } catch {
       toast.error('Failed to export data')
     }
@@ -66,23 +136,15 @@ export function SettingsView() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    console.log('File selected:', file.name, 'Type:', file.type, 'Size:', file.size)
-
     try {
       const rawText = await file.text()
-      console.log('File content length:', rawText.length)
-
       const text = rawText
         .trim()
         .replace(/^\uFEFF/, '')
         .replace(/^\u00EF\u00BB\u00BF/, '')
 
-      console.log('Cleaned content length:', text.length)
-      console.log('First 100 chars:', text.substring(0, 100))
-
       try {
         const parsed = JSON.parse(text)
-        console.log('JSON parsed successfully:', parsed)
 
         if (!parsed || typeof parsed !== 'object') {
           toast.error('Invalid data format: expected an object')
@@ -96,7 +158,6 @@ export function SettingsView() {
           return
         }
       } catch (e) {
-        console.error('JSON parse error:', e)
         const errorMessage = e instanceof SyntaxError ? e.message : 'Unknown error'
         toast.error(`Invalid JSON file: ${errorMessage}`)
         if (fileInputRef.current) fileInputRef.current.value = ''
@@ -106,16 +167,13 @@ export function SettingsView() {
       setPendingImportData(text)
 
       if (hasExistingData) {
-        console.log('Has existing data, showing mode selection')
         setImportStep('choose-mode')
       } else {
-        console.log('No existing data, importing directly')
         await doImport(text, 'replace')
       }
 
       if (fileInputRef.current) fileInputRef.current.value = ''
-    } catch (e) {
-      console.error('File reading error:', e)
+    } catch {
       toast.error('Failed to read file')
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
@@ -176,15 +234,12 @@ export function SettingsView() {
 
   const doImport = async (data: string, mode: 'merge' | 'replace') => {
     try {
-      console.log('Starting import, mode:', mode, 'data length:', data.length)
-
       const parsed = JSON.parse(data)
       const counts = {
         thoughts: parsed.thoughtRecords?.length ?? 0,
         checklists: parsed.depressionChecklists?.length ?? 0,
         gratitude: parsed.gratitudeEntries?.length ?? 0,
       }
-      console.log('Import counts:', counts)
 
       if (counts.thoughts === 0 && counts.checklists === 0 && counts.gratitude === 0) {
         toast.warning('The backup file contains no entries')
@@ -193,12 +248,10 @@ export function SettingsView() {
       }
 
       await importData(data, mode)
-      console.log('Import completed successfully')
 
       const total = counts.thoughts + counts.checklists + counts.gratitude
       toast.success(`Imported ${total} entries successfully`)
     } catch (e) {
-      console.error('Import failed:', e)
       toast.error(`Failed to import data: ${e instanceof Error ? e.message : 'Unknown error'}`)
     }
     resetImportState()
@@ -233,19 +286,13 @@ export function SettingsView() {
   }
 
   const handlePasteImport = async () => {
-    console.log('Attempting paste import, text length:', pasteText.length)
-
     const cleanedText = pasteText
       .trim()
       .replace(/^\uFEFF/, '')
       .replace(/^\u00EF\u00BB\u00BF/, '')
 
-    console.log('Cleaned text length:', cleanedText.length)
-    console.log('First 100 chars:', cleanedText.substring(0, 100))
-
     try {
       const parsed = JSON.parse(cleanedText)
-      console.log('Pasted JSON parsed successfully:', parsed)
 
       if (!parsed || typeof parsed !== 'object') {
         toast.error('Invalid data format: expected an object')
@@ -257,7 +304,6 @@ export function SettingsView() {
         return
       }
     } catch (e) {
-      console.error('Paste JSON parse error:', e)
       const errorMessage = e instanceof SyntaxError ? e.message : 'Unknown error'
       toast.error(`Invalid JSON format: ${errorMessage}`)
       return
@@ -268,10 +314,8 @@ export function SettingsView() {
     setPasteText('')
 
     if (hasExistingData) {
-      console.log('Has existing data, showing mode selection')
       setImportStep('choose-mode')
     } else {
-      console.log('No existing data, importing directly')
       await doImport(cleanedText, 'replace')
     }
   }
@@ -279,8 +323,9 @@ export function SettingsView() {
   const handleSetupAutoSave = async () => {
     const handle = await setupAutoSave()
     if (handle) {
-      ;(window as WindowWithAutoSave).__autoSaveFileHandle = handle
+      setFileHandle(handle)
       setAutoSaveEnabled(true)
+      setStoredFileName(handle.name)
 
       const jsonData = await exportData()
       const success = await saveToFile(handle, jsonData)
@@ -293,10 +338,114 @@ export function SettingsView() {
     }
   }
 
-  const handleDisableAutoSave = () => {
+  const handleChangeAutoSaveLocation = async () => {
+    const handle = await setupAutoSave()
+    if (handle) {
+      setFileHandle(handle)
+      setStoredFileName(handle.name)
+
+      const jsonData = await exportData()
+      await saveToFile(handle, jsonData)
+      toast.success('Save location updated')
+    }
+  }
+
+  const handleDisableAutoSave = async () => {
     setAutoSaveEnabled(false)
-    ;(window as WindowWithAutoSave).__autoSaveFileHandle = null
+    setFileHandle(null)
+    setStoredFileName(null)
+    await clearStoredFileHandle()
     toast.info('Auto-save disabled')
+  }
+
+  const handleConnectGoogleDrive = async () => {
+    if (!isGoogleDriveConfigured()) {
+      toast.error('Google Drive is not configured. Add API keys to environment variables.')
+      return
+    }
+
+    setIsConnectingCloud(true)
+    try {
+      const accessToken = await initGoogleDriveAuth()
+      const fileId = await findOrCreateGoogleDriveFile(accessToken)
+
+      setCloudConnection({
+        provider: 'google-drive',
+        accessToken,
+        fileId,
+        fileName: 'cbtjournal-data.json',
+        lastSyncAt: undefined,
+        syncMode: 'manual',
+      })
+
+      toast.success('Connected to Google Drive')
+      setShowCloudSyncOptions(false)
+    } catch (error) {
+      if (error instanceof Error && error.message !== 'Authentication cancelled') {
+        toast.error('Failed to connect to Google Drive')
+        logger.error('Settings', 'Google Drive connection failed', error)
+      }
+    } finally {
+      setIsConnectingCloud(false)
+    }
+  }
+
+  const handleConnectDropbox = async () => {
+    if (!isDropboxConfigured()) {
+      toast.error('Dropbox is not configured. Add API key to environment variables.')
+      return
+    }
+
+    setIsConnectingCloud(true)
+    try {
+      const accessToken = await initDropboxAuth()
+
+      setCloudConnection({
+        provider: 'dropbox',
+        accessToken,
+        fileName: 'cbtjournal-data.json',
+        lastSyncAt: undefined,
+        syncMode: 'manual',
+      })
+
+      toast.success('Connected to Dropbox')
+      setShowCloudSyncOptions(false)
+    } catch (error) {
+      if (error instanceof Error && error.message !== 'Authentication cancelled') {
+        toast.error('Failed to connect to Dropbox')
+        logger.error('Settings', 'Dropbox connection failed', error)
+      }
+    } finally {
+      setIsConnectingCloud(false)
+    }
+  }
+
+  const handleDisconnectCloud = async () => {
+    if (cloudConnection?.provider) {
+      await disconnectCloudProvider(cloudConnection.provider)
+    }
+    disconnectCloud()
+  }
+
+  const handleSyncToCloud = async () => {
+    const success = await syncToCloud()
+    if (success) {
+      toast.success('Synced to cloud')
+    } else {
+      toast.error('Failed to sync to cloud')
+    }
+  }
+
+  const handleSyncFromCloud = async () => {
+    const success = await syncFromCloud()
+    if (!success && !lastCloudSyncError) {
+      toast.error('Failed to sync from cloud')
+    }
+  }
+
+  const handleToggleSyncMode = (mode: SyncMode) => {
+    setSyncMode(mode)
+    toast.info(mode === 'auto' ? 'Auto-sync enabled' : 'Switched to manual sync')
   }
 
   const handleExportLogs = () => {
@@ -318,11 +467,12 @@ export function SettingsView() {
 
   const recentErrors = logger.getRecentErrors(5)
   const allLogs = logger.getLogs()
+  const hasCloudProviders = isGoogleDriveConfigured() || isDropboxConfigured()
 
   return (
     <div className="max-w-2xl mx-auto">
       <h1 className="text-2xl font-semibold text-stone-800 dark:text-stone-100 mb-8 text-center">
-        Settings & Guide
+        Settings & guide
       </h1>
 
       {importStep === 'choose-mode' && (
@@ -338,13 +488,13 @@ export function SettingsView() {
               <button onClick={handleMerge} className="btn-secondary w-full text-left px-4">
                 <div className="font-medium text-stone-700 dark:text-stone-200">Merge</div>
                 <div className="text-sm text-stone-500 dark:text-stone-400">
-                  Add imported data to your existing records
+                  Add imported data to your existing records.
                 </div>
               </button>
               <button onClick={handleReplaceChosen} className="btn-secondary w-full text-left px-4">
                 <div className="font-medium text-stone-700 dark:text-stone-200">Replace</div>
                 <div className="text-sm text-stone-500 dark:text-stone-400">
-                  Clear existing data and use only imported data
+                  Clear existing data and use only imported data.
                 </div>
               </button>
               <button
@@ -422,6 +572,73 @@ export function SettingsView() {
         </div>
       )}
 
+      {showCloudSyncOptions && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="card p-6 max-w-sm w-full">
+            <h3 className="text-lg font-semibold text-stone-800 dark:text-stone-100 mb-2">
+              Connect cloud storage
+            </h3>
+            <p className="text-stone-500 dark:text-stone-400 text-sm mb-5">
+              Choose a cloud provider to sync your data across devices.
+            </p>
+            <div className="space-y-3">
+              {isGoogleDriveConfigured() && (
+                <button
+                  onClick={handleConnectGoogleDrive}
+                  disabled={isConnectingCloud}
+                  className="btn-secondary w-full flex items-center gap-3 px-4"
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24">
+                    <path
+                      fill="#4285F4"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                    />
+                  </svg>
+                  <span className="font-medium text-stone-700 dark:text-stone-200">
+                    Google Drive
+                  </span>
+                </button>
+              )}
+              {isDropboxConfigured() && (
+                <button
+                  onClick={handleConnectDropbox}
+                  disabled={isConnectingCloud}
+                  className="btn-secondary w-full flex items-center gap-3 px-4"
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#0061FF">
+                    <path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4-6-4zm12 0l-6 4 6 4-6 4 6 4 6-4-6-4 6-4-6-4zM6 18l6-4 6 4-6 4-6-4z" />
+                  </svg>
+                  <span className="font-medium text-stone-700 dark:text-stone-200">Dropbox</span>
+                </button>
+              )}
+              {!hasCloudProviders && (
+                <p className="text-sm text-stone-500 dark:text-stone-400 text-center py-4">
+                  No cloud providers configured. Add API keys to environment variables.
+                </p>
+              )}
+              <button
+                onClick={() => setShowCloudSyncOptions(false)}
+                className="w-full text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 py-2 text-sm font-medium"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showPrivacyPolicy && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="card p-6 max-w-2xl w-full max-h-[90vh] flex flex-col">
@@ -463,16 +680,25 @@ export function SettingsView() {
                   Data storage
                 </h4>
                 <p className="text-sm leading-relaxed mb-2">
-                  <strong>All your data stays on your device.</strong> CBTJournal stores all
-                  information locally in your device's browser storage (IndexedDB). We do not:
+                  All your data stays on your device by default. CBTJournal stores all information
+                  locally in your device's browser storage (IndexedDB). We do not:
                 </p>
                 <ul className="text-sm space-y-1 mb-4">
                   <li>Collect any personal information.</li>
-                  <li>Transmit any data to external servers.</li>
+                  <li>Transmit any data to external servers (unless you enable cloud sync).</li>
                   <li>Track your usage.</li>
                   <li>Use analytics or cookies.</li>
                   <li>Share your data with third parties.</li>
                 </ul>
+
+                <h4 className="text-stone-800 dark:text-stone-100 font-semibold mt-4 mb-2">
+                  Cloud sync (optional)
+                </h4>
+                <p className="text-sm leading-relaxed mb-4">
+                  If you choose to enable cloud sync with Google Drive or Dropbox, your data will be
+                  stored in your own cloud storage account. We do not have access to your cloud
+                  storage. The sync is directly between your device and your cloud provider.
+                </p>
 
                 <h4 className="text-stone-800 dark:text-stone-100 font-semibold mt-4 mb-2">
                   What data is stored
@@ -533,7 +759,7 @@ export function SettingsView() {
                   <li>We cannot recover lost data.</li>
                 </ul>
                 <p className="text-sm font-medium mb-4">
-                  We strongly recommend exporting backups regularly.
+                  We strongly recommend exporting backups regularly or enabling cloud sync.
                 </p>
 
                 <h4 className="text-stone-800 dark:text-stone-100 font-semibold mt-4 mb-2">
@@ -541,6 +767,7 @@ export function SettingsView() {
                 </h4>
                 <p className="text-sm leading-relaxed mb-4">
                   CBTJournal does not use any third-party services, analytics, or tracking tools.
+                  Cloud sync uses your own Google Drive or Dropbox account.
                 </p>
 
                 <h4 className="text-stone-800 dark:text-stone-100 font-semibold mt-4 mb-2">
@@ -647,9 +874,15 @@ export function SettingsView() {
             Export & import
           </h2>
           <div className="space-y-3">
-            <button onClick={handleExport} className="btn-secondary w-full">
-              Export data as JSON
+            <button onClick={handleExport} className="btn-primary w-full">
+              {autoSaveEnabled && storedFileName ? `Save to ${storedFileName}` : 'Export data'}
             </button>
+
+            {autoSaveEnabled && storedFileName && (
+              <button onClick={handleExportNewFile} className="btn-secondary w-full">
+                Export as new file
+              </button>
+            )}
 
             <input
               ref={fileInputRef}
@@ -686,17 +919,154 @@ export function SettingsView() {
         </section>
       </div>
 
+      {hasCloudProviders && (
+        <section className="mt-6">
+          <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300 mb-4">
+            Cloud sync
+          </h2>
+          <div className="card p-5">
+            {!cloudConnection ? (
+              <>
+                <p className="text-stone-600 dark:text-stone-300 text-sm mb-4 leading-relaxed">
+                  Sync your data across devices using Google Drive or Dropbox. Your data stays in
+                  your own cloud storage account.
+                </p>
+                <button
+                  onClick={() => setShowCloudSyncOptions(true)}
+                  className="btn-primary w-full"
+                  disabled={isConnectingCloud}
+                >
+                  {isConnectingCloud ? 'Connecting...' : 'Connect cloud storage'}
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 text-helpful-600 dark:text-helpful-500 mb-4">
+                  <svg
+                    className="w-5 h-5"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="font-medium">
+                    Connected to{' '}
+                    {cloudConnection.provider === 'google-drive' ? 'Google Drive' : 'Dropbox'}
+                  </span>
+                </div>
+
+                {lastCloudSync && (
+                  <p className="text-stone-500 dark:text-stone-400 text-sm mb-4">
+                    Last synced: {lastCloudSync}
+                  </p>
+                )}
+
+                {lastCloudSyncError && (
+                  <div className="bg-critical-50 dark:bg-critical-900/20 text-critical-700 dark:text-critical-300 text-sm p-3 rounded-lg mb-4">
+                    Sync error: {lastCloudSyncError}
+                  </div>
+                )}
+
+                <div className="space-y-3 mb-4">
+                  <div className="flex items-center justify-between p-3 bg-stone-50 dark:bg-stone-800 rounded-lg">
+                    <div>
+                      <span className="text-sm text-stone-600 dark:text-stone-300">
+                        Auto-sync on changes
+                      </span>
+                      <p className="text-xs text-stone-400 dark:text-stone-500">
+                        Sync to cloud after each change.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() =>
+                        handleToggleSyncMode(
+                          cloudConnection.syncMode === 'auto' ? 'manual' : 'auto'
+                        )
+                      }
+                      className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
+                        cloudConnection.syncMode === 'auto'
+                          ? 'bg-sage-500'
+                          : 'bg-stone-300 dark:bg-stone-600'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 shadow-sm ${
+                          cloudConnection.syncMode === 'auto' ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 bg-stone-50 dark:bg-stone-800 rounded-lg">
+                    <div>
+                      <span className="text-sm text-stone-600 dark:text-stone-300">
+                        Sync on startup
+                      </span>
+                      <p className="text-xs text-stone-400 dark:text-stone-500">
+                        Pull updates when app opens.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setSyncOnStartup(cloudConnection.syncOnStartup === false)}
+                      className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
+                        cloudConnection.syncOnStartup !== false
+                          ? 'bg-sage-500'
+                          : 'bg-stone-300 dark:bg-stone-600'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 shadow-sm ${
+                          cloudConnection.syncOnStartup !== false
+                            ? 'translate-x-5'
+                            : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <button
+                    onClick={handleSyncToCloud}
+                    className="btn-secondary"
+                    disabled={isSyncing}
+                  >
+                    {isSyncing ? 'Syncing...' : 'Push to cloud'}
+                  </button>
+                  <button
+                    onClick={handleSyncFromCloud}
+                    className="btn-secondary"
+                    disabled={isSyncing}
+                  >
+                    {isSyncing ? 'Syncing...' : 'Pull from cloud'}
+                  </button>
+                </div>
+
+                <button
+                  onClick={handleDisconnectCloud}
+                  className="btn-secondary w-full text-critical-600 hover:text-critical-700 dark:text-critical-400"
+                >
+                  Disconnect
+                </button>
+              </>
+            )}
+          </div>
+        </section>
+      )}
+
       {hasFileSystemAccess() && (
         <section className="mt-6">
           <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300 mb-4">
-            Auto-save (Chrome/Edge only)
+            Local auto-save (Chrome/Edge)
           </h2>
           <div className="card p-5">
             {!autoSaveEnabled ? (
               <>
                 <p className="text-stone-600 dark:text-stone-300 text-sm mb-4 leading-relaxed">
-                  Set up auto-save to automatically save your data to a file on your computer. This
-                  provides an extra layer of protection.
+                  Set up auto-save to automatically save your data to a file on your computer. The
+                  app will remember this location and keep the file updated.
                 </p>
                 <button onClick={handleSetupAutoSave} className="btn-primary w-full">
                   Set up auto-save
@@ -716,13 +1086,23 @@ export function SettingsView() {
                   </svg>
                   <span className="font-medium">Auto-save is enabled</span>
                 </div>
+                {storedFileName && (
+                  <p className="text-stone-500 dark:text-stone-400 text-sm mb-4">
+                    Saving to: <span className="font-mono">{storedFileName}</span>
+                  </p>
+                )}
                 <p className="text-stone-600 dark:text-stone-300 text-sm mb-4 leading-relaxed">
-                  Your data is automatically saved to your chosen file location when you make
-                  changes.
+                  Your data is automatically saved when you make changes. The file is updated in
+                  place rather than creating new copies.
                 </p>
-                <button onClick={handleDisableAutoSave} className="btn-secondary w-full">
-                  Disable auto-save
-                </button>
+                <div className="space-y-2">
+                  <button onClick={handleChangeAutoSaveLocation} className="btn-secondary w-full">
+                    Change save location
+                  </button>
+                  <button onClick={handleDisableAutoSave} className="btn-secondary w-full">
+                    Disable auto-save
+                  </button>
+                </div>
               </>
             )}
           </div>
@@ -738,7 +1118,7 @@ export function SettingsView() {
             <div>
               <div className="font-medium text-stone-800 dark:text-stone-100">Theme</div>
               <div className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">
-                Choose your preferred color scheme
+                Choose your preferred color scheme.
               </div>
             </div>
           </div>
@@ -849,7 +1229,8 @@ export function SettingsView() {
             </p>
             <p className="text-sm">
               All thought records, gratitude entries, and checklist responses are stored locally in
-              your browser using IndexedDB. Nothing is sent to any server.
+              your browser using IndexedDB. Nothing is sent to any server unless you enable cloud
+              sync.
             </p>
             <p className="text-sm">
               This means you have complete control and privacy, but you're also responsible for
@@ -862,10 +1243,10 @@ export function SettingsView() {
               What gets stored
             </h3>
             <ul className="text-sm text-stone-600 dark:text-stone-300 space-y-1">
-              <li>• Your thought records and responses.</li>
-              <li>• Gratitude journal entries.</li>
-              <li>• Depression checklist scores.</li>
-              <li>• App preferences (theme, settings).</li>
+              <li>Your thought records and responses.</li>
+              <li>Gratitude journal entries.</li>
+              <li>Depression checklist scores.</li>
+              <li>App preferences (theme, settings).</li>
             </ul>
           </div>
 
@@ -874,9 +1255,9 @@ export function SettingsView() {
               What doesn't happen
             </h3>
             <ul className="text-sm text-stone-600 dark:text-stone-300 space-y-1">
-              <li>• No analytics or tracking.</li>
-              <li>• No cloud sync or external servers.</li>
-              <li>• No data collection by third parties.</li>
+              <li>No analytics or tracking.</li>
+              <li>No data collection by third parties.</li>
+              <li>Cloud sync only goes to your own storage account.</li>
             </ul>
           </div>
 
@@ -897,7 +1278,7 @@ export function SettingsView() {
                 <p className="font-medium mb-1">Data can be lost</p>
                 <p>
                   Clearing your browser data or uninstalling the app will delete everything. Export
-                  backups regularly to protect your work.
+                  backups regularly or enable cloud sync to protect your work.
                 </p>
               </div>
             </div>
@@ -973,7 +1354,7 @@ export function SettingsView() {
               Feeling Good (David D. Burns)
             </div>
             <div className="text-stone-500 dark:text-stone-400 text-sm mt-1">
-              Official website with resources and podcasts
+              Official website with resources and podcasts.
             </div>
           </a>
           <a
@@ -984,7 +1365,7 @@ export function SettingsView() {
           >
             <div className="text-stone-800 dark:text-stone-100 font-medium">Find a Helpline</div>
             <div className="text-stone-500 dark:text-stone-400 text-sm mt-1">
-              Free emotional support helplines worldwide
+              Free emotional support helplines worldwide.
             </div>
           </a>
         </div>
