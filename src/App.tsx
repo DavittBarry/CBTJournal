@@ -26,6 +26,8 @@ function App() {
     selectedRecordId,
     thoughtRecords,
     selectedChecklistId,
+    initializeAutoSave,
+    initializeCloudSync,
   } = useAppStore()
   const initTheme = useThemeStore((state) => state.initTheme)
 
@@ -39,6 +41,22 @@ function App() {
       logger.error('App', 'Failed to load initial data', error)
     })
   }, [loadData])
+
+  useEffect(() => {
+    logger.debug('App', 'Initializing auto-save')
+    initializeAutoSave().catch((error) => {
+      logger.error('App', 'Failed to initialize auto-save', error)
+    })
+  }, [initializeAutoSave])
+
+  useEffect(() => {
+    if (!isLoading) {
+      logger.debug('App', 'Initializing cloud sync')
+      initializeCloudSync().catch((error) => {
+        logger.error('App', 'Failed to initialize cloud sync', error)
+      })
+    }
+  }, [isLoading, initializeCloudSync])
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -108,4 +126,3 @@ function App() {
 }
 
 export default App
-// test comment
