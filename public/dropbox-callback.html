@@ -42,28 +42,33 @@
       const state = params.get('state');
       const error = params.get('error');
       
-      const storedState = sessionStorage.getItem('dropbox_state');
-      
       if (error) {
         if (window.opener) {
           window.opener.postMessage({ type: 'dropbox-auth', error }, window.location.origin);
         }
-        window.close();
+        setTimeout(() => window.close(), 1000);
         return;
       }
       
-      if (accessToken && state === storedState) {
-        sessionStorage.setItem('dropbox_token', accessToken);
+      if (accessToken && state) {
+        // Pass both token and state to parent for validation
         if (window.opener) {
-          window.opener.postMessage({ type: 'dropbox-auth', token: accessToken }, window.location.origin);
+          window.opener.postMessage({ 
+            type: 'dropbox-auth', 
+            token: accessToken,
+            state: state
+          }, window.location.origin);
         }
+        setTimeout(() => window.close(), 1000);
       } else {
         if (window.opener) {
-          window.opener.postMessage({ type: 'dropbox-auth', error: 'State mismatch or missing token' }, window.location.origin);
+          window.opener.postMessage({ 
+            type: 'dropbox-auth', 
+            error: 'Missing token or state' 
+          }, window.location.origin);
         }
+        setTimeout(() => window.close(), 1000);
       }
-      
-      setTimeout(() => window.close(), 1000);
     })();
   </script>
 </body>

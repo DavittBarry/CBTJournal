@@ -1,6 +1,6 @@
 import { useRef, useState, useMemo, useEffect } from 'react'
 import { useAppStore } from '@/stores/appStore'
-import { useBackupStore, SyncMode } from '@/stores/backupStore'
+import { useBackupStore, type SyncMode, type CloudProvider } from '@/stores/backupStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { logger } from '@/utils/logger'
 import { toast } from '@/stores/toastStore'
@@ -41,17 +41,16 @@ export function SettingsView() {
     lastBackupDate,
     autoSaveEnabled,
     storedFileName,
-    cloudConnection,
+    cloudConnections,
     isSyncing,
-    lastCloudSyncError,
     setAutoSaveEnabled,
     setLastBackupDate,
     setTotalEntriesAtLastBackup,
     setStoredFileName,
-    setCloudConnection,
+    addCloudConnection,
+    removeCloudConnection,
     setSyncMode,
     setSyncOnStartup,
-    disconnectCloud,
   } = useBackupStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [importStep, setImportStep] = useState<ImportStep>('idle')
@@ -73,9 +72,9 @@ export function SettingsView() {
     return Math.floor((Date.now() - new Date(lastBackupDate).getTime()) / (1000 * 60 * 60 * 24))
   }, [lastBackupDate])
 
-  const lastCloudSync = useMemo(() => {
-    if (!cloudConnection?.lastSyncAt) return null
-    const diff = Date.now() - new Date(cloudConnection.lastSyncAt).getTime()
+  const getLastSyncText = (lastSyncAt?: string) => {
+    if (!lastSyncAt) return null
+    const diff = Date.now() - new Date(lastSyncAt).getTime()
     const minutes = Math.floor(diff / (1000 * 60))
     if (minutes < 1) return 'Just now'
     if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`
@@ -83,7 +82,15 @@ export function SettingsView() {
     if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`
     const days = Math.floor(hours / 24)
     return `${days} day${days === 1 ? '' : 's'} ago`
-  }, [cloudConnection?.lastSyncAt])
+  }
+
+  const getProviderName = (provider: CloudProvider) => {
+    return provider === 'google-drive' ? 'Google Drive' : 'Dropbox'
+  }
+
+  const isProviderConnected = (provider: CloudProvider) => {
+    return cloudConnections.some((c) => c.provider === provider)
+  }
 
   useEffect(() => {
     const checkStoredFile = async () => {
@@ -369,7 +376,7 @@ export function SettingsView() {
       const accessToken = await initGoogleDriveAuth()
       const fileId = await findOrCreateGoogleDriveFile(accessToken)
 
-      setCloudConnection({
+      addCloudConnection({
         provider: 'google-drive',
         accessToken,
         fileId,
@@ -400,7 +407,7 @@ export function SettingsView() {
     try {
       const accessToken = await initDropboxAuth()
 
-      setCloudConnection({
+      addCloudConnection({
         provider: 'dropbox',
         accessToken,
         fileName: 'cbtjournal-data.json',
@@ -420,31 +427,24 @@ export function SettingsView() {
     }
   }
 
-  const handleDisconnectCloud = async () => {
-    if (cloudConnection?.provider) {
-      await disconnectCloudProvider(cloudConnection.provider)
-    }
-    disconnectCloud()
+  const handleDisconnectCloud = async (provider: CloudProvider) => {
+    await disconnectCloudProvider(provider)
+    removeCloudConnection(provider)
   }
 
-  const handleSyncToCloud = async () => {
-    const success = await syncToCloud()
+  const handleSyncToCloud = async (provider: CloudProvider) => {
+    const success = await syncToCloud(provider)
     if (success) {
-      toast.success('Synced to cloud')
-    } else {
-      toast.error('Failed to sync to cloud')
+      toast.success(`Synced to ${getProviderName(provider)}`)
     }
   }
 
-  const handleSyncFromCloud = async () => {
-    const success = await syncFromCloud()
-    if (!success && !lastCloudSyncError) {
-      toast.error('Failed to sync from cloud')
-    }
+  const handleSyncFromCloud = async (provider: CloudProvider) => {
+    await syncFromCloud(provider)
   }
 
-  const handleToggleSyncMode = (mode: SyncMode) => {
-    setSyncMode(mode)
+  const handleToggleSyncMode = (provider: CloudProvider, mode: SyncMode) => {
+    setSyncMode(provider, mode)
     toast.info(mode === 'auto' ? 'Auto-sync enabled' : 'Switched to manual sync')
   }
 
@@ -582,7 +582,7 @@ export function SettingsView() {
               Choose a cloud provider to sync your data across devices.
             </p>
             <div className="space-y-3">
-              {isGoogleDriveConfigured() && (
+              {isGoogleDriveConfigured() && !isProviderConnected('google-drive') && (
                 <button
                   onClick={handleConnectGoogleDrive}
                   disabled={isConnectingCloud}
@@ -611,7 +611,7 @@ export function SettingsView() {
                   </span>
                 </button>
               )}
-              {isDropboxConfigured() && (
+              {isDropboxConfigured() && !isProviderConnected('dropbox') && (
                 <button
                   onClick={handleConnectDropbox}
                   disabled={isConnectingCloud}
@@ -628,6 +628,13 @@ export function SettingsView() {
                   No cloud providers configured. Add API keys to environment variables.
                 </p>
               )}
+              {hasCloudProviders &&
+                isProviderConnected('google-drive') &&
+                isProviderConnected('dropbox') && (
+                  <p className="text-sm text-stone-500 dark:text-stone-400 text-center py-4">
+                    All available cloud providers are already connected.
+                  </p>
+                )}
               <button
                 onClick={() => setShowCloudSyncOptions(false)}
                 className="w-full text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 py-2 text-sm font-medium"
@@ -924,135 +931,165 @@ export function SettingsView() {
           <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300 mb-4">
             Cloud sync
           </h2>
-          <div className="card p-5">
-            {!cloudConnection ? (
-              <>
-                <p className="text-stone-600 dark:text-stone-300 text-sm mb-4 leading-relaxed">
-                  Sync your data across devices using Google Drive or Dropbox. Your data stays in
-                  your own cloud storage account.
-                </p>
+
+          {cloudConnections.length === 0 ? (
+            <div className="card p-5">
+              <p className="text-stone-600 dark:text-stone-300 text-sm mb-4 leading-relaxed">
+                Sync your data across devices using Google Drive or Dropbox. Your data stays in your
+                own cloud storage account. You can connect multiple providers for redundancy.
+              </p>
+              <button
+                onClick={() => setShowCloudSyncOptions(true)}
+                className="btn-primary w-full"
+                disabled={isConnectingCloud}
+              >
+                {isConnectingCloud ? 'Connecting...' : 'Connect cloud storage'}
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {cloudConnections.map((connection) => (
+                <div key={connection.provider} className="card p-5">
+                  <div className="flex items-center gap-2 text-helpful-600 dark:text-helpful-500 mb-4">
+                    {connection.provider === 'google-drive' ? (
+                      <svg className="w-5 h-5" viewBox="0 0 24 24">
+                        <path
+                          fill="#4285F4"
+                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                        />
+                        <path
+                          fill="#34A853"
+                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                        />
+                        <path
+                          fill="#FBBC05"
+                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                        />
+                        <path
+                          fill="#EA4335"
+                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                        />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#0061FF">
+                        <path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4-6-4zm12 0l-6 4 6 4-6 4 6 4 6-4-6-4 6-4-6-4zM6 18l6-4 6 4-6 4-6-4z" />
+                      </svg>
+                    )}
+                    <span className="font-medium">{getProviderName(connection.provider)}</span>
+                  </div>
+
+                  {getLastSyncText(connection.lastSyncAt) && (
+                    <p className="text-stone-500 dark:text-stone-400 text-sm mb-4">
+                      Last synced: {getLastSyncText(connection.lastSyncAt)}
+                    </p>
+                  )}
+
+                  {connection.lastError && (
+                    <div className="bg-critical-50 dark:bg-critical-900/20 text-critical-700 dark:text-critical-300 text-sm p-3 rounded-lg mb-4">
+                      Sync error: {connection.lastError}
+                    </div>
+                  )}
+
+                  <div className="space-y-3 mb-4">
+                    <div className="flex items-center justify-between p-3 bg-stone-50 dark:bg-stone-800 rounded-lg">
+                      <div>
+                        <span className="text-sm text-stone-600 dark:text-stone-300">
+                          Auto-sync on changes
+                        </span>
+                        <p className="text-xs text-stone-400 dark:text-stone-500">
+                          Sync to cloud after each change.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() =>
+                          handleToggleSyncMode(
+                            connection.provider,
+                            connection.syncMode === 'auto' ? 'manual' : 'auto'
+                          )
+                        }
+                        className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
+                          connection.syncMode === 'auto'
+                            ? 'bg-sage-500'
+                            : 'bg-stone-300 dark:bg-stone-600'
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 shadow-sm ${
+                            connection.syncMode === 'auto' ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 bg-stone-50 dark:bg-stone-800 rounded-lg">
+                      <div>
+                        <span className="text-sm text-stone-600 dark:text-stone-300">
+                          Sync on startup
+                        </span>
+                        <p className="text-xs text-stone-400 dark:text-stone-500">
+                          Pull updates when app opens.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() =>
+                          setSyncOnStartup(
+                            connection.provider,
+                            connection.syncOnStartup !== false ? false : true
+                          )
+                        }
+                        className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
+                          connection.syncOnStartup !== false
+                            ? 'bg-sage-500'
+                            : 'bg-stone-300 dark:bg-stone-600'
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 shadow-sm ${
+                            connection.syncOnStartup !== false ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <button
+                      onClick={() => handleSyncToCloud(connection.provider)}
+                      className="btn-secondary"
+                      disabled={isSyncing}
+                    >
+                      {isSyncing ? 'Syncing...' : 'Push'}
+                    </button>
+                    <button
+                      onClick={() => handleSyncFromCloud(connection.provider)}
+                      className="btn-secondary"
+                      disabled={isSyncing}
+                    >
+                      {isSyncing ? 'Syncing...' : 'Pull'}
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => handleDisconnectCloud(connection.provider)}
+                    className="btn-secondary w-full text-critical-600 hover:text-critical-700 dark:text-critical-400"
+                  >
+                    Disconnect
+                  </button>
+                </div>
+              ))}
+
+              {((isGoogleDriveConfigured() && !isProviderConnected('google-drive')) ||
+                (isDropboxConfigured() && !isProviderConnected('dropbox'))) && (
                 <button
                   onClick={() => setShowCloudSyncOptions(true)}
-                  className="btn-primary w-full"
+                  className="btn-secondary w-full"
                   disabled={isConnectingCloud}
                 >
-                  {isConnectingCloud ? 'Connecting...' : 'Connect cloud storage'}
+                  {isConnectingCloud ? 'Connecting...' : 'Add another cloud provider'}
                 </button>
-              </>
-            ) : (
-              <>
-                <div className="flex items-center gap-2 text-helpful-600 dark:text-helpful-500 mb-4">
-                  <svg
-                    className="w-5 h-5"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span className="font-medium">
-                    Connected to{' '}
-                    {cloudConnection.provider === 'google-drive' ? 'Google Drive' : 'Dropbox'}
-                  </span>
-                </div>
-
-                {lastCloudSync && (
-                  <p className="text-stone-500 dark:text-stone-400 text-sm mb-4">
-                    Last synced: {lastCloudSync}
-                  </p>
-                )}
-
-                {lastCloudSyncError && (
-                  <div className="bg-critical-50 dark:bg-critical-900/20 text-critical-700 dark:text-critical-300 text-sm p-3 rounded-lg mb-4">
-                    Sync error: {lastCloudSyncError}
-                  </div>
-                )}
-
-                <div className="space-y-3 mb-4">
-                  <div className="flex items-center justify-between p-3 bg-stone-50 dark:bg-stone-800 rounded-lg">
-                    <div>
-                      <span className="text-sm text-stone-600 dark:text-stone-300">
-                        Auto-sync on changes
-                      </span>
-                      <p className="text-xs text-stone-400 dark:text-stone-500">
-                        Sync to cloud after each change.
-                      </p>
-                    </div>
-                    <button
-                      onClick={() =>
-                        handleToggleSyncMode(
-                          cloudConnection.syncMode === 'auto' ? 'manual' : 'auto'
-                        )
-                      }
-                      className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
-                        cloudConnection.syncMode === 'auto'
-                          ? 'bg-sage-500'
-                          : 'bg-stone-300 dark:bg-stone-600'
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 shadow-sm ${
-                          cloudConnection.syncMode === 'auto' ? 'translate-x-5' : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 bg-stone-50 dark:bg-stone-800 rounded-lg">
-                    <div>
-                      <span className="text-sm text-stone-600 dark:text-stone-300">
-                        Sync on startup
-                      </span>
-                      <p className="text-xs text-stone-400 dark:text-stone-500">
-                        Pull updates when app opens.
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setSyncOnStartup(cloudConnection.syncOnStartup === false)}
-                      className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
-                        cloudConnection.syncOnStartup !== false
-                          ? 'bg-sage-500'
-                          : 'bg-stone-300 dark:bg-stone-600'
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 shadow-sm ${
-                          cloudConnection.syncOnStartup !== false
-                            ? 'translate-x-5'
-                            : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <button
-                    onClick={handleSyncToCloud}
-                    className="btn-secondary"
-                    disabled={isSyncing}
-                  >
-                    {isSyncing ? 'Syncing...' : 'Push to cloud'}
-                  </button>
-                  <button
-                    onClick={handleSyncFromCloud}
-                    className="btn-secondary"
-                    disabled={isSyncing}
-                  >
-                    {isSyncing ? 'Syncing...' : 'Pull from cloud'}
-                  </button>
-                </div>
-
-                <button
-                  onClick={handleDisconnectCloud}
-                  className="btn-secondary w-full text-critical-600 hover:text-critical-700 dark:text-critical-400"
-                >
-                  Disconnect
-                </button>
-              </>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </section>
       )}
 

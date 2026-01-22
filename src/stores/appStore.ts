@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { db } from '@/db'
 import type { ThoughtRecord, DepressionChecklistEntry, GratitudeEntry } from '@/types'
-import { useBackupStore } from '@/stores/backupStore'
+import { useBackupStore, type CloudProvider } from '@/stores/backupStore'
 import {
   saveToFile,
   initAutoSave,
@@ -46,8 +46,10 @@ interface AppState {
 
   loadData: () => Promise<void>
   addThoughtRecord: (record: ThoughtRecord) => Promise<void>
+  addThoughtRecords: (records: ThoughtRecord[]) => Promise<void>
   updateThoughtRecord: (record: ThoughtRecord) => Promise<void>
   deleteThoughtRecord: (id: string) => Promise<void>
+  duplicateThoughtRecord: (id: string) => Promise<string | null>
   addDepressionChecklist: (entry: DepressionChecklistEntry) => Promise<void>
   updateDepressionChecklist: (entry: DepressionChecklistEntry) => Promise<void>
   deleteDepressionChecklist: (id: string) => Promise<void>
@@ -63,10 +65,12 @@ interface AppState {
   tryAutoSave: () => Promise<void>
   setFileHandle: (handle: FileSystemFileHandle | null) => void
   initializeAutoSave: () => Promise<void>
-  syncToCloud: () => Promise<boolean>
-  syncFromCloud: () => Promise<boolean>
+  syncToCloud: (provider?: CloudProvider) => Promise<boolean>
+  syncFromCloud: (provider?: CloudProvider) => Promise<boolean>
+  syncAllToCloud: () => Promise<void>
+  syncAllFromCloud: () => Promise<void>
   initializeCloudSync: () => Promise<void>
-  checkCloudForUpdates: () => Promise<boolean>
+  checkCloudForUpdates: (provider: CloudProvider) => Promise<boolean>
 }
 
 let autoSaveDebounceTimer: ReturnType<typeof setTimeout> | null = null
@@ -101,6 +105,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     await get().tryAutoSave()
   },
 
+  addThoughtRecords: async (records) => {
+    for (const record of records) {
+      await db.addThoughtRecord(record)
+    }
+    set((state) => ({
+      thoughtRecords: [...records, ...state.thoughtRecords],
+    }))
+    await get().tryAutoSave()
+  },
+
   updateThoughtRecord: async (record) => {
     await db.updateThoughtRecord(record)
     set((state) => ({
@@ -115,6 +129,25 @@ export const useAppStore = create<AppState>((set, get) => ({
       thoughtRecords: state.thoughtRecords.filter((r) => r.id !== id),
     }))
     await get().tryAutoSave()
+  },
+
+  duplicateThoughtRecord: async (id) => {
+    const record = get().thoughtRecords.find((r) => r.id === id)
+    if (!record) return null
+
+    const newId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    const duplicate: ThoughtRecord = {
+      ...record,
+      id: newId,
+      createdAt: new Date().toISOString(),
+    }
+
+    await db.addThoughtRecord(duplicate)
+    set((state) => ({
+      thoughtRecords: [duplicate, ...state.thoughtRecords],
+    }))
+    await get().tryAutoSave()
+    return newId
   },
 
   addDepressionChecklist: async (entry) => {
@@ -204,60 +237,64 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   initializeCloudSync: async () => {
     const backupState = useBackupStore.getState()
-    const connection = backupState.cloudConnection
+    const connections = backupState.cloudConnections
 
-    if (!connection) {
+    if (connections.length === 0) {
       return
     }
 
-    logger.info('App', 'Checking cloud connection', { provider: connection.provider })
+    for (const connection of connections) {
+      logger.info('App', 'Checking cloud connection', { provider: connection.provider })
 
-    try {
-      let isValid = false
+      try {
+        let isValid = false
 
-      if (connection.provider === 'google-drive') {
-        isValid = await validateGoogleToken(connection.accessToken)
+        if (connection.provider === 'google-drive') {
+          isValid = await validateGoogleToken(connection.accessToken)
+
+          if (!isValid) {
+            logger.info('App', 'Google token expired, attempting re-auth')
+            const newToken = await reauthorizeGoogleDrive()
+            if (newToken) {
+              backupState.updateCloudConnection(connection.provider, {
+                accessToken: newToken,
+              })
+              isValid = true
+              logger.info('App', 'Google Drive re-authenticated successfully')
+            }
+          }
+        } else if (connection.provider === 'dropbox') {
+          isValid = await validateDropboxToken(connection.accessToken)
+        }
 
         if (!isValid) {
-          logger.info('App', 'Google token expired, attempting re-auth')
-          const newToken = await reauthorizeGoogleDrive()
-          if (newToken) {
-            backupState.setCloudConnection({
-              ...connection,
-              accessToken: newToken,
-            })
-            isValid = true
-            logger.info('App', 'Google Drive re-authenticated successfully')
+          logger.warn('App', 'Cloud token invalid', { provider: connection.provider })
+          backupState.setConnectionError(connection.provider, 'Session expired. Please reconnect.')
+          continue
+        }
+
+        if (connection.syncOnStartup !== false) {
+          const hasUpdates = await get().checkCloudForUpdates(connection.provider)
+          if (hasUpdates) {
+            logger.info('App', 'Cloud has newer data, syncing', { provider: connection.provider })
+            await get().syncFromCloud(connection.provider)
           }
         }
-      } else if (connection.provider === 'dropbox') {
-        isValid = await validateDropboxToken(connection.accessToken)
-      }
 
-      if (!isValid) {
-        logger.warn('App', 'Cloud token invalid, disconnecting')
-        backupState.setCloudSyncError('Session expired. Please reconnect.')
-        return
+        logger.info('App', 'Cloud sync initialized', { provider: connection.provider })
+      } catch (error) {
+        logger.error('App', 'Failed to initialize cloud sync', {
+          provider: connection.provider,
+          error,
+        })
+        backupState.setConnectionError(connection.provider, 'Failed to connect to cloud')
       }
-
-      if (connection.syncOnStartup !== false) {
-        const hasUpdates = await get().checkCloudForUpdates()
-        if (hasUpdates) {
-          logger.info('App', 'Cloud has newer data, syncing')
-          await get().syncFromCloud()
-        }
-      }
-
-      logger.info('App', 'Cloud sync initialized', { provider: connection.provider })
-    } catch (error) {
-      logger.error('App', 'Failed to initialize cloud sync', error)
-      backupState.setCloudSyncError('Failed to connect to cloud')
     }
   },
 
-  checkCloudForUpdates: async () => {
+  checkCloudForUpdates: async (provider: CloudProvider) => {
     const backupState = useBackupStore.getState()
-    const connection = backupState.cloudConnection
+    const connection = backupState.getCloudConnection(provider)
 
     if (!connection) return false
 
@@ -279,7 +316,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       return new Date(cloudModifiedTime) > new Date(lastSync)
     } catch (error) {
-      logger.error('App', 'Failed to check cloud for updates', error)
+      logger.error('App', 'Failed to check cloud for updates', { provider, error })
       return false
     }
   },
@@ -324,23 +361,29 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
       }
 
-      const cloudConnection = backupState.cloudConnection
-      if (cloudConnection?.syncMode === 'auto') {
-        await state.syncToCloud()
+      const autoSyncConnections = backupState.cloudConnections.filter((c) => c.syncMode === 'auto')
+      for (const connection of autoSyncConnections) {
+        await state.syncToCloud(connection.provider)
       }
     }, AUTO_SAVE_DEBOUNCE_MS)
   },
 
-  syncToCloud: async () => {
+  syncToCloud: async (provider?: CloudProvider) => {
     const backupState = useBackupStore.getState()
-    const connection = backupState.cloudConnection
 
+    if (!provider) {
+      const connections = backupState.cloudConnections
+      if (connections.length === 0) return false
+      provider = connections[0].provider
+    }
+
+    const connection = backupState.getCloudConnection(provider)
     if (!connection) {
       return false
     }
 
     backupState.setIsSyncing(true)
-    backupState.setCloudSyncError(null)
+    backupState.setConnectionError(provider, null)
 
     try {
       const jsonData = await get().exportData()
@@ -355,7 +398,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
 
       if (result.success) {
-        backupState.updateCloudSync(new Date().toISOString())
+        backupState.updateSyncTime(provider, new Date().toISOString())
         backupState.setLastBackupDate(new Date().toISOString())
         const totalEntries =
           get().thoughtRecords.length +
@@ -369,24 +412,30 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Sync failed'
-      backupState.setCloudSyncError(message)
-      logger.error('App', 'Cloud sync failed', error)
+      backupState.setConnectionError(provider, message)
+      logger.error('App', 'Cloud sync failed', { provider, error })
       return false
     } finally {
       backupState.setIsSyncing(false)
     }
   },
 
-  syncFromCloud: async () => {
+  syncFromCloud: async (provider?: CloudProvider) => {
     const backupState = useBackupStore.getState()
-    const connection = backupState.cloudConnection
 
+    if (!provider) {
+      const connections = backupState.cloudConnections
+      if (connections.length === 0) return false
+      provider = connections[0].provider
+    }
+
+    const connection = backupState.getCloudConnection(provider)
     if (!connection) {
       return false
     }
 
     backupState.setIsSyncing(true)
-    backupState.setCloudSyncError(null)
+    backupState.setConnectionError(provider, null)
 
     try {
       let result
@@ -404,10 +453,12 @@ export const useAppStore = create<AppState>((set, get) => ({
           const parsed = JSON.parse(result.data)
           if (parsed.thoughtRecords || parsed.depressionChecklists || parsed.gratitudeEntries) {
             await get().importData(result.data, 'replace')
-            toast.success('Data synced from cloud')
+            toast.success(
+              `Data synced from ${connection.provider === 'google-drive' ? 'Google Drive' : 'Dropbox'}`
+            )
           }
         }
-        backupState.updateCloudSync(new Date().toISOString())
+        backupState.updateSyncTime(provider, new Date().toISOString())
         logger.info('App', 'Synced from cloud', { provider: connection.provider })
         return true
       } else {
@@ -415,12 +466,28 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Sync failed'
-      backupState.setCloudSyncError(message)
-      logger.error('App', 'Cloud sync from failed', error)
-      toast.error('Failed to sync from cloud')
+      backupState.setConnectionError(provider, message)
+      logger.error('App', 'Cloud sync from failed', { provider, error })
+      toast.error(
+        `Failed to sync from ${connection.provider === 'google-drive' ? 'Google Drive' : 'Dropbox'}`
+      )
       return false
     } finally {
       backupState.setIsSyncing(false)
+    }
+  },
+
+  syncAllToCloud: async () => {
+    const backupState = useBackupStore.getState()
+    for (const connection of backupState.cloudConnections) {
+      await get().syncToCloud(connection.provider)
+    }
+  },
+
+  syncAllFromCloud: async () => {
+    const backupState = useBackupStore.getState()
+    for (const connection of backupState.cloudConnections) {
+      await get().syncFromCloud(connection.provider)
     }
   },
 }))

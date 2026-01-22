@@ -6,7 +6,13 @@ import { PageIntro, SearchBar, TimeFilter } from '@/components/InfoComponents'
 import { toast } from '@/stores/toastStore'
 
 export function HomeView() {
-  const { thoughtRecords, setView, setSelectedRecordId, deleteThoughtRecord } = useAppStore()
+  const {
+    thoughtRecords,
+    setView,
+    setSelectedRecordId,
+    deleteThoughtRecord,
+    duplicateThoughtRecord,
+  } = useAppStore()
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -83,6 +89,16 @@ export function HomeView() {
   const handleDeleteClick = (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
     setShowDeleteConfirm(id)
+  }
+
+  const handleDuplicate = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    const newId = await duplicateThoughtRecord(id)
+    if (newId) {
+      toast.success('Record duplicated')
+      setSelectedRecordId(newId)
+      setView('new-thought')
+    }
   }
 
   return (
@@ -306,7 +322,7 @@ export function HomeView() {
 
                 {isExpanded && (
                   <div className="px-5 pb-3 space-y-4">
-                    <div className="flex gap-2 pb-4 border-b border-stone-100 dark:border-stone-700">
+                    <div className="flex gap-2 pb-4">
                       <button
                         onClick={(e) => handleView(record.id, e)}
                         className="flex-1 btn-secondary py-2 text-sm"
@@ -320,6 +336,13 @@ export function HomeView() {
                         type="button"
                       >
                         Edit
+                      </button>
+                      <button
+                        onClick={(e) => handleDuplicate(record.id, e)}
+                        className="flex-1 btn-secondary py-2 text-sm"
+                        type="button"
+                      >
+                        Duplicate
                       </button>
                       <button
                         onClick={(e) => handleDeleteClick(record.id, e)}

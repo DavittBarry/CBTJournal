@@ -50,11 +50,7 @@ interface GapiClient {
   setToken: (token: { access_token: string } | null) => void
   drive: {
     files: {
-      list: (params: {
-        q: string
-        spaces: string
-        fields: string
-      }) => Promise<{
+      list: (params: { q: string; spaces: string; fields: string }) => Promise<{
         result: { files?: Array<{ id: string; name: string; modifiedTime?: string }> }
       }>
       create: (params: {
@@ -279,7 +275,7 @@ export const initDropboxAuth = async (): Promise<string> => {
   }
 
   return new Promise((resolve, reject) => {
-    const redirectUri = `${window.location.origin}/dropbox-callback`
+    const redirectUri = `${window.location.origin}/dropbox-callback.html`
     const state = Math.random().toString(36).substring(7)
 
     sessionStorage.setItem('dropbox_state', state)
@@ -327,12 +323,23 @@ export const initDropboxAuth = async (): Promise<string> => {
       if (event.data?.type === 'dropbox-auth') {
         clearInterval(checkClosed)
         window.removeEventListener('message', handleMessage)
+        popup?.close()
 
-        if (event.data.token) {
+        if (event.data.error) {
+          sessionStorage.removeItem('dropbox_state')
+          reject(new Error(event.data.error))
+          return
+        }
+
+        // Validate state parameter
+        const storedState = sessionStorage.getItem('dropbox_state')
+        sessionStorage.removeItem('dropbox_state')
+
+        if (event.data.token && event.data.state === storedState) {
           logger.info('CloudSync', 'Dropbox authenticated via message')
           resolve(event.data.token)
         } else {
-          reject(new Error(event.data.error || 'Authentication failed'))
+          reject(new Error('State mismatch - possible CSRF attack'))
         }
       }
     }
