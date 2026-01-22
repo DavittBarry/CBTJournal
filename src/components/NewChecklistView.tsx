@@ -1,6 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAppStore } from '@/stores/appStore'
-import { DEPRESSION_ITEMS, type DepressionScores, type DepressionChecklistEntry, getDepressionLevel } from '@/types'
+import {
+  DEPRESSION_ITEMS,
+  type DepressionScores,
+  type DepressionChecklistEntry,
+  getDepressionLevel,
+} from '@/types'
 import { format } from 'date-fns'
 import { PageIntro, InfoButton } from '@/components/InfoComponents'
 import { toast } from '@/stores/toastStore'
@@ -34,86 +39,66 @@ const initialScores: DepressionScores = {
   fatigue: 0,
   concernsHealth: 0,
   suicidalThoughts: 0,
-  wishingDead: 0
+  wishingDead: 0,
 }
 
 const scoreLabels = [
   { value: 0, label: 'Not at all' },
-  { value: 1, label: 'Somewhat' },
-  { value: 2, label: 'Moderately' },
-  { value: 3, label: 'A lot' },
-  { value: 4, label: 'Extremely' }
+  { value: 1, label: 'Several days' },
+  { value: 2, label: 'More than half' },
+  { value: 3, label: 'Most days' },
+  { value: 4, label: 'Nearly every day' },
 ]
 
-export function NewChecklistView() {
-  const { 
-    depressionChecklists,
-    selectedChecklistId,
-    addDepressionChecklist, 
-    updateDepressionChecklist,
-    setView,
-    setSelectedChecklistId
-  } = useAppStore()
-  
-  const existingEntry = selectedChecklistId 
-    ? depressionChecklists.find(e => e.id === selectedChecklistId) 
-    : null
+interface ChecklistFormProps {
+  existingEntry: DepressionChecklistEntry | null
+  onBack: () => void
+  onSubmit: (entry: DepressionChecklistEntry) => Promise<void>
+}
 
-  const [date, setDate] = useState(existingEntry?.date || format(new Date(), 'yyyy-MM-dd'))
-  const [scores, setScores] = useState<DepressionScores>(existingEntry?.scores || initialScores)
-
-  useEffect(() => {
-    if (existingEntry) {
-      setDate(existingEntry.date)
-      setScores(existingEntry.scores)
-    }
-  }, [existingEntry])
+function ChecklistForm({ existingEntry, onBack, onSubmit }: ChecklistFormProps) {
+  const [date, setDate] = useState(() => existingEntry?.date || format(new Date(), 'yyyy-MM-dd'))
+  const [scores, setScores] = useState<DepressionScores>(
+    () => existingEntry?.scores || initialScores
+  )
 
   const total = Object.values(scores).reduce((sum, val) => sum + val, 0)
   const { level } = getDepressionLevel(total)
 
   const updateScore = (key: keyof DepressionScores, value: number) => {
-    setScores(prev => ({ ...prev, [key]: value }))
-  }
-
-  const handleBack = () => {
-    setSelectedChecklistId(null)
-    setView('checklist')
+    setScores((prev) => ({ ...prev, [key]: value }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     const entry: DepressionChecklistEntry = {
       id: existingEntry?.id || generateId(),
       date,
       scores,
-      total
+      total,
     }
 
-    if (existingEntry) {
-      await updateDepressionChecklist(entry)
-      toast.success('Checklist updated')
-    } else {
-      await addDepressionChecklist(entry)
-      toast.success('Checklist saved')
-    }
-    
-    setSelectedChecklistId(null)
-    setView('checklist')
+    await onSubmit(entry)
   }
 
-  const categories = [...new Set(DEPRESSION_ITEMS.map(item => item.category))]
+  const categories = [...new Set(DEPRESSION_ITEMS.map((item) => item.category))]
 
   return (
     <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <button
           type="button"
-          onClick={handleBack}
+          onClick={onBack}
           className="text-stone-500 hover:text-stone-700 flex items-center gap-1"
         >
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <svg
+            className="w-5 h-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          >
             <path d="M19 12H5M12 19l-7-7 7-7" />
           </svg>
           Back
@@ -123,7 +108,7 @@ export function NewChecklistView() {
 
       <PageIntro
         title={existingEntry ? 'Edit checklist' : 'Depression checklist'}
-        description="This 25-item checklist measures the severity of depression symptoms across five categories: thoughts and feelings, activities, relationships, physical symptoms, and suicidal urges. Answer based on how you've felt recently. Your score helps track your progress over time."
+        description="This 25-item checklist measures the severity of depression symptoms across five categories: thoughts and feelings, activities, relationships, physical symptoms, and suicidal urges. Answer based on how you've felt over the past two weeks. Take this test every two weeks to track your progress over time."
         centered={false}
       />
 
@@ -139,11 +124,11 @@ export function NewChecklistView() {
             />
           </div>
           <div className="h-1.5 bg-stone-200 rounded-full overflow-hidden">
-            <div 
+            <div
               className="h-full rounded-full transition-all duration-300"
-              style={{ 
+              style={{
                 width: `${total}%`,
-                background: `linear-gradient(90deg, #5a8a5a 0%, #d4a84a 50%, #c97b70 100%)`
+                background: `linear-gradient(90deg, #5a8a5a 0%, #d4a84a 50%, #c97b70 100%)`,
               }}
             />
           </div>
@@ -161,14 +146,14 @@ export function NewChecklistView() {
       </div>
 
       <p className="text-stone-500 text-sm mb-6 leading-relaxed">
-        Rate each item from 0 (not at all) to 4 (extremely) based on how you've felt recently.
+        For each item, rate how often you've experienced this over the past two weeks.
       </p>
 
-      {categories.map(category => (
+      {categories.map((category) => (
         <div key={category} className="mb-8">
           <h2 className="text-base font-semibold text-stone-700 mb-4 px-1">{category}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {DEPRESSION_ITEMS.filter(item => item.category === category).map((item) => (
+            {DEPRESSION_ITEMS.filter((item) => item.category === category).map((item) => (
               <div key={item.key} className="card p-4">
                 <div className="text-stone-700 mb-3 text-sm leading-relaxed">{item.label}</div>
                 <div className="flex gap-1.5">
@@ -194,12 +179,52 @@ export function NewChecklistView() {
         </div>
       ))}
 
-      <button
-        type="submit"
-        className="btn-primary w-full"
-      >
+      <button type="submit" className="btn-primary w-full">
         {existingEntry ? 'Update checklist' : 'Save checklist'}
       </button>
     </form>
+  )
+}
+
+export function NewChecklistView() {
+  const {
+    depressionChecklists,
+    selectedChecklistId,
+    addDepressionChecklist,
+    updateDepressionChecklist,
+    setView,
+    setSelectedChecklistId,
+  } = useAppStore()
+
+  const existingEntry = selectedChecklistId
+    ? depressionChecklists.find((e) => e.id === selectedChecklistId)
+    : null
+
+  const handleBack = () => {
+    setSelectedChecklistId(null)
+    setView('checklist')
+  }
+
+  const handleSubmit = async (entry: DepressionChecklistEntry) => {
+    if (existingEntry) {
+      await updateDepressionChecklist(entry)
+      toast.success('Checklist updated')
+    } else {
+      await addDepressionChecklist(entry)
+      toast.success('Checklist saved')
+    }
+
+    setSelectedChecklistId(null)
+    setView('checklist')
+  }
+
+  // Use key to force remount when switching between entries
+  return (
+    <ChecklistForm
+      key={selectedChecklistId || 'new'}
+      existingEntry={existingEntry}
+      onBack={handleBack}
+      onSubmit={handleSubmit}
+    />
   )
 }

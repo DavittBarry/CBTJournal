@@ -1,7 +1,12 @@
 import { useState } from 'react'
 import { useAppStore } from '@/stores/appStore'
-import { COGNITIVE_DISTORTIONS, type ThoughtRecord, type Emotion, type CognitiveDistortionId } from '@/types'
-import { format } from 'date-fns'
+import {
+  COGNITIVE_DISTORTIONS,
+  type ThoughtRecord,
+  type Emotion,
+  type CognitiveDistortionId,
+} from '@/types'
+import { format, parseISO } from 'date-fns'
 import { PageIntro, SectionHeader, InfoButton } from '@/components/InfoComponents'
 import { AutoExpandTextarea } from '@/components/AutoExpandTextarea'
 import { toast } from '@/stores/toastStore'
@@ -15,21 +20,42 @@ interface Props {
 }
 
 export function ThoughtRecordForm({ existingRecord }: Props) {
-  const { addThoughtRecord, updateThoughtRecord, setView } = useAppStore()
-  
-  const [date, setDate] = useState(existingRecord?.date || format(new Date(), 'yyyy-MM-dd'))
+  const { addThoughtRecord, addThoughtRecords, updateThoughtRecord, setView } = useAppStore()
+
+  const [dates, setDates] = useState<string[]>(
+    existingRecord?.date ? [existingRecord.date] : [format(new Date(), 'yyyy-MM-dd')]
+  )
+  const [dateInput, setDateInput] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [situation, setSituation] = useState(existingRecord?.situation || '')
-  const [emotions, setEmotions] = useState<Emotion[]>(existingRecord?.emotions || [{ name: '', intensity: 50 }])
-  const [automaticThoughts, setAutomaticThoughts] = useState(existingRecord?.automaticThoughts || '')
-  const [distortions, setDistortions] = useState<CognitiveDistortionId[]>(existingRecord?.distortions || [])
+  const [emotions, setEmotions] = useState<Emotion[]>(
+    existingRecord?.emotions || [{ name: '', intensity: 50 }]
+  )
+  const [automaticThoughts, setAutomaticThoughts] = useState(
+    existingRecord?.automaticThoughts || ''
+  )
+  const [distortions, setDistortions] = useState<CognitiveDistortionId[]>(
+    existingRecord?.distortions || []
+  )
   const [rationalResponse, setRationalResponse] = useState(existingRecord?.rationalResponse || '')
-  const [outcomeEmotions, setOutcomeEmotions] = useState<Emotion[]>(existingRecord?.outcomeEmotions || [{ name: '', intensity: 50 }])
+  const [outcomeEmotions, setOutcomeEmotions] = useState<Emotion[]>(
+    existingRecord?.outcomeEmotions || [{ name: '', intensity: 50 }]
+  )
   const [expandedDistortion, setExpandedDistortion] = useState<CognitiveDistortionId | null>(null)
+
+  const addDate = () => {
+    if (dateInput && !dates.includes(dateInput)) {
+      setDates((prev) => [...prev, dateInput].sort())
+    }
+  }
+
+  const removeDate = (dateToRemove: string) => {
+    setDates((prev) => prev.filter((d) => d !== dateToRemove))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    const filledEmotions = emotions.filter(e => e.name.trim())
+
+    const filledEmotions = emotions.filter((e) => e.name.trim())
     if (!situation.trim()) {
       toast.warning('Please describe the situation')
       return
@@ -42,27 +68,55 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
       toast.warning('Please write your automatic thoughts')
       return
     }
-    
-    const record: ThoughtRecord = {
-      id: existingRecord?.id || generateId(),
-      createdAt: existingRecord?.createdAt || new Date().toISOString(),
-      date,
-      situation,
-      emotions: filledEmotions,
-      automaticThoughts,
-      distortions,
-      rationalResponse,
-      outcomeEmotions: outcomeEmotions.filter(e => e.name.trim())
+    if (dates.length === 0) {
+      toast.warning('Please select at least one date')
+      return
     }
 
     if (existingRecord) {
+      const record: ThoughtRecord = {
+        id: existingRecord.id,
+        createdAt: existingRecord.createdAt,
+        date: dates[0],
+        situation,
+        emotions: filledEmotions,
+        automaticThoughts,
+        distortions,
+        rationalResponse,
+        outcomeEmotions: outcomeEmotions.filter((e) => e.name.trim()),
+      }
       await updateThoughtRecord(record)
       toast.success('Record updated')
-    } else {
+    } else if (dates.length === 1) {
+      const record: ThoughtRecord = {
+        id: generateId(),
+        createdAt: new Date().toISOString(),
+        date: dates[0],
+        situation,
+        emotions: filledEmotions,
+        automaticThoughts,
+        distortions,
+        rationalResponse,
+        outcomeEmotions: outcomeEmotions.filter((e) => e.name.trim()),
+      }
       await addThoughtRecord(record)
       toast.success('Record saved')
+    } else {
+      const records: ThoughtRecord[] = dates.map((date) => ({
+        id: generateId(),
+        createdAt: new Date().toISOString(),
+        date,
+        situation,
+        emotions: filledEmotions,
+        automaticThoughts,
+        distortions,
+        rationalResponse,
+        outcomeEmotions: outcomeEmotions.filter((e) => e.name.trim()),
+      }))
+      await addThoughtRecords(records)
+      toast.success(`${records.length} records saved`)
     }
-    
+
     setView('home')
   }
 
@@ -74,7 +128,12 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
     }
   }
 
-  const updateEmotion = (index: number, field: 'name' | 'intensity', value: string | number, isOutcome: boolean) => {
+  const updateEmotion = (
+    index: number,
+    field: 'name' | 'intensity',
+    value: string | number,
+    isOutcome: boolean
+  ) => {
     const setter = isOutcome ? setOutcomeEmotions : setEmotions
     const current = isOutcome ? outcomeEmotions : emotions
     const updated = [...current]
@@ -89,9 +148,7 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
   }
 
   const toggleDistortion = (id: CognitiveDistortionId) => {
-    setDistortions(prev => 
-      prev.includes(id) ? prev.filter(d => d !== id) : [...prev, id]
-    )
+    setDistortions((prev) => (prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]))
   }
 
   return (
@@ -102,7 +159,13 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
           onClick={() => setView('home')}
           className="text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 flex items-center gap-1"
         >
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <svg
+            className="w-5 h-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          >
             <path d="M19 12H5M12 19l-7-7 7-7" />
           </svg>
           Back
@@ -119,7 +182,7 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
           'Write down the automatic thoughts that accompanied the emotion.',
           'Identify which thinking patterns (distortions) are present.',
           'Write a more balanced, rational response to challenge those thoughts.',
-          'Notice how your emotions shift after this reflection.'
+          'Notice how your emotions shift after this reflection.',
         ]}
       />
 
@@ -130,22 +193,75 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
             title="The situation"
             description="What happened that led to the unpleasant emotion?"
           />
-          
+
           <div className="card p-5 space-y-4">
             <div>
               <label className="label">
-                Date
+                {existingRecord ? 'Date' : 'Date(s)'}
                 <InfoButton
                   title="When did this happen?"
-                  content="Record the date of the event. This helps you track patterns over time and see your progress."
+                  content={
+                    existingRecord
+                      ? 'Record the date of the event. This helps you track patterns over time and see your progress.'
+                      : 'Record the date(s) of the event. You can select multiple dates to create separate entries for each day, useful if the same thought pattern occurred across several days.'
+                  }
                 />
               </label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="input-field"
-              />
+              {existingRecord ? (
+                <input
+                  type="date"
+                  value={dates[0] || ''}
+                  onChange={(e) => setDates([e.target.value])}
+                  className="input-field"
+                />
+              ) : (
+                <>
+                  <div className="flex gap-2">
+                    <input
+                      type="date"
+                      value={dateInput}
+                      onChange={(e) => setDateInput(e.target.value)}
+                      className="input-field flex-1"
+                    />
+                    <button type="button" onClick={addDate} className="btn-secondary px-4">
+                      Add
+                    </button>
+                  </div>
+                  {dates.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {dates.map((d) => (
+                        <span
+                          key={d}
+                          className="inline-flex items-center gap-1.5 text-sm bg-sage-50 dark:bg-sage-900/30 text-sage-700 dark:text-sage-400 px-3 py-1.5 rounded-full"
+                        >
+                          {format(parseISO(d), 'MMM d, yyyy')}
+                          <button
+                            type="button"
+                            onClick={() => removeDate(d)}
+                            className="text-sage-500 hover:text-critical-500 dark:hover:text-critical-400 transition-colors"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
+                              <line x1="18" y1="6" x2="6" y2="18" />
+                              <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {dates.length > 1 && (
+                    <p className="text-xs text-stone-500 dark:text-stone-400 mt-2">
+                      {dates.length} separate entries will be created
+                    </p>
+                  )}
+                </>
+              )}
             </div>
 
             <div>
@@ -174,7 +290,7 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
             title="Your emotions"
             description="What emotions did you feel? Rate their intensity."
           />
-          
+
           <div className="card p-5">
             <label className="label">
               Emotions
@@ -200,7 +316,9 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
                       min="0"
                       max="100"
                       value={emotion.intensity}
-                      onChange={(e) => updateEmotion(index, 'intensity', parseInt(e.target.value) || 0, false)}
+                      onChange={(e) =>
+                        updateEmotion(index, 'intensity', parseInt(e.target.value) || 0, false)
+                      }
                       className="input-field w-20 text-center tabular-nums"
                     />
                     <span className="text-stone-400 dark:text-stone-500 text-sm w-4">%</span>
@@ -211,7 +329,13 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
                       onClick={() => removeEmotion(index, false)}
                       className="text-stone-400 dark:text-stone-500 hover:text-critical-500 dark:hover:text-critical-400 p-1 transition-colors flex-shrink-0"
                     >
-                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <svg
+                        className="w-5 h-5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                      >
                         <line x1="18" y1="6" x2="6" y2="18" />
                         <line x1="6" y1="6" x2="18" y2="18" />
                       </svg>
@@ -236,7 +360,7 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
             title="Automatic thoughts"
             description="What thoughts went through your mind?"
           />
-          
+
           <div className="card p-5">
             <label className="label">
               Write your thoughts
@@ -262,7 +386,7 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
             title="Identify thinking patterns"
             description="Which cognitive distortions are present in your thoughts?"
           />
-          
+
           <div className="card p-5">
             <div className="flex items-center justify-between mb-3">
               <label className="label mb-0">
@@ -290,22 +414,26 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className={`font-medium text-sm ${distortions.includes(distortion.id) ? 'text-sage-700 dark:text-sage-400' : 'text-stone-700 dark:text-stone-300'}`}>
+                        <span
+                          className={`font-medium text-sm ${distortions.includes(distortion.id) ? 'text-sage-700 dark:text-sage-400' : 'text-stone-700 dark:text-stone-300'}`}
+                        >
                           {distortion.id}. {distortion.shortName}
                         </span>
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation()
-                            setExpandedDistortion(expandedDistortion === distortion.id ? null : distortion.id)
+                            setExpandedDistortion(
+                              expandedDistortion === distortion.id ? null : distortion.id
+                            )
                           }}
                           className="text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 p-1"
                         >
-                          <svg 
-                            className={`w-4 h-4 transition-transform ${expandedDistortion === distortion.id ? 'rotate-180' : ''}`} 
-                            viewBox="0 0 24 24" 
-                            fill="none" 
-                            stroke="currentColor" 
+                          <svg
+                            className={`w-4 h-4 transition-transform ${expandedDistortion === distortion.id ? 'rotate-180' : ''}`}
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
                             strokeWidth="2"
                           >
                             <path d="M6 9l6 6 6-6" />
@@ -331,7 +459,7 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
             title="Rational response"
             description="Challenge your automatic thoughts with a more balanced view."
           />
-          
+
           <div className="card p-5">
             <label className="label">
               Write your response
@@ -357,7 +485,7 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
             title="Outcome"
             description="After this reflection, how do you feel now?"
           />
-          
+
           <div className="card p-5">
             <label className="label">
               Re-rate your emotions
@@ -383,7 +511,9 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
                       min="0"
                       max="100"
                       value={emotion.intensity}
-                      onChange={(e) => updateEmotion(index, 'intensity', parseInt(e.target.value) || 0, true)}
+                      onChange={(e) =>
+                        updateEmotion(index, 'intensity', parseInt(e.target.value) || 0, true)
+                      }
                       className="input-field w-20 text-center tabular-nums"
                     />
                     <span className="text-stone-400 dark:text-stone-500 text-sm w-4">%</span>
@@ -394,7 +524,13 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
                       onClick={() => removeEmotion(index, true)}
                       className="text-stone-400 dark:text-stone-500 hover:text-critical-500 dark:hover:text-critical-400 p-1 transition-colors flex-shrink-0"
                     >
-                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <svg
+                        className="w-5 h-5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                      >
                         <line x1="18" y1="6" x2="6" y2="18" />
                         <line x1="6" y1="6" x2="18" y2="18" />
                       </svg>
@@ -413,11 +549,12 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
           </div>
         </section>
 
-        <button
-          type="submit"
-          className="btn-primary w-full"
-        >
-          {existingRecord ? 'Update record' : 'Save record'}
+        <button type="submit" className="btn-primary w-full">
+          {existingRecord
+            ? 'Update record'
+            : dates.length > 1
+              ? `Save ${dates.length} records`
+              : 'Save record'}
         </button>
       </div>
     </form>

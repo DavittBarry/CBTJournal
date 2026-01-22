@@ -1,10 +1,10 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-export type CloudProvider = 'google-drive' | 'dropbox' | null
+export type CloudProvider = 'google-drive' | 'dropbox'
 export type SyncMode = 'manual' | 'auto'
 
-interface CloudConnection {
+export interface CloudConnection {
   provider: CloudProvider
   accessToken: string
   fileId?: string
@@ -12,6 +12,7 @@ interface CloudConnection {
   lastSyncAt?: string
   syncMode: SyncMode
   syncOnStartup?: boolean
+  lastError?: string | null
 }
 
 interface BackupState {
@@ -20,9 +21,8 @@ interface BackupState {
   autoSaveEnabled: boolean
   storedFileName: string | null
 
-  cloudConnection: CloudConnection | null
+  cloudConnections: CloudConnection[]
   isSyncing: boolean
-  lastCloudSyncError: string | null
 
   setLastBackupDate: (date: string) => void
   setTotalEntriesAtLastBackup: (count: number) => void
@@ -31,13 +31,15 @@ interface BackupState {
   shouldShowBackupReminder: (currentTotalEntries: number) => boolean
   dismissBackupReminder: () => void
 
-  setCloudConnection: (connection: CloudConnection | null) => void
-  updateCloudSync: (lastSyncAt: string) => void
+  addCloudConnection: (connection: CloudConnection) => void
+  updateCloudConnection: (provider: CloudProvider, updates: Partial<CloudConnection>) => void
+  removeCloudConnection: (provider: CloudProvider) => void
+  getCloudConnection: (provider: CloudProvider) => CloudConnection | undefined
   setIsSyncing: (syncing: boolean) => void
-  setCloudSyncError: (error: string | null) => void
-  setSyncMode: (mode: SyncMode) => void
-  setSyncOnStartup: (enabled: boolean) => void
-  disconnectCloud: () => void
+  setSyncMode: (provider: CloudProvider, mode: SyncMode) => void
+  setSyncOnStartup: (provider: CloudProvider, enabled: boolean) => void
+  setConnectionError: (provider: CloudProvider, error: string | null) => void
+  updateSyncTime: (provider: CloudProvider, lastSyncAt: string) => void
 }
 
 export const useBackupStore = create<BackupState>()(
@@ -48,9 +50,8 @@ export const useBackupStore = create<BackupState>()(
       autoSaveEnabled: false,
       storedFileName: null,
 
-      cloudConnection: null,
+      cloudConnections: [],
       isSyncing: false,
-      lastCloudSyncError: null,
 
       setLastBackupDate: (date) => set({ lastBackupDate: date }),
 
@@ -63,7 +64,7 @@ export const useBackupStore = create<BackupState>()(
       shouldShowBackupReminder: (currentTotalEntries) => {
         const state = get()
 
-        if (state.cloudConnection || state.autoSaveEnabled) {
+        if (state.cloudConnections.length > 0 || state.autoSaveEnabled) {
           return false
         }
 
@@ -91,51 +92,93 @@ export const useBackupStore = create<BackupState>()(
         })
       },
 
-      setCloudConnection: (connection) =>
-        set({
-          cloudConnection: connection,
-          lastCloudSyncError: null,
+      addCloudConnection: (connection) =>
+        set((state) => {
+          const existing = state.cloudConnections.find((c) => c.provider === connection.provider)
+          if (existing) {
+            return {
+              cloudConnections: state.cloudConnections.map((c) =>
+                c.provider === connection.provider ? connection : c
+              ),
+            }
+          }
+          return {
+            cloudConnections: [...state.cloudConnections, connection],
+          }
         }),
 
-      updateCloudSync: (lastSyncAt) =>
+      updateCloudConnection: (provider, updates) =>
         set((state) => ({
-          cloudConnection: state.cloudConnection ? { ...state.cloudConnection, lastSyncAt } : null,
+          cloudConnections: state.cloudConnections.map((c) =>
+            c.provider === provider ? { ...c, ...updates } : c
+          ),
         })),
+
+      removeCloudConnection: (provider) =>
+        set((state) => ({
+          cloudConnections: state.cloudConnections.filter((c) => c.provider !== provider),
+        })),
+
+      getCloudConnection: (provider) => {
+        return get().cloudConnections.find((c) => c.provider === provider)
+      },
 
       setIsSyncing: (syncing) => set({ isSyncing: syncing }),
 
-      setCloudSyncError: (error) => set({ lastCloudSyncError: error }),
-
-      setSyncMode: (mode) =>
+      setSyncMode: (provider, mode) =>
         set((state) => ({
-          cloudConnection: state.cloudConnection
-            ? { ...state.cloudConnection, syncMode: mode }
-            : null,
+          cloudConnections: state.cloudConnections.map((c) =>
+            c.provider === provider ? { ...c, syncMode: mode } : c
+          ),
         })),
 
-      setSyncOnStartup: (enabled) =>
+      setSyncOnStartup: (provider, enabled) =>
         set((state) => ({
-          cloudConnection: state.cloudConnection
-            ? { ...state.cloudConnection, syncOnStartup: enabled }
-            : null,
+          cloudConnections: state.cloudConnections.map((c) =>
+            c.provider === provider ? { ...c, syncOnStartup: enabled } : c
+          ),
         })),
 
-      disconnectCloud: () =>
-        set({
-          cloudConnection: null,
-          lastCloudSyncError: null,
-          isSyncing: false,
-        }),
+      setConnectionError: (provider, error) =>
+        set((state) => ({
+          cloudConnections: state.cloudConnections.map((c) =>
+            c.provider === provider ? { ...c, lastError: error } : c
+          ),
+        })),
+
+      updateSyncTime: (provider, lastSyncAt) =>
+        set((state) => ({
+          cloudConnections: state.cloudConnections.map((c) =>
+            c.provider === provider ? { ...c, lastSyncAt, lastError: null } : c
+          ),
+        })),
     }),
     {
       name: 'cbtjournal-backup-store',
+      version: 1,
       partialize: (state) => ({
         lastBackupDate: state.lastBackupDate,
         totalEntriesAtLastBackup: state.totalEntriesAtLastBackup,
         autoSaveEnabled: state.autoSaveEnabled,
         storedFileName: state.storedFileName,
-        cloudConnection: state.cloudConnection,
+        cloudConnections: state.cloudConnections,
       }),
+      migrate: (persistedState: unknown, version: number) => {
+        const state = persistedState as Record<string, unknown>
+
+        if (version === 0) {
+          const oldConnection = state.cloudConnection as CloudConnection | null
+          if (oldConnection && oldConnection.provider) {
+            state.cloudConnections = [oldConnection]
+          } else {
+            state.cloudConnections = []
+          }
+          delete state.cloudConnection
+          delete state.lastCloudSyncError
+        }
+
+        return state as BackupState
+      },
     }
   )
 )
