@@ -253,24 +253,24 @@ export const useAppStore = create<AppState>((set, get) => ({
           isValid = await validateGoogleToken(connection.accessToken)
 
           if (!isValid) {
-            logger.info('App', 'Google token expired, attempting re-auth')
-            const newToken = await reauthorizeGoogleDrive()
-            if (newToken) {
-              backupState.updateCloudConnection(connection.provider, {
-                accessToken: newToken,
-              })
-              isValid = true
-              logger.info('App', 'Google Drive re-authenticated successfully')
-            }
+            logger.warn('App', 'Google token expired, user must reconnect')
+            backupState.setConnectionError(
+              connection.provider,
+              'Session expired. Please reconnect in Settings.'
+            )
+            continue
           }
         } else if (connection.provider === 'dropbox') {
           isValid = await validateDropboxToken(connection.accessToken)
-        }
 
-        if (!isValid) {
-          logger.warn('App', 'Cloud token invalid', { provider: connection.provider })
-          backupState.setConnectionError(connection.provider, 'Session expired. Please reconnect.')
-          continue
+          if (!isValid) {
+            logger.warn('App', 'Dropbox token expired, user must reconnect')
+            backupState.setConnectionError(
+              connection.provider,
+              'Session expired. Please reconnect in Settings.'
+            )
+            continue
+          }
         }
 
         if (connection.syncOnStartup !== false) {
@@ -382,6 +382,27 @@ export const useAppStore = create<AppState>((set, get) => ({
       return false
     }
 
+    // Validate token before attempting sync
+    try {
+      let isValid = false
+      if (connection.provider === 'google-drive') {
+        isValid = await validateGoogleToken(connection.accessToken)
+      } else if (connection.provider === 'dropbox') {
+        isValid = await validateDropboxToken(connection.accessToken)
+      }
+
+      if (!isValid) {
+        const providerName = connection.provider === 'google-drive' ? 'Google Drive' : 'Dropbox'
+        backupState.setConnectionError(provider, 'Session expired. Please reconnect in Settings.')
+        toast.error(`${providerName} session expired. Please reconnect in Settings.`)
+        return false
+      }
+    } catch (error) {
+      logger.error('App', 'Token validation failed', { provider, error })
+      backupState.setConnectionError(provider, 'Connection error. Please reconnect.')
+      return false
+    }
+
     backupState.setIsSyncing(true)
     backupState.setConnectionError(provider, null)
 
@@ -431,6 +452,27 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     const connection = backupState.getCloudConnection(provider)
     if (!connection) {
+      return false
+    }
+
+    // Validate token before attempting sync
+    try {
+      let isValid = false
+      if (connection.provider === 'google-drive') {
+        isValid = await validateGoogleToken(connection.accessToken)
+      } else if (connection.provider === 'dropbox') {
+        isValid = await validateDropboxToken(connection.accessToken)
+      }
+
+      if (!isValid) {
+        const providerName = connection.provider === 'google-drive' ? 'Google Drive' : 'Dropbox'
+        backupState.setConnectionError(provider, 'Session expired. Please reconnect in Settings.')
+        toast.error(`${providerName} session expired. Please reconnect in Settings.`)
+        return false
+      }
+    } catch (error) {
+      logger.error('App', 'Token validation failed', { provider, error })
+      backupState.setConnectionError(provider, 'Connection error. Please reconnect.')
       return false
     }
 
