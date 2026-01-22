@@ -177,7 +177,15 @@ export const useBackupStore = create<BackupState>()(
           delete state.lastCloudSyncError
         }
 
-        return state as BackupState
+        // Ensure all required properties exist with defaults
+        return {
+          lastBackupDate: (state.lastBackupDate as string | null) ?? null,
+          totalEntriesAtLastBackup: (state.totalEntriesAtLastBackup as number) ?? 0,
+          autoSaveEnabled: (state.autoSaveEnabled as boolean) ?? false,
+          storedFileName: (state.storedFileName as string | null) ?? null,
+          cloudConnections: (state.cloudConnections as CloudConnection[]) ?? [],
+          isSyncing: false,
+        } as BackupState
       },
     }
   )

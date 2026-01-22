@@ -197,7 +197,7 @@ export function NewChecklistView() {
   } = useAppStore()
 
   const existingEntry = selectedChecklistId
-    ? depressionChecklists.find((e) => e.id === selectedChecklistId)
+    ? (depressionChecklists.find((e) => e.id === selectedChecklistId) ?? null)
     : null
 
   const handleBack = () => {
