@@ -13,6 +13,8 @@ import {
 import { PageIntro, InfoButton } from '@/components/InfoComponents'
 import { AutoExpandTextarea } from '@/components/AutoExpandTextarea'
 import { toast } from '@/stores/toastStore'
+import { ReminderBanner } from '@/components/ReminderBanner'
+import { useReminders } from '@/hooks/useReminders'
 
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
@@ -259,6 +261,8 @@ export function ActivitiesView() {
   const [showForm, setShowForm] = useState(false)
   const [editingActivity, setEditingActivity] = useState<ActivityEntry | undefined>()
   const [selectedDate, setSelectedDate] = useState(new Date())
+  const { getReminder } = useReminders()
+  const activitiesReminder = getReminder('activities')
 
   const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 })
   const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 })
@@ -355,6 +359,12 @@ export function ActivitiesView() {
         title="Activity scheduling"
         description="Behavioral activation helps break the cycle of depression by increasing engagement in meaningful activities. Even when you don't feel like it, doing activities often improves mood more than waiting to feel better first."
         centered={false}
+      />
+
+      <ReminderBanner
+        reminder={activitiesReminder}
+        onAction={() => setShowForm(true)}
+        actionLabel="Schedule activity"
       />
 
       <button onClick={() => setShowForm(true)} className="btn-primary w-full mb-6">

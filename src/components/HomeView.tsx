@@ -4,6 +4,8 @@ import { COGNITIVE_DISTORTIONS } from '@/types'
 import { format, parseISO, isAfter, subDays, subMonths, subYears } from 'date-fns'
 import { PageIntro, SearchBar, TimeFilter } from '@/components/InfoComponents'
 import { toast } from '@/stores/toastStore'
+import { ReminderBanner } from '@/components/ReminderBanner'
+import { useReminders } from '@/hooks/useReminders'
 
 export function HomeView() {
   const {
@@ -17,6 +19,8 @@ export function HomeView() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [timeFilter, setTimeFilter] = useState('all')
+  const { getReminder } = useReminders()
+  const recordsReminder = getReminder('records')
 
   const getDistortionName = (id: number) => {
     return COGNITIVE_DISTORTIONS.find((d) => d.id === id)?.shortName || ''
@@ -113,6 +117,15 @@ export function HomeView() {
           'Create a more balanced, rational response.',
           'Track your progress over time in the Insights section.',
         ]}
+      />
+
+      <ReminderBanner
+        reminder={recordsReminder}
+        onAction={() => {
+          setSelectedRecordId(null)
+          setView('new-thought')
+        }}
+        actionLabel="New record"
       />
 
       <div className="flex items-center justify-center mb-4">

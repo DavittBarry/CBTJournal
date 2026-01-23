@@ -2,6 +2,8 @@ import { useAppStore } from '@/stores/appStore'
 import { format, parseISO } from 'date-fns'
 import { getPHQ9Level, getGAD7Level, type MoodCheckEntry } from '@/types'
 import { PageIntro } from '@/components/InfoComponents'
+import { ReminderBanner } from '@/components/ReminderBanner'
+import { useReminders } from '@/hooks/useReminders'
 
 function MoodCheckCard({ entry, onClick }: { entry: MoodCheckEntry; onClick: () => void }) {
   const phq9Total = entry.phq9Scores
@@ -72,6 +74,8 @@ function MoodCheckCard({ entry, onClick }: { entry: MoodCheckEntry; onClick: () 
 
 export function MoodCheckView() {
   const { moodChecks, setView, setSelectedMoodCheckId, deleteMoodCheck } = useAppStore()
+  const { getReminder } = useReminders()
+  const moodReminder = getReminder('mood')
 
   const handleNewCheck = () => {
     setSelectedMoodCheckId(null)
@@ -99,6 +103,12 @@ export function MoodCheckView() {
         title="Mood check"
         description="Track your depression and anxiety symptoms using the PHQ-9 and GAD-7, two of the most widely validated clinical questionnaires. Regular tracking helps you and your healthcare providers understand your progress over time."
         centered={false}
+      />
+
+      <ReminderBanner
+        reminder={moodReminder}
+        onAction={handleNewCheck}
+        actionLabel="Start assessment"
       />
 
       <button onClick={handleNewCheck} className="btn-primary w-full mb-6">

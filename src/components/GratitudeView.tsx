@@ -3,6 +3,8 @@ import { useAppStore } from '@/stores/appStore'
 import { format, parseISO, isAfter, subDays, subMonths, subYears } from 'date-fns'
 import { PageIntro, SearchBar, TimeFilter } from '@/components/InfoComponents'
 import { toast } from '@/stores/toastStore'
+import { ReminderBanner } from '@/components/ReminderBanner'
+import { useReminders } from '@/hooks/useReminders'
 
 export function GratitudeView() {
   const { gratitudeEntries, setView, setSelectedGratitudeId, deleteGratitudeEntry } = useAppStore()
@@ -10,6 +12,8 @@ export function GratitudeView() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [timeFilter, setTimeFilter] = useState('all')
+  const { getReminder } = useReminders()
+  const gratitudeReminder = getReminder('gratitude')
 
   const filteredEntries = useMemo(() => {
     let filtered = gratitudeEntries
@@ -80,6 +84,15 @@ export function GratitudeView() {
           'Include small everyday moments, not just big things.',
           'Try to notice new things rather than repeating the same items.'
         ]}
+      />
+
+      <ReminderBanner
+        reminder={gratitudeReminder}
+        onAction={() => {
+          setSelectedGratitudeId(null)
+          setView('new-gratitude')
+        }}
+        actionLabel="New entry"
       />
 
       <div className="flex items-center justify-center mb-4">

@@ -2,6 +2,7 @@ import { useAppStore } from '@/stores/appStore'
 import { useBackupStore } from '@/stores/backupStore'
 import { downloadBackup } from '@/utils/backup'
 import { toast } from '@/stores/toastStore'
+import { useReminders } from '@/hooks/useReminders'
 
 function RecordsIcon({ className }: { className?: string }) {
   return (
@@ -180,6 +181,7 @@ export function Navigation() {
     exportData,
   } = useAppStore()
   const { setLastBackupDate, setTotalEntriesAtLastBackup } = useBackupStore()
+  const { getNavReminder } = useReminders()
 
   const navItems = [
     { id: 'home' as const, label: 'Records', Icon: RecordsIcon },
@@ -267,22 +269,38 @@ export function Navigation() {
       {/* Mobile bottom navigation */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-stone-800/95 backdrop-blur-sm border-t border-stone-200/80 dark:border-stone-700/80 px-2 py-2 z-50">
         <div className="max-w-lg mx-auto flex justify-around">
-          {mobileNavItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => handleNavClick(item.id)}
-              className={`flex flex-col items-center py-2 px-3 rounded-xl transition-all duration-200 focus:ring-0 focus:ring-offset-0 ${
-                isActive(item.id)
-                  ? 'text-sage-600 dark:text-sage-400'
-                  : 'text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300'
-              }`}
-            >
-              <item.Icon className="w-5 h-5" />
-              <span className={`text-[10px] mt-1.5 ${isActive(item.id) ? 'font-medium' : ''}`}>
-                {item.label}
-              </span>
-            </button>
-          ))}
+          {mobileNavItems.map((item) => {
+            const reminder = getNavReminder(item.id)
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleNavClick(item.id)}
+                className={`relative flex flex-col items-center py-2 px-3 rounded-xl transition-all duration-200 focus:ring-0 focus:ring-offset-0 ${
+                  isActive(item.id)
+                    ? 'text-sage-600 dark:text-sage-400'
+                    : 'text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300'
+                }`}
+              >
+                <div className="relative">
+                  <item.Icon className="w-5 h-5" />
+                  {reminder && (
+                    <span
+                      className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${
+                        reminder.priority === 'high'
+                          ? 'bg-amber-500'
+                          : reminder.priority === 'medium'
+                            ? 'bg-sage-500'
+                            : 'bg-stone-400'
+                      }`}
+                    />
+                  )}
+                </div>
+                <span className={`text-[10px] mt-1.5 ${isActive(item.id) ? 'font-medium' : ''}`}>
+                  {item.label}
+                </span>
+              </button>
+            )
+          })}
         </div>
       </nav>
 
@@ -313,44 +331,76 @@ export function Navigation() {
               Journal
             </span>
           </div>
-          {navItems.slice(0, 3).map((item) => (
-            <button
-              key={item.id}
-              onClick={() => handleNavClick(item.id)}
-              className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-200 mb-1 focus:ring-0 focus:ring-offset-0 ${
-                isActive(item.id)
-                  ? 'bg-sage-50 dark:bg-sage-900/30 text-sage-700 dark:text-sage-400'
-                  : 'text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-700/50 hover:text-stone-700 dark:hover:text-stone-200'
-              }`}
-            >
-              <item.Icon className="w-5 h-5" />
-              <span className={`text-sm ${isActive(item.id) ? 'font-medium' : ''}`}>
-                {item.label}
-              </span>
-            </button>
-          ))}
+          {navItems.slice(0, 3).map((item) => {
+            const reminder = getNavReminder(item.id)
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleNavClick(item.id)}
+                className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-200 mb-1 focus:ring-0 focus:ring-offset-0 ${
+                  isActive(item.id)
+                    ? 'bg-sage-50 dark:bg-sage-900/30 text-sage-700 dark:text-sage-400'
+                    : 'text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-700/50 hover:text-stone-700 dark:hover:text-stone-200'
+                }`}
+              >
+                <div className="relative">
+                  <item.Icon className="w-5 h-5" />
+                  {reminder && (
+                    <span
+                      className={`absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full ${
+                        reminder.priority === 'high'
+                          ? 'bg-amber-500'
+                          : reminder.priority === 'medium'
+                            ? 'bg-sage-500'
+                            : 'bg-stone-400'
+                      }`}
+                    />
+                  )}
+                </div>
+                <span className={`text-sm ${isActive(item.id) ? 'font-medium' : ''}`}>
+                  {item.label}
+                </span>
+              </button>
+            )
+          })}
 
           <div className="mt-4 mb-2 px-4">
             <span className="text-[10px] font-medium text-stone-400 dark:text-stone-500 uppercase tracking-wider">
               Wellbeing
             </span>
           </div>
-          {navItems.slice(3, 5).map((item) => (
-            <button
-              key={item.id}
-              onClick={() => handleNavClick(item.id)}
-              className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-200 mb-1 focus:ring-0 focus:ring-offset-0 ${
-                isActive(item.id)
-                  ? 'bg-sage-50 dark:bg-sage-900/30 text-sage-700 dark:text-sage-400'
-                  : 'text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-700/50 hover:text-stone-700 dark:hover:text-stone-200'
-              }`}
-            >
-              <item.Icon className="w-5 h-5" />
-              <span className={`text-sm ${isActive(item.id) ? 'font-medium' : ''}`}>
-                {item.label}
-              </span>
-            </button>
-          ))}
+          {navItems.slice(3, 5).map((item) => {
+            const reminder = getNavReminder(item.id)
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleNavClick(item.id)}
+                className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-200 mb-1 focus:ring-0 focus:ring-offset-0 ${
+                  isActive(item.id)
+                    ? 'bg-sage-50 dark:bg-sage-900/30 text-sage-700 dark:text-sage-400'
+                    : 'text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-700/50 hover:text-stone-700 dark:hover:text-stone-200'
+                }`}
+              >
+                <div className="relative">
+                  <item.Icon className="w-5 h-5" />
+                  {reminder && (
+                    <span
+                      className={`absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full ${
+                        reminder.priority === 'high'
+                          ? 'bg-amber-500'
+                          : reminder.priority === 'medium'
+                            ? 'bg-sage-500'
+                            : 'bg-stone-400'
+                      }`}
+                    />
+                  )}
+                </div>
+                <span className={`text-sm ${isActive(item.id) ? 'font-medium' : ''}`}>
+                  {item.label}
+                </span>
+              </button>
+            )
+          })}
 
           <div className="mt-4 mb-2 px-4">
             <span className="text-[10px] font-medium text-stone-400 dark:text-stone-500 uppercase tracking-wider">
@@ -374,33 +424,35 @@ export function Navigation() {
             </button>
           ))}
 
-          {/* Legacy Burns checklist link */}
-          <button
-            onClick={() => {
-              setSelectedChecklistId(null)
-              setView('checklist')
-            }}
-            className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-200 mb-1 focus:ring-0 focus:ring-offset-0 ${
-              isActive('checklist')
-                ? 'bg-sage-50 dark:bg-sage-900/30 text-sage-700 dark:text-sage-400'
-                : 'text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-700/50 hover:text-stone-700 dark:hover:text-stone-200'
-            }`}
-          >
-            <svg
-              className="w-5 h-5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          {/* Legacy Burns checklist link - only show if user has historical data */}
+          {depressionChecklists.length > 0 && (
+            <button
+              onClick={() => {
+                setSelectedChecklistId(null)
+                setView('checklist')
+              }}
+              className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-200 mb-1 focus:ring-0 focus:ring-offset-0 ${
+                isActive('checklist')
+                  ? 'bg-sage-50 dark:bg-sage-900/30 text-sage-700 dark:text-sage-400'
+                  : 'text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-700/50 hover:text-stone-700 dark:hover:text-stone-200'
+              }`}
             >
-              <path d="M9 11l3 3L22 4" />
-              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-            </svg>
-            <span className="text-sm">Burns checklist</span>
-            <span className="text-[10px] text-stone-400 dark:text-stone-500">(legacy)</span>
-          </button>
+              <svg
+                className="w-5 h-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M9 11l3 3L22 4" />
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+              </svg>
+              <span className="text-sm">Burns checklist</span>
+              <span className="text-[10px] text-stone-400 dark:text-stone-500">(legacy)</span>
+            </button>
+          )}
         </div>
 
         <div className="p-3 border-t border-stone-100 dark:border-stone-700 space-y-3">
