@@ -6,6 +6,7 @@ import { PageIntro, SearchBar, TimeFilter } from '@/components/InfoComponents'
 import { toast } from '@/stores/toastStore'
 import { ReminderBanner } from '@/components/ReminderBanner'
 import { useReminders } from '@/hooks/useReminders'
+import { AppLink } from '@/components/AppLink'
 
 export function HomeView() {
   const {
@@ -69,18 +70,6 @@ export function HomeView() {
   const handleCardClick = (id: string, e: React.MouseEvent<HTMLButtonElement>) => {
     e.currentTarget.blur()
     setExpandedId((current) => (current === id ? null : id))
-  }
-
-  const handleView = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    setSelectedRecordId(id)
-    setView('thought-detail')
-  }
-
-  const handleEdit = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    setSelectedRecordId(id)
-    setView('new-thought')
   }
 
   const handleDelete = async (id: string) => {
@@ -336,20 +325,22 @@ export function HomeView() {
                 {isExpanded && (
                   <div className="px-5 pb-3 space-y-4">
                     <div className="flex gap-2 pb-4">
-                      <button
-                        onClick={(e) => handleView(record.id, e)}
-                        className="flex-1 btn-secondary py-2 text-sm"
-                        type="button"
+                      <AppLink
+                        to="thought-detail"
+                        id={record.id}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-1 btn-secondary py-2 text-sm text-center"
                       >
                         View
-                      </button>
-                      <button
-                        onClick={(e) => handleEdit(record.id, e)}
-                        className="flex-1 btn-secondary py-2 text-sm"
-                        type="button"
+                      </AppLink>
+                      <AppLink
+                        to="new-thought"
+                        id={record.id}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-1 btn-secondary py-2 text-sm text-center"
                       >
                         Edit
-                      </button>
+                      </AppLink>
                       <button
                         onClick={(e) => handleDuplicate(record.id, e)}
                         className="flex-1 btn-secondary py-2 text-sm"

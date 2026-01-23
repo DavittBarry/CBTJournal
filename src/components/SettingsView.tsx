@@ -35,6 +35,8 @@ export function SettingsView() {
     setFileHandle,
     syncToCloud,
     syncFromCloud,
+    setView,
+    setSelectedChecklistId,
   } = useAppStore()
   const { theme, setTheme } = useThemeStore()
   const {
@@ -474,6 +476,41 @@ export function SettingsView() {
       <h1 className="text-2xl font-semibold text-stone-800 dark:text-stone-100 mb-8 text-center">
         Settings & guide
       </h1>
+
+      {/* Mobile-only link to Burns checklist if user has legacy data */}
+      {depressionChecklists.length > 0 && (
+        <section className="lg:hidden mb-8">
+          <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300 mb-4">
+            Legacy features
+          </h2>
+          <button
+            onClick={() => {
+              setSelectedChecklistId(null)
+              setView('checklist')
+            }}
+            className="card p-4 flex items-center gap-3 hover:bg-stone-50 dark:hover:bg-stone-700/50 transition-colors text-left w-full"
+          >
+            <svg
+              className="w-5 h-5 text-sage-600 dark:text-sage-400 flex-shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M9 11l3 3L22 4" />
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+            </svg>
+            <div>
+              <span className="text-sm font-medium text-stone-700 dark:text-stone-200">
+                Burns checklist
+              </span>
+              <span className="text-xs text-stone-400 dark:text-stone-500 ml-2">(legacy)</span>
+            </div>
+          </button>
+        </section>
+      )}
 
       {importStep === 'choose-mode' && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">

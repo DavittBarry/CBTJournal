@@ -4,8 +4,9 @@ import { getPHQ9Level, getGAD7Level, type MoodCheckEntry } from '@/types'
 import { PageIntro } from '@/components/InfoComponents'
 import { ReminderBanner } from '@/components/ReminderBanner'
 import { useReminders } from '@/hooks/useReminders'
+import { AppLink } from '@/components/AppLink'
 
-function MoodCheckCard({ entry, onClick }: { entry: MoodCheckEntry; onClick: () => void }) {
+function MoodCheckCard({ entry }: { entry: MoodCheckEntry }) {
   const phq9Total = entry.phq9Scores
     ? Object.values(entry.phq9Scores).reduce((sum, val) => sum + val, 0)
     : null
@@ -17,9 +18,10 @@ function MoodCheckCard({ entry, onClick }: { entry: MoodCheckEntry; onClick: () 
   const gad7Level = gad7Total !== null ? getGAD7Level(gad7Total) : null
 
   return (
-    <button
-      onClick={onClick}
-      className="card p-4 w-full text-left hover:shadow-md transition-shadow"
+    <AppLink
+      to="new-mood-check"
+      id={entry.id}
+      className="card p-4 w-full text-left hover:shadow-md transition-shadow block"
     >
       <div className="flex items-start justify-between mb-2">
         <div className="text-sm text-stone-500 dark:text-stone-400">
@@ -68,7 +70,7 @@ function MoodCheckCard({ entry, onClick }: { entry: MoodCheckEntry; onClick: () 
           {entry.notes}
         </p>
       )}
-    </button>
+    </AppLink>
   )
 }
 
@@ -79,11 +81,6 @@ export function MoodCheckView() {
 
   const handleNewCheck = () => {
     setSelectedMoodCheckId(null)
-    setView('new-mood-check')
-  }
-
-  const handleViewCheck = (id: string) => {
-    setSelectedMoodCheckId(id)
     setView('new-mood-check')
   }
 
@@ -182,7 +179,7 @@ export function MoodCheckView() {
           <h2 className="text-sm font-medium text-stone-600 dark:text-stone-400 mb-2">History</h2>
           {moodChecks.map((entry) => (
             <div key={entry.id} className="relative group">
-              <MoodCheckCard entry={entry} onClick={() => handleViewCheck(entry.id)} />
+              <MoodCheckCard entry={entry} />
               <button
                 onClick={(e) => handleDelete(entry.id, e)}
                 className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 text-stone-400 hover:text-critical-500 dark:hover:text-critical-400 transition-all"

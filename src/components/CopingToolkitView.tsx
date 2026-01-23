@@ -272,19 +272,19 @@ export function CopingToolkitView() {
         </div>
       )}
 
-      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
         {categories.map((cat) => (
           <button
             key={cat.id}
             onClick={() => setActiveCategory(cat.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-all ${
+            className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl transition-all text-sm ${
               activeCategory === cat.id
                 ? 'bg-sage-100 dark:bg-sage-900/40 text-sage-700 dark:text-sage-400 font-medium'
                 : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700'
             }`}
           >
             <span>{cat.icon}</span>
-            <span className="text-sm">{COPING_SKILLS[cat.id].name}</span>
+            <span>{COPING_SKILLS[cat.id].name}</span>
           </button>
         ))}
       </div>

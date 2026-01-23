@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { useAppStore } from '@/stores/appStore'
 import { useBackupStore } from '@/stores/backupStore'
 import { downloadBackup } from '@/utils/backup'
@@ -149,6 +150,22 @@ function DownloadIcon({ className }: { className?: string }) {
   )
 }
 
+function ScrollToTopIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M18 15l-6-6-6 6" />
+    </svg>
+  )
+}
+
 function AppLogo({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 32 32" fill="none">
@@ -164,6 +181,7 @@ function AppLogo({ className }: { className?: string }) {
 }
 
 export function Navigation() {
+  const [showScrollTop, setShowScrollTop] = useState(false)
   const {
     currentView,
     setView,
@@ -183,6 +201,14 @@ export function Navigation() {
   const { setLastBackupDate, setTotalEntriesAtLastBackup } = useBackupStore()
   const { getNavReminder } = useReminders()
 
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 300)
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
   const navItems = [
     { id: 'home' as const, label: 'Records', Icon: RecordsIcon },
     { id: 'activities' as const, label: 'Activities', Icon: ActivitiesIcon },
@@ -196,9 +222,11 @@ export function Navigation() {
   const mobileNavItems = [
     { id: 'home' as const, label: 'Records', Icon: RecordsIcon },
     { id: 'activities' as const, label: 'Activities', Icon: ActivitiesIcon },
+    { id: 'gratitude' as const, label: 'Gratitude', Icon: GratitudeIcon },
     { id: 'mood-check' as const, label: 'Mood', Icon: MoodIcon },
     { id: 'toolkit' as const, label: 'Toolkit', Icon: ToolkitIcon },
-    { id: 'settings' as const, label: 'More', Icon: SettingsIcon },
+    { id: 'insights' as const, label: 'Insights', Icon: InsightsIcon },
+    { id: 'settings' as const, label: 'Settings', Icon: SettingsIcon },
   ]
 
   const isActive = (id: string) => {
@@ -261,54 +289,73 @@ export function Navigation() {
     }
   }
 
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   return (
     <>
       {/* Mobile bottom navigation */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-stone-800/95 backdrop-blur-sm border-t border-stone-200/80 dark:border-stone-700/80 px-2 py-2 z-50">
-        <div className="max-w-lg mx-auto flex justify-around">
-          {mobileNavItems.map((item) => {
-            const reminder = getNavReminder(item.id)
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleNavClick(item.id)}
-                className={`relative flex flex-col items-center py-2 px-3 rounded-xl transition-all duration-200 focus:ring-0 focus:ring-offset-0 ${
-                  isActive(item.id)
-                    ? 'text-sage-600 dark:text-sage-400'
-                    : 'text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300'
-                }`}
-              >
-                <div className="relative">
-                  <item.Icon className="w-5 h-5" />
-                  {reminder && (
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-stone-800/95 backdrop-blur-sm border-t border-stone-200/80 dark:border-stone-700/80 z-50">
+        <div className="relative">
+          {/* Scroll indicators for small screens */}
+          <div className="absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-white/95 dark:from-stone-800/95 to-transparent pointer-events-none z-10 xs:hidden" />
+          <div className="absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-white/95 dark:from-stone-800/95 to-transparent pointer-events-none z-10 xs:hidden" />
+
+          {/* Scrollable container for very small phones, centered for larger */}
+          <div className="overflow-x-auto scrollbar-hide">
+            <div className="flex justify-between min-[420px]:justify-center gap-0.5 min-[420px]:gap-1 sm:gap-2 px-1 min-[420px]:px-2 py-2 sm:py-3 min-w-max min-[420px]:min-w-0">
+              {mobileNavItems.map((item) => {
+                const reminder = getNavReminder(item.id)
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleNavClick(item.id)}
+                    className={`relative flex flex-col items-center py-1.5 sm:py-2 px-2 min-[420px]:px-2.5 sm:px-4 md:px-5 rounded-xl transition-all duration-200 focus:ring-0 focus:ring-offset-0 flex-shrink-0 ${
+                      isActive(item.id)
+                        ? 'text-sage-600 dark:text-sage-400'
+                        : 'text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300'
+                    }`}
+                  >
+                    <div className="relative">
+                      <item.Icon className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />
+                      {reminder && (
+                        <span
+                          className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${
+                            reminder.priority === 'high'
+                              ? 'bg-amber-500'
+                              : reminder.priority === 'medium'
+                                ? 'bg-sage-500'
+                                : 'bg-stone-400'
+                          }`}
+                        />
+                      )}
+                    </div>
                     <span
-                      className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${
-                        reminder.priority === 'high'
-                          ? 'bg-amber-500'
-                          : reminder.priority === 'medium'
-                            ? 'bg-sage-500'
-                            : 'bg-stone-400'
+                      className={`text-[9px] min-[420px]:text-[10px] sm:text-xs md:text-sm mt-0.5 sm:mt-1 ${
+                        isActive(item.id) ? 'font-medium' : ''
                       }`}
-                    />
-                  )}
-                </div>
-                <span className={`text-[10px] mt-1.5 ${isActive(item.id) ? 'font-medium' : ''}`}>
-                  {item.label}
-                </span>
-              </button>
-            )
-          })}
+                    >
+                      {item.label}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         </div>
       </nav>
 
-      {/* Mobile quick export FAB */}
-      <button
-        onClick={handleQuickExport}
-        className="lg:hidden fixed bottom-20 right-4 bg-sage-600 hover:bg-sage-700 dark:bg-sage-600 dark:hover:bg-sage-500 text-white p-4 rounded-full shadow-lg transition-colors z-40 focus:ring-0 focus:ring-offset-0"
-        aria-label="Quick export"
-      >
-        <DownloadIcon className="w-5 h-5" />
-      </button>
+      {/* Mobile scroll to top FAB */}
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className="lg:hidden fixed bottom-20 right-4 bg-sage-600 hover:bg-sage-700 dark:bg-sage-600 dark:hover:bg-sage-500 text-white p-3 rounded-full shadow-lg transition-all z-40 focus:ring-0 focus:ring-offset-0"
+          aria-label="Scroll to top"
+        >
+          <ScrollToTopIcon className="w-5 h-5" />
+        </button>
+      )}
 
       {/* Desktop sidebar navigation */}
       <nav className="hidden lg:flex fixed left-0 top-0 bottom-0 w-64 bg-white dark:bg-stone-800 border-r border-stone-200 dark:border-stone-700 flex-col z-50">

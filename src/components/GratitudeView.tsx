@@ -5,6 +5,7 @@ import { PageIntro, SearchBar, TimeFilter } from '@/components/InfoComponents'
 import { toast } from '@/stores/toastStore'
 import { ReminderBanner } from '@/components/ReminderBanner'
 import { useReminders } from '@/hooks/useReminders'
+import { AppLink } from '@/components/AppLink'
 
 export function GratitudeView() {
   const { gratitudeEntries, setView, setSelectedGratitudeId, deleteGratitudeEntry } = useAppStore()
@@ -53,12 +54,6 @@ export function GratitudeView() {
   const handleCardClick = (id: string, e: React.MouseEvent<HTMLButtonElement>) => {
     e.currentTarget.blur()
     setExpandedId((current) => (current === id ? null : id))
-  }
-
-  const handleEdit = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    setSelectedGratitudeId(id)
-    setView('new-gratitude')
   }
 
   const handleDelete = async (id: string) => {
@@ -243,13 +238,14 @@ export function GratitudeView() {
                 {isExpanded && (
                   <div className="px-5 pb-5">
                     <div className="flex gap-2 pt-4 border-t border-stone-100 dark:border-stone-700">
-                      <button
-                        onClick={(e) => handleEdit(entry.id, e)}
-                        className="flex-1 btn-secondary py-2 text-sm"
-                        type="button"
+                      <AppLink
+                        to="new-gratitude"
+                        id={entry.id}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-1 btn-secondary py-2 text-sm text-center"
                       >
                         Edit
-                      </button>
+                      </AppLink>
                       <button
                         onClick={(e) => handleDeleteClick(entry.id, e)}
                         className="px-3 py-2 text-sm font-medium text-critical-500 dark:text-critical-400 hover:text-critical-600 dark:hover:text-critical-300 hover:bg-critical-50 dark:hover:bg-critical-500/10 rounded-xl transition-colors"

@@ -29,6 +29,25 @@ import {
 import { logger } from '@/utils/logger'
 import { toast } from '@/stores/toastStore'
 
+export type ViewType =
+  | 'home'
+  | 'new-thought'
+  | 'thought-detail'
+  | 'checklist'
+  | 'new-checklist'
+  | 'checklist-detail'
+  | 'gratitude'
+  | 'new-gratitude'
+  | 'insights'
+  | 'settings'
+  | 'mood-check'
+  | 'new-mood-check'
+  | 'activities'
+  | 'new-activity'
+  | 'safety-plan'
+  | 'coping-skills'
+  | 'toolkit'
+
 interface AppState {
   thoughtRecords: ThoughtRecord[]
   depressionChecklists: DepressionChecklistEntry[]
@@ -38,24 +57,7 @@ interface AppState {
   safetyPlan: SafetyPlan | null
   copingSkillLogs: CopingSkillLog[]
   isLoading: boolean
-  currentView:
-    | 'home'
-    | 'new-thought'
-    | 'thought-detail'
-    | 'checklist'
-    | 'new-checklist'
-    | 'checklist-detail'
-    | 'gratitude'
-    | 'new-gratitude'
-    | 'insights'
-    | 'settings'
-    | 'mood-check'
-    | 'new-mood-check'
-    | 'activities'
-    | 'new-activity'
-    | 'safety-plan'
-    | 'coping-skills'
-    | 'toolkit'
+  currentView: ViewType
   selectedRecordId: string | null
   selectedGratitudeId: string | null
   selectedChecklistId: string | null
