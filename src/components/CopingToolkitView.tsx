@@ -10,12 +10,17 @@ function generateId(): string {
 }
 
 interface SkillCardProps {
-  skill: (typeof COPING_SKILLS.tipp.skills)[number]
-  category: CopingCategory
+  skill: {
+    readonly id: string
+    readonly name: string
+    readonly description: string
+    readonly instructions: readonly string[]
+    readonly duration: string
+  }
   onPractice: () => void
 }
 
-function SkillCard({ skill, category, onPractice }: SkillCardProps) {
+function SkillCard({ skill, onPractice }: SkillCardProps) {
   const [expanded, setExpanded] = useState(false)
 
   return (
@@ -293,7 +298,6 @@ export function CopingToolkitView() {
             <SkillCard
               key={skill.id}
               skill={skill}
-              category={activeCategory}
               onPractice={() => setPracticeModal({ skill, category: activeCategory })}
             />
           ))}

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAppStore } from '@/stores/appStore'
-import { type SafetyPlan, CRISIS_RESOURCES } from '@/types'
+import { type SafetyPlan } from '@/types'
 import { PageIntro, InfoButton } from '@/components/InfoComponents'
 import { AutoExpandTextarea } from '@/components/AutoExpandTextarea'
 import { toast } from '@/stores/toastStore'

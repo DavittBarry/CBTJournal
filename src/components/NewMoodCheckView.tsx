@@ -8,7 +8,6 @@ import {
   type MoodCheckEntry,
   getPHQ9Level,
   getGAD7Level,
-  CRISIS_RESOURCES,
 } from '@/types'
 import { format } from 'date-fns'
 import { PageIntro, InfoButton } from '@/components/InfoComponents'

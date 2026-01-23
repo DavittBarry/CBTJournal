@@ -31,7 +31,7 @@ function ActivityForm({ existingActivity, onSave, onCancel }: ActivityFormProps)
   const [category, setCategory] = useState<ActivityCategory>(existingActivity?.category || 'other')
   const [date, setDate] = useState(existingActivity?.date || format(new Date(), 'yyyy-MM-dd'))
   const [plannedTime, setPlannedTime] = useState(existingActivity?.plannedTime || '')
-  const [isPlanned, setIsPlanned] = useState(existingActivity?.isPlanned ?? true)
+  const isPlanned = existingActivity?.isPlanned ?? true
   const [isCompleted, setIsCompleted] = useState(existingActivity?.isCompleted ?? false)
   const [moodBefore, setMoodBefore] = useState(existingActivity?.moodBefore ?? 5)
   const [moodAfter, setMoodAfter] = useState(existingActivity?.moodAfter ?? 5)
@@ -257,7 +257,7 @@ function ActivityForm({ existingActivity, onSave, onCancel }: ActivityFormProps)
 }
 
 export function ActivitiesView() {
-  const { activities, addActivity, updateActivity, deleteActivity, setView } = useAppStore()
+  const { activities, addActivity, updateActivity, deleteActivity } = useAppStore()
   const [showForm, setShowForm] = useState(false)
   const [editingActivity, setEditingActivity] = useState<ActivityEntry | undefined>()
   const [selectedDate, setSelectedDate] = useState(new Date())
