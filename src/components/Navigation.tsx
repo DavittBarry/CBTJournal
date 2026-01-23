@@ -228,9 +228,6 @@ export function Navigation() {
     if (id === 'gratitude') {
       setSelectedGratitudeId(null)
     }
-    if (id === 'checklist') {
-      setSelectedChecklistId(null)
-    }
     if (id === 'home') {
       setSelectedRecordId(null)
     }
