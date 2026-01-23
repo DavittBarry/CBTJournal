@@ -104,13 +104,13 @@ export function ChecklistView() {
   return (
     <div>
       <PageIntro
-        title="Depression checklist"
-        description="This checklist helps you measure the severity of depression symptoms over a two-week period and track changes over time. It covers thoughts, feelings, activities, relationships, and physical symptoms. Regular tracking helps you see your progress and identify what's working."
+        title="Burns Depression Checklist (legacy)"
+        description="This 25-item self-assessment was developed by Dr. David Burns. We now recommend the PHQ-9 for new assessments since it's clinically validated and widely used in healthcare settings. Your historical data is preserved here for continuity."
         steps={[
-          'Complete the checklist when you first start using the app.',
-          'Retake it every two weeks to track your progress.',
-          "Answer based on how you've felt over the past two weeks, not just today.",
-          'Use the score to guide your efforts and conversations with any healthcare providers.',
+          'For new assessments, use PHQ-9 or GAD-7 in the Mood section.',
+          'This section preserves your historical Burns checklist data.',
+          'You can still complete new checklists here if you prefer this format.',
+          'The PHQ-9 (0-27) and GAD-7 (0-21) use different scales than Burns (0-100).',
         ]}
       />
 

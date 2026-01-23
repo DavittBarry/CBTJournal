@@ -107,8 +107,8 @@ function ChecklistForm({ existingEntry, onBack, onSubmit }: ChecklistFormProps) 
       </div>
 
       <PageIntro
-        title={existingEntry ? 'Edit checklist' : 'Depression checklist'}
-        description="This 25-item checklist measures the severity of depression symptoms across five categories: thoughts and feelings, activities, relationships, physical symptoms, and suicidal urges. Answer based on how you've felt over the past two weeks. Take this test every two weeks to track your progress over time."
+        title={existingEntry ? 'Edit checklist' : 'Burns Depression Checklist'}
+        description="This 25-item checklist developed by Dr. David Burns measures depression symptoms across five categories. For new assessments, we recommend the PHQ-9 in the Mood section, which is clinically validated and widely used. Answer based on how you've felt over the past two weeks."
         centered={false}
       />
 
