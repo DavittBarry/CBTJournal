@@ -14,6 +14,11 @@ import { NewChecklistView } from '@/components/NewChecklistView'
 import { ChecklistDetailView } from '@/components/ChecklistDetailView'
 import { InsightsView } from '@/components/InsightsView'
 import { SettingsView } from '@/components/SettingsView'
+import { MoodCheckView } from '@/components/MoodCheckView'
+import { NewMoodCheckView } from '@/components/NewMoodCheckView'
+import { ActivitiesView } from '@/components/ActivitiesView'
+import { CopingToolkitView } from '@/components/CopingToolkitView'
+import { SafetyPlanView } from '@/components/SafetyPlanView'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { ToastContainer } from '@/components/Toast'
 import { logger } from '@/utils/logger'
@@ -26,6 +31,8 @@ function App() {
     selectedRecordId,
     thoughtRecords,
     selectedChecklistId,
+    selectedMoodCheckId,
+    moodChecks,
     initializeAutoSave,
     initializeCloudSync,
   } = useAppStore()
@@ -92,6 +99,20 @@ function App() {
         return <NewChecklistView key={selectedChecklistId || 'new'} />
       case 'checklist-detail':
         return <ChecklistDetailView />
+      case 'mood-check':
+        return <MoodCheckView />
+      case 'new-mood-check': {
+        const existingEntry = selectedMoodCheckId
+          ? moodChecks.find((m) => m.id === selectedMoodCheckId)
+          : undefined
+        return <NewMoodCheckView key={selectedMoodCheckId || 'new'} existingEntry={existingEntry} />
+      }
+      case 'activities':
+        return <ActivitiesView />
+      case 'toolkit':
+        return <CopingToolkitView />
+      case 'safety-plan':
+        return <SafetyPlanView />
       case 'insights':
         return <InsightsView />
       case 'settings':

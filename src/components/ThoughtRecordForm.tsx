@@ -19,9 +19,47 @@ interface Props {
   existingRecord?: ThoughtRecord
 }
 
+type RecordMode = 'standard' | 'simple' | 'experiment' | 'defusion'
+
+const DEFUSION_TECHNIQUES = [
+  {
+    id: 'leaves-stream',
+    name: 'Leaves on a stream',
+    description: 'Visualize placing your thoughts on leaves floating down a stream',
+  },
+  {
+    id: 'thank-mind',
+    name: 'Thank your mind',
+    description: 'Say "Thanks mind, I\'ve got this" to acknowledge without engaging',
+  },
+  {
+    id: 'having-thought',
+    name: '"I\'m having the thought that..."',
+    description: 'Add distance by labeling thoughts as thoughts',
+  },
+  {
+    id: 'silly-voice',
+    name: 'Silly voice',
+    description: 'Say the thought in a cartoon voice to reduce its power',
+  },
+  { id: 'singing', name: 'Sing it', description: 'Sing the thought to a familiar tune' },
+  {
+    id: 'repeat',
+    name: 'Rapid repetition',
+    description: 'Repeat a key word until it loses meaning',
+  },
+]
+
 export function ThoughtRecordForm({ existingRecord }: Props) {
   const { addThoughtRecord, addThoughtRecords, updateThoughtRecord, setView } = useAppStore()
 
+  const [mode, setMode] = useState<RecordMode>(
+    existingRecord?.isBehavioralExperiment
+      ? 'experiment'
+      : existingRecord?.defusionTechnique
+        ? 'defusion'
+        : 'standard'
+  )
   const [dates, setDates] = useState<string[]>(
     existingRecord?.date ? [existingRecord.date] : [format(new Date(), 'yyyy-MM-dd')]
   )
@@ -41,6 +79,16 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
     existingRecord?.outcomeEmotions || [{ name: '', intensity: 50 }]
   )
   const [expandedDistortion, setExpandedDistortion] = useState<CognitiveDistortionId | null>(null)
+
+  const [experimentPrediction, setExperimentPrediction] = useState(
+    existingRecord?.experimentPrediction || ''
+  )
+  const [experimentOutcome, setExperimentOutcome] = useState(
+    existingRecord?.experimentOutcome || ''
+  )
+  const [defusionTechnique, setDefusionTechnique] = useState(
+    existingRecord?.defusionTechnique || ''
+  )
 
   const addDate = () => {
     if (dateInput && !dates.includes(dateInput)) {
@@ -73,17 +121,25 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
       return
     }
 
+    const baseRecord = {
+      situation,
+      emotions: filledEmotions,
+      automaticThoughts,
+      distortions,
+      rationalResponse: mode === 'defusion' ? '' : rationalResponse,
+      outcomeEmotions: outcomeEmotions.filter((e) => e.name.trim()),
+      isBehavioralExperiment: mode === 'experiment',
+      experimentPrediction: mode === 'experiment' ? experimentPrediction : undefined,
+      experimentOutcome: mode === 'experiment' ? experimentOutcome : undefined,
+      defusionTechnique: mode === 'defusion' ? defusionTechnique : undefined,
+    }
+
     if (existingRecord) {
       const record: ThoughtRecord = {
         id: existingRecord.id,
         createdAt: existingRecord.createdAt,
         date: dates[0],
-        situation,
-        emotions: filledEmotions,
-        automaticThoughts,
-        distortions,
-        rationalResponse,
-        outcomeEmotions: outcomeEmotions.filter((e) => e.name.trim()),
+        ...baseRecord,
       }
       await updateThoughtRecord(record)
       toast.success('Record updated')
@@ -92,12 +148,7 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
         id: generateId(),
         createdAt: new Date().toISOString(),
         date: dates[0],
-        situation,
-        emotions: filledEmotions,
-        automaticThoughts,
-        distortions,
-        rationalResponse,
-        outcomeEmotions: outcomeEmotions.filter((e) => e.name.trim()),
+        ...baseRecord,
       }
       await addThoughtRecord(record)
       toast.success('Record saved')
@@ -106,12 +157,7 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
         id: generateId(),
         createdAt: new Date().toISOString(),
         date,
-        situation,
-        emotions: filledEmotions,
-        automaticThoughts,
-        distortions,
-        rationalResponse,
-        outcomeEmotions: outcomeEmotions.filter((e) => e.name.trim()),
+        ...baseRecord,
       }))
       await addThoughtRecords(records)
       toast.success(`${records.length} records saved`)
@@ -175,16 +221,45 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
 
       <PageIntro
         title={existingRecord ? 'Edit record' : 'New thought record'}
-        description="A thought record helps you examine upsetting thoughts and develop more balanced perspectives. By writing down and analyzing your thoughts, you can identify patterns that contribute to negative emotions and learn to respond more helpfully."
+        description="Examine your thoughts using evidence-based techniques from CBT, ACT, and behavioral therapy. Choose the approach that works best for you."
         centered={false}
-        steps={[
-          'Notice an unpleasant emotion and describe what triggered it.',
-          'Write down the automatic thoughts that accompanied the emotion.',
-          'Identify which thinking patterns (distortions) are present.',
-          'Write a more balanced, rational response to challenge those thoughts.',
-          'Notice how your emotions shift after this reflection.',
-        ]}
       />
+
+      <div className="card p-5 mb-8">
+        <label className="label">
+          Choose your approach
+          <InfoButton
+            title="Different approaches for different situations"
+            content="Standard: Classic cognitive restructuring to challenge and reframe thoughts. Behavioral experiment: Test your predictions with real-world experiments. Defusion: Create distance from thoughts using ACT techniques. Simple: Quick 3-column format when you're short on time."
+          />
+        </label>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {[
+            { id: 'standard' as const, label: 'Standard', desc: 'Challenge thoughts' },
+            { id: 'experiment' as const, label: 'Experiment', desc: 'Test predictions' },
+            { id: 'defusion' as const, label: 'Defusion', desc: 'ACT techniques' },
+            { id: 'simple' as const, label: 'Simple', desc: '3-column format' },
+          ].map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => setMode(m.id)}
+              className={`p-3 rounded-xl border-2 transition-all text-left ${
+                mode === m.id
+                  ? 'bg-sage-50 dark:bg-sage-900/30 border-sage-400 dark:border-sage-600'
+                  : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-600 hover:border-stone-300 dark:hover:border-stone-500'
+              }`}
+            >
+              <div
+                className={`font-medium text-sm ${mode === m.id ? 'text-sage-700 dark:text-sage-400' : 'text-stone-700 dark:text-stone-300'}`}
+              >
+                {m.label}
+              </div>
+              <div className="text-xs text-stone-500 dark:text-stone-400">{m.desc}</div>
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="space-y-8">
         <section>
@@ -202,8 +277,8 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
                   title="When did this happen?"
                   content={
                     existingRecord
-                      ? 'Record the date of the event. This helps you track patterns over time and see your progress.'
-                      : 'Record the date(s) of the event. You can select multiple dates to create separate entries for each day, useful if the same thought pattern occurred across several days.'
+                      ? 'Record the date of the event.'
+                      : 'Record the date(s) of the event. You can select multiple dates to create separate entries.'
                   }
                 />
               </label>
@@ -255,11 +330,6 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
                       ))}
                     </div>
                   )}
-                  {dates.length > 1 && (
-                    <p className="text-xs text-stone-500 dark:text-stone-400 mt-2">
-                      {dates.length} separate entries will be created
-                    </p>
-                  )}
                 </>
               )}
             </div>
@@ -296,7 +366,7 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
               Emotions
               <InfoButton
                 title="Rating your emotions"
-                content="Name each emotion you felt and rate its intensity from 0% (barely noticeable) to 100% (the most intense you've ever felt). Common emotions include: sad, anxious, angry, guilty, ashamed, hopeless, frustrated, lonely."
+                content="Name each emotion you felt and rate its intensity from 0% (barely noticeable) to 100% (the most intense you've ever felt)."
                 example="Anxious 75%, Frustrated 60%"
               />
             </label>
@@ -366,7 +436,7 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
               Write your thoughts
               <InfoButton
                 title="Capturing automatic thoughts"
-                content="Write down the thoughts that accompanied your emotion. These are often quick, automatic interpretations that pop into your mind. Try to capture them word-for-word, even if they seem irrational. Don't filter or judge them yet."
+                content="Write down the thoughts that accompanied your emotion. These are often quick, automatic interpretations that pop into your mind. Try to capture them word-for-word."
                 example="He must be angry at me. I always mess things up. I'll probably get fired."
               />
             </label>
@@ -380,108 +450,254 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
           </div>
         </section>
 
-        <section>
-          <SectionHeader
-            number={4}
-            title="Identify thinking patterns"
-            description="Which cognitive distortions are present in your thoughts?"
-          />
+        {mode !== 'simple' && (
+          <section>
+            <SectionHeader
+              number={4}
+              title="Identify thinking patterns"
+              description="Which cognitive distortions are present in your thoughts?"
+            />
 
-          <div className="card p-5">
-            <div className="flex items-center justify-between mb-3">
-              <label className="label mb-0">
-                Cognitive distortions
+            <div className="card p-5">
+              <div className="flex items-center justify-between mb-3">
+                <label className="label mb-0">
+                  Cognitive distortions
+                  <InfoButton
+                    title="What are cognitive distortions?"
+                    content="These are common patterns of biased thinking. Research shows they tend to represent a single underlying construct of negative bias, rather than truly separate categories. Identifying them helps you see your thoughts more objectively."
+                  />
+                </label>
+                <span className="text-sm text-stone-500 dark:text-stone-400">
+                  {distortions.length} selected
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {COGNITIVE_DISTORTIONS.map((distortion) => (
+                  <div key={distortion.id} className="sm:contents">
+                    <div className={expandedDistortion === distortion.id ? 'sm:col-span-2' : ''}>
+                      <button
+                        type="button"
+                        onClick={() => toggleDistortion(distortion.id)}
+                        className={`w-full text-left p-3.5 rounded-xl border-2 transition-all duration-200 ${
+                          distortions.includes(distortion.id)
+                            ? 'bg-sage-50 dark:bg-sage-900/30 border-sage-400 dark:border-sage-600'
+                            : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-600 hover:border-stone-300 dark:hover:border-stone-500'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span
+                            className={`font-medium text-sm ${distortions.includes(distortion.id) ? 'text-sage-700 dark:text-sage-400' : 'text-stone-700 dark:text-stone-300'}`}
+                          >
+                            {distortion.id}. {distortion.shortName}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setExpandedDistortion(
+                                expandedDistortion === distortion.id ? null : distortion.id
+                              )
+                            }}
+                            className="text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 p-1"
+                          >
+                            <svg
+                              className={`w-4 h-4 transition-transform ${expandedDistortion === distortion.id ? 'rotate-180' : ''}`}
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
+                              <path d="M6 9l6 6 6-6" />
+                            </svg>
+                          </button>
+                        </div>
+                      </button>
+                      {expandedDistortion === distortion.id && (
+                        <div className="mt-1 ml-4 p-3 bg-stone-50 dark:bg-stone-700/50 rounded-lg text-sm text-stone-600 dark:text-stone-300 animate-fade-in">
+                          {distortion.description}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {mode === 'standard' && (
+          <section>
+            <SectionHeader
+              number={5}
+              title="Rational response"
+              description="Challenge your automatic thoughts with a more balanced view."
+            />
+
+            <div className="card p-5">
+              <label className="label">
+                Write your response
                 <InfoButton
-                  title="What are cognitive distortions?"
-                  content="Cognitive distortions are patterns of biased thinking that can make situations seem worse than they are. We all use them sometimes. Identifying them helps you see your thoughts more objectively and respond more helpfully."
+                  title="Creating a rational response"
+                  content="Write a more balanced, realistic response to your automatic thoughts. Consider: What evidence supports or contradicts this thought? What would you tell a friend in this situation?"
+                  example="He might just be busy. One delayed response doesn't mean he's angry."
                 />
               </label>
-              <span className="text-sm text-stone-500 dark:text-stone-400">
-                {distortions.length} selected
-              </span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {COGNITIVE_DISTORTIONS.map((distortion) => (
-                <div key={distortion.id} className="sm:contents">
-                  <div className={expandedDistortion === distortion.id ? 'sm:col-span-2' : ''}>
-                    <button
-                      type="button"
-                      onClick={() => toggleDistortion(distortion.id)}
-                      className={`w-full text-left p-3.5 rounded-xl border-2 transition-all duration-200 ${
-                        distortions.includes(distortion.id)
-                          ? 'bg-sage-50 dark:bg-sage-900/30 border-sage-400 dark:border-sage-600'
-                          : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-600 hover:border-stone-300 dark:hover:border-stone-500'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span
-                          className={`font-medium text-sm ${distortions.includes(distortion.id) ? 'text-sage-700 dark:text-sage-400' : 'text-stone-700 dark:text-stone-300'}`}
-                        >
-                          {distortion.id}. {distortion.shortName}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setExpandedDistortion(
-                              expandedDistortion === distortion.id ? null : distortion.id
-                            )
-                          }}
-                          className="text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 p-1"
-                        >
-                          <svg
-                            className={`w-4 h-4 transition-transform ${expandedDistortion === distortion.id ? 'rotate-180' : ''}`}
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                          >
-                            <path d="M6 9l6 6 6-6" />
-                          </svg>
-                        </button>
-                      </div>
-                    </button>
-                    {expandedDistortion === distortion.id && (
-                      <div className="mt-1 ml-4 p-3 bg-stone-50 dark:bg-stone-700/50 rounded-lg text-sm text-stone-600 dark:text-stone-300 animate-fade-in">
-                        {distortion.description}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section>
-          <SectionHeader
-            number={5}
-            title="Rational response"
-            description="Challenge your automatic thoughts with a more balanced view."
-          />
-
-          <div className="card p-5">
-            <label className="label">
-              Write your response
-              <InfoButton
-                title="Creating a rational response"
-                content="Write a more balanced, realistic response to your automatic thoughts. Consider: What evidence supports or contradicts this thought? What would you tell a friend in this situation? What's a more helpful way to view this? You're not trying to be falsely positive, just more accurate and fair to yourself."
-                example="He might just be busy. One delayed response doesn't mean he's angry. I've done good work and have no reason to think I'll be fired."
+              <AutoExpandTextarea
+                value={rationalResponse}
+                onChange={(e) => setRationalResponse(e.target.value)}
+                minRows={3}
+                maxRows={12}
+                placeholder="Write a more balanced perspective..."
               />
-            </label>
-            <AutoExpandTextarea
-              value={rationalResponse}
-              onChange={(e) => setRationalResponse(e.target.value)}
-              minRows={3}
-              maxRows={12}
-              placeholder="Write a more balanced perspective..."
+            </div>
+          </section>
+        )}
+
+        {mode === 'experiment' && (
+          <>
+            <section>
+              <SectionHeader
+                number={5}
+                title="Your prediction"
+                description="What do you predict will happen? How strongly do you believe it?"
+              />
+
+              <div className="card p-5">
+                <label className="label">
+                  What do you predict?
+                  <InfoButton
+                    title="Behavioral experiments"
+                    content="Instead of just challenging thoughts, behavioral experiments test them in the real world. Research shows this can lead to faster and more lasting belief change than cognitive restructuring alone."
+                  />
+                </label>
+                <AutoExpandTextarea
+                  value={experimentPrediction}
+                  onChange={(e) => setExperimentPrediction(e.target.value)}
+                  minRows={2}
+                  maxRows={8}
+                  placeholder="e.g., If I send another email, he'll think I'm annoying and get angry (80% belief)"
+                />
+              </div>
+            </section>
+
+            <section>
+              <SectionHeader
+                number={6}
+                title="Experiment outcome"
+                description="What actually happened when you tested your prediction?"
+              />
+
+              <div className="card p-5">
+                <label className="label">
+                  What happened?
+                  <InfoButton
+                    title="Recording the outcome"
+                    content="After doing the experiment, record what actually happened. How did it compare to your prediction? What did you learn? This is where real belief change happens."
+                  />
+                </label>
+                <AutoExpandTextarea
+                  value={experimentOutcome}
+                  onChange={(e) => setExperimentOutcome(e.target.value)}
+                  minRows={2}
+                  maxRows={8}
+                  placeholder="e.g., He replied quickly and apologized for the delay. New belief: 20%"
+                />
+              </div>
+            </section>
+          </>
+        )}
+
+        {mode === 'defusion' && (
+          <section>
+            <SectionHeader
+              number={5}
+              title="Defusion technique"
+              description="Choose a technique to create distance from the thought."
             />
-          </div>
-        </section>
+
+            <div className="card p-5">
+              <label className="label">
+                Select a technique
+                <InfoButton
+                  title="Cognitive defusion (ACT)"
+                  content="Defusion techniques help you step back from thoughts rather than challenging their content. Instead of arguing with a thought, you change your relationship to it. Research shows this can be as effective as cognitive restructuring."
+                />
+              </label>
+              <div className="space-y-2 mb-4">
+                {DEFUSION_TECHNIQUES.map((tech) => (
+                  <button
+                    key={tech.id}
+                    type="button"
+                    onClick={() => setDefusionTechnique(tech.id)}
+                    className={`w-full text-left p-3 rounded-xl border-2 transition-all ${
+                      defusionTechnique === tech.id
+                        ? 'bg-sage-50 dark:bg-sage-900/30 border-sage-400 dark:border-sage-600'
+                        : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-600 hover:border-stone-300 dark:hover:border-stone-500'
+                    }`}
+                  >
+                    <div
+                      className={`font-medium text-sm ${defusionTechnique === tech.id ? 'text-sage-700 dark:text-sage-400' : 'text-stone-700 dark:text-stone-300'}`}
+                    >
+                      {tech.name}
+                    </div>
+                    <div className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+                      {tech.description}
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {defusionTechnique && (
+                <div className="p-4 bg-sage-50 dark:bg-sage-900/20 rounded-lg">
+                  <h4 className="text-sm font-medium text-sage-700 dark:text-sage-400 mb-2">
+                    Try it now
+                  </h4>
+                  <p className="text-sm text-stone-600 dark:text-stone-400">
+                    {defusionTechnique === 'having-thought' && (
+                      <>
+                        Reframe your thought as: "I'm having the thought that{' '}
+                        {automaticThoughts.split('.')[0].toLowerCase() || '...'}"
+                      </>
+                    )}
+                    {defusionTechnique === 'thank-mind' && (
+                      <>
+                        Say to yourself: "Thanks mind for trying to protect me, but I've got this."
+                      </>
+                    )}
+                    {defusionTechnique === 'leaves-stream' && (
+                      <>
+                        Close your eyes and imagine placing each thought on a leaf floating down a
+                        gentle stream. Watch them drift away.
+                      </>
+                    )}
+                    {defusionTechnique === 'silly-voice' && (
+                      <>
+                        Try saying your thought out loud in a cartoon character voice. Notice how
+                        this changes its impact.
+                      </>
+                    )}
+                    {defusionTechnique === 'singing' && (
+                      <>
+                        Try singing your thought to the tune of "Happy Birthday" or another familiar
+                        song.
+                      </>
+                    )}
+                    {defusionTechnique === 'repeat' && (
+                      <>
+                        Pick the key word from your thought and repeat it rapidly for 30 seconds
+                        until it loses meaning.
+                      </>
+                    )}
+                  </p>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
 
         <section>
           <SectionHeader
-            number={6}
+            number={mode === 'simple' ? 4 : mode === 'experiment' ? 7 : 6}
             title="Outcome"
             description="After this reflection, how do you feel now?"
           />
@@ -491,8 +707,7 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
               Re-rate your emotions
               <InfoButton
                 title="Measuring the shift"
-                content="After writing your rational response, re-rate your emotions. You might use the same emotions from step 2 or notice new ones. The goal isn't to eliminate negative feelings entirely, but to reduce their intensity by seeing things more clearly. Even a small reduction shows the technique is working."
-                example="If you started at Anxious 75%, you might now feel Anxious 40%"
+                content="After completing the exercise, re-rate your emotions. The goal isn't to eliminate negative feelings entirely, but to reduce their intensity. Even a small reduction shows the technique is working."
               />
             </label>
             <div className="space-y-2">

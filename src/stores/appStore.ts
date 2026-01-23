@@ -1,6 +1,14 @@
 import { create } from 'zustand'
 import { db } from '@/db'
-import type { ThoughtRecord, DepressionChecklistEntry, GratitudeEntry } from '@/types'
+import type {
+  ThoughtRecord,
+  DepressionChecklistEntry,
+  GratitudeEntry,
+  MoodCheckEntry,
+  ActivityEntry,
+  SafetyPlan,
+  CopingSkillLog,
+} from '@/types'
 import { useBackupStore, type CloudProvider } from '@/stores/backupStore'
 import {
   saveToFile,
@@ -25,6 +33,10 @@ interface AppState {
   thoughtRecords: ThoughtRecord[]
   depressionChecklists: DepressionChecklistEntry[]
   gratitudeEntries: GratitudeEntry[]
+  moodChecks: MoodCheckEntry[]
+  activities: ActivityEntry[]
+  safetyPlan: SafetyPlan | null
+  copingSkillLogs: CopingSkillLog[]
   isLoading: boolean
   currentView:
     | 'home'
@@ -37,9 +49,18 @@ interface AppState {
     | 'new-gratitude'
     | 'insights'
     | 'settings'
+    | 'mood-check'
+    | 'new-mood-check'
+    | 'activities'
+    | 'new-activity'
+    | 'safety-plan'
+    | 'coping-skills'
+    | 'toolkit'
   selectedRecordId: string | null
   selectedGratitudeId: string | null
   selectedChecklistId: string | null
+  selectedMoodCheckId: string | null
+  selectedActivityId: string | null
 
   fileHandle: FileSystemFileHandle | null
 
@@ -55,10 +76,21 @@ interface AppState {
   addGratitudeEntry: (entry: GratitudeEntry) => Promise<void>
   updateGratitudeEntry: (entry: GratitudeEntry) => Promise<void>
   deleteGratitudeEntry: (id: string) => Promise<void>
+  addMoodCheck: (entry: MoodCheckEntry) => Promise<void>
+  updateMoodCheck: (entry: MoodCheckEntry) => Promise<void>
+  deleteMoodCheck: (id: string) => Promise<void>
+  addActivity: (entry: ActivityEntry) => Promise<void>
+  updateActivity: (entry: ActivityEntry) => Promise<void>
+  deleteActivity: (id: string) => Promise<void>
+  saveSafetyPlan: (plan: SafetyPlan) => Promise<void>
+  addCopingSkillLog: (entry: CopingSkillLog) => Promise<void>
+  deleteCopingSkillLog: (id: string) => Promise<void>
   setView: (view: AppState['currentView']) => void
   setSelectedRecordId: (id: string | null) => void
   setSelectedGratitudeId: (id: string | null) => void
   setSelectedChecklistId: (id: string | null) => void
+  setSelectedMoodCheckId: (id: string | null) => void
+  setSelectedActivityId: (id: string | null) => void
   exportData: () => Promise<string>
   importData: (jsonString: string, mode?: 'merge' | 'replace') => Promise<void>
   tryAutoSave: () => Promise<void>
@@ -79,21 +111,48 @@ export const useAppStore = create<AppState>((set, get) => ({
   thoughtRecords: [],
   depressionChecklists: [],
   gratitudeEntries: [],
+  moodChecks: [],
+  activities: [],
+  safetyPlan: null,
+  copingSkillLogs: [],
   isLoading: true,
   currentView: 'home',
   selectedRecordId: null,
   selectedGratitudeId: null,
   selectedChecklistId: null,
+  selectedMoodCheckId: null,
+  selectedActivityId: null,
   fileHandle: null,
 
   loadData: async () => {
     set({ isLoading: true })
-    const [thoughtRecords, depressionChecklists, gratitudeEntries] = await Promise.all([
+    const [
+      thoughtRecords,
+      depressionChecklists,
+      gratitudeEntries,
+      moodChecks,
+      activities,
+      safetyPlan,
+      copingSkillLogs,
+    ] = await Promise.all([
       db.getAllThoughtRecords(),
       db.getAllDepressionChecklists(),
       db.getAllGratitudeEntries(),
+      db.getAllMoodChecks(),
+      db.getAllActivities(),
+      db.getSafetyPlan(),
+      db.getAllCopingSkillLogs(),
     ])
-    set({ thoughtRecords, depressionChecklists, gratitudeEntries, isLoading: false })
+    set({
+      thoughtRecords,
+      depressionChecklists,
+      gratitudeEntries,
+      moodChecks,
+      activities,
+      safetyPlan: safetyPlan || null,
+      copingSkillLogs,
+      isLoading: false,
+    })
   },
 
   addThoughtRecord: async (record) => {
@@ -197,6 +256,76 @@ export const useAppStore = create<AppState>((set, get) => ({
     await get().tryAutoSave()
   },
 
+  addMoodCheck: async (entry) => {
+    await db.addMoodCheck(entry)
+    set((state) => ({
+      moodChecks: [entry, ...state.moodChecks],
+    }))
+    await get().tryAutoSave()
+  },
+
+  updateMoodCheck: async (entry) => {
+    await db.updateMoodCheck(entry)
+    set((state) => ({
+      moodChecks: state.moodChecks.map((e) => (e.id === entry.id ? entry : e)),
+    }))
+    await get().tryAutoSave()
+  },
+
+  deleteMoodCheck: async (id) => {
+    await db.deleteMoodCheck(id)
+    set((state) => ({
+      moodChecks: state.moodChecks.filter((e) => e.id !== id),
+    }))
+    await get().tryAutoSave()
+  },
+
+  addActivity: async (entry) => {
+    await db.addActivity(entry)
+    set((state) => ({
+      activities: [entry, ...state.activities],
+    }))
+    await get().tryAutoSave()
+  },
+
+  updateActivity: async (entry) => {
+    await db.updateActivity(entry)
+    set((state) => ({
+      activities: state.activities.map((e) => (e.id === entry.id ? entry : e)),
+    }))
+    await get().tryAutoSave()
+  },
+
+  deleteActivity: async (id) => {
+    await db.deleteActivity(id)
+    set((state) => ({
+      activities: state.activities.filter((e) => e.id !== id),
+    }))
+    await get().tryAutoSave()
+  },
+
+  saveSafetyPlan: async (plan) => {
+    await db.saveSafetyPlan(plan)
+    set({ safetyPlan: plan })
+    await get().tryAutoSave()
+  },
+
+  addCopingSkillLog: async (entry) => {
+    await db.addCopingSkillLog(entry)
+    set((state) => ({
+      copingSkillLogs: [entry, ...state.copingSkillLogs],
+    }))
+    await get().tryAutoSave()
+  },
+
+  deleteCopingSkillLog: async (id) => {
+    await db.deleteCopingSkillLog(id)
+    set((state) => ({
+      copingSkillLogs: state.copingSkillLogs.filter((e) => e.id !== id),
+    }))
+    await get().tryAutoSave()
+  },
+
   setView: (view) => set({ currentView: view }),
 
   setSelectedRecordId: (id) => set({ selectedRecordId: id }),
@@ -204,6 +333,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSelectedGratitudeId: (id) => set({ selectedGratitudeId: id }),
 
   setSelectedChecklistId: (id) => set({ selectedChecklistId: id }),
+
+  setSelectedMoodCheckId: (id) => set({ selectedMoodCheckId: id }),
+
+  setSelectedActivityId: (id) => set({ selectedActivityId: id }),
 
   exportData: async () => {
     const data = await db.exportData()
@@ -340,7 +473,10 @@ export const useAppStore = create<AppState>((set, get) => ({
               const totalEntries =
                 state.thoughtRecords.length +
                 state.depressionChecklists.length +
-                state.gratitudeEntries.length
+                state.gratitudeEntries.length +
+                state.moodChecks.length +
+                state.activities.length +
+                state.copingSkillLogs.length
               backupState.setTotalEntriesAtLastBackup(totalEntries)
               logger.debug('App', 'Auto-saved to local file')
             }
@@ -381,7 +517,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       return false
     }
 
-    // Validate token before attempting sync
     try {
       let isValid = false
       if (connection.provider === 'google-drive') {
@@ -423,7 +558,10 @@ export const useAppStore = create<AppState>((set, get) => ({
         const totalEntries =
           get().thoughtRecords.length +
           get().depressionChecklists.length +
-          get().gratitudeEntries.length
+          get().gratitudeEntries.length +
+          get().moodChecks.length +
+          get().activities.length +
+          get().copingSkillLogs.length
         backupState.setTotalEntriesAtLastBackup(totalEntries)
         logger.info('App', 'Synced to cloud', { provider: connection.provider })
         return true
@@ -454,7 +592,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       return false
     }
 
-    // Validate token before attempting sync
     try {
       let isValid = false
       if (connection.provider === 'google-drive') {
@@ -492,7 +629,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (result.success) {
         if (result.data && result.data.trim()) {
           const parsed = JSON.parse(result.data)
-          if (parsed.thoughtRecords || parsed.depressionChecklists || parsed.gratitudeEntries) {
+          if (
+            parsed.thoughtRecords ||
+            parsed.depressionChecklists ||
+            parsed.gratitudeEntries ||
+            parsed.moodChecks ||
+            parsed.activities
+          ) {
             await get().importData(result.data, 'replace')
             toast.success(
               `Data synced from ${connection.provider === 'google-drive' ? 'Google Drive' : 'Dropbox'}`
