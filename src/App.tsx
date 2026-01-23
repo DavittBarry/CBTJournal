@@ -48,10 +48,9 @@ function App() {
     initTheme()
   }, [initTheme])
 
-  // Hash-based routing for middle-click/new tab support
   useEffect(() => {
     const handleHashChange = () => {
-      const hash = window.location.hash.slice(1) // Remove #
+      const hash = window.location.hash.slice(1)
       if (!hash) return
 
       const parts = hash.split('/')
@@ -71,6 +70,7 @@ function App() {
         insights: 'insights',
         settings: 'settings',
         checklist: 'checklist',
+        'new-checklist': 'new-checklist',
         'checklist-entry': 'checklist-detail',
       }
 
@@ -89,7 +89,6 @@ function App() {
       }
     }
 
-    // Handle initial hash on load
     if (window.location.hash) {
       handleHashChange()
     }
@@ -104,8 +103,32 @@ function App() {
     setSelectedChecklistId,
   ])
 
-  // Update hash when view changes (but don't trigger hashchange loop)
   useEffect(() => {
+    const currentHash = window.location.hash.slice(1)
+    const currentParts = currentHash.split('/')
+    const currentRoute = currentParts[0]
+    const currentId = currentParts[1]
+
+    const detailRoutes = [
+      'record',
+      'gratitude-entry',
+      'mood-entry',
+      'checklist-entry',
+      'new-record',
+    ]
+    if (detailRoutes.includes(currentRoute) && currentId) {
+      const stateHasId =
+        (currentRoute === 'record' && selectedRecordId === currentId) ||
+        (currentRoute === 'new-record' && selectedRecordId === currentId) ||
+        (currentRoute === 'gratitude-entry' && selectedGratitudeId === currentId) ||
+        (currentRoute === 'mood-entry' && selectedMoodCheckId === currentId) ||
+        (currentRoute === 'checklist-entry' && selectedChecklistId === currentId)
+
+      if (!stateHasId) {
+        return
+      }
+    }
+
     const viewToRoute: Partial<Record<ViewType, string>> = {
       home: 'records',
       'thought-detail': selectedRecordId ? `record/${selectedRecordId}` : 'records',
@@ -119,6 +142,7 @@ function App() {
       insights: 'insights',
       settings: 'settings',
       checklist: 'checklist',
+      'new-checklist': 'new-checklist',
       'checklist-detail': selectedChecklistId
         ? `checklist-entry/${selectedChecklistId}`
         : 'checklist',

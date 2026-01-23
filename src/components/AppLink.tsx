@@ -8,10 +8,6 @@ interface AppLinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'hr
   onClick?: (e: MouseEvent<HTMLAnchorElement>) => void
 }
 
-/**
- * A link component that supports middle-click to open in new tab
- * while still using SPA navigation for regular clicks.
- */
 export function AppLink({ to, id, children, onClick, className, ...props }: AppLinkProps) {
   const {
     setView,
@@ -22,7 +18,6 @@ export function AppLink({ to, id, children, onClick, className, ...props }: AppL
     setSelectedActivityId,
   } = useAppStore()
 
-  // Build the hash URL
   const getHref = () => {
     const routeMap: Partial<Record<ViewType, string>> = {
       home: 'records',
@@ -38,21 +33,19 @@ export function AppLink({ to, id, children, onClick, className, ...props }: AppL
       insights: 'insights',
       settings: 'settings',
       checklist: 'checklist',
+      'new-checklist': 'new-checklist',
       'checklist-detail': id ? `checklist-entry/${id}` : 'checklist',
     }
     return `#${routeMap[to] || to}`
   }
 
   const handleClick = (e: MouseEvent<HTMLAnchorElement>) => {
-    // Let middle-click, ctrl+click, cmd+click work naturally (open in new tab)
-    if (e.button === 1 || e.ctrlKey || e.metaKey) {
+    if (e.ctrlKey || e.metaKey) {
       return
     }
 
-    // Regular click - use SPA navigation
     e.preventDefault()
 
-    // Set the appropriate ID based on view type
     if (id) {
       if (to === 'thought-detail' || to === 'new-thought') {
         setSelectedRecordId(id)
@@ -60,7 +53,7 @@ export function AppLink({ to, id, children, onClick, className, ...props }: AppL
         setSelectedGratitudeId(id)
       } else if (to === 'new-mood-check') {
         setSelectedMoodCheckId(id)
-      } else if (to === 'checklist-detail') {
+      } else if (to === 'checklist-detail' || to === 'new-checklist') {
         setSelectedChecklistId(id)
       } else if (to === 'new-activity') {
         setSelectedActivityId(id)
@@ -74,8 +67,20 @@ export function AppLink({ to, id, children, onClick, className, ...props }: AppL
     }
   }
 
+  const handleAuxClick = (e: MouseEvent<HTMLAnchorElement>) => {
+    if (e.button === 1) {
+      e.stopPropagation()
+    }
+  }
+
   return (
-    <a href={getHref()} onClick={handleClick} className={className} {...props}>
+    <a
+      href={getHref()}
+      onClick={handleClick}
+      onAuxClick={handleAuxClick}
+      className={className}
+      {...props}
+    >
       {children}
     </a>
   )

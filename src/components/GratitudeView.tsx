@@ -51,7 +51,11 @@ export function GratitudeView() {
     return filtered
   }, [gratitudeEntries, searchQuery, timeFilter])
 
-  const handleCardClick = (id: string, e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleCardClick = (id: string, e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (e.ctrlKey || e.metaKey) {
+      return
+    }
+    e.preventDefault()
     e.currentTarget.blur()
     setExpandedId((current) => (current === id ? null : id))
   }
@@ -190,10 +194,10 @@ export function GratitudeView() {
                   isExpanded ? 'h-auto col-span-full' : 'card-gratitude'
                 }`}
               >
-                <button
+                <a
+                  href={`#gratitude-entry/${entry.id}`}
                   onClick={(e) => handleCardClick(entry.id, e)}
-                  className={`w-full text-left p-5 focus:outline-none focus:ring-2 focus:ring-sage-400/50 dark:focus:ring-sage-500/50 rounded-t-xl overflow-hidden ${!isExpanded ? 'flex flex-col h-full rounded-xl' : ''}`}
-                  type="button"
+                  className={`block w-full text-left p-5 focus:outline-none focus:ring-2 focus:ring-sage-400/50 dark:focus:ring-sage-500/50 rounded-t-xl overflow-hidden ${!isExpanded ? 'flex flex-col h-full rounded-xl' : ''}`}
                 >
                   <div className="flex items-center justify-between mb-3 flex-shrink-0">
                     <div className="text-sm text-stone-400 dark:text-stone-500">
@@ -233,7 +237,7 @@ export function GratitudeView() {
                       </li>
                     )}
                   </ul>
-                </button>
+                </a>
 
                 {isExpanded && (
                   <div className="px-5 pb-5">

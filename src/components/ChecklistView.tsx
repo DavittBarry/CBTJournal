@@ -4,6 +4,7 @@ import { getDepressionLevel, DEPRESSION_ITEMS, type DepressionScores } from '@/t
 import { format, parseISO, isAfter, subDays, subMonths, subYears } from 'date-fns'
 import { PageIntro, TimeFilter } from '@/components/InfoComponents'
 import { toast } from '@/stores/toastStore'
+import { AppLink } from '@/components/AppLink'
 
 function getCategoryScores(scores: DepressionScores) {
   const categories: Record<string, { total: number; count: number }> = {}
@@ -24,8 +25,7 @@ function getCategoryScores(scores: DepressionScores) {
 }
 
 export function ChecklistView() {
-  const { depressionChecklists, setView, setSelectedChecklistId, deleteDepressionChecklist } =
-    useAppStore()
+  const { depressionChecklists, deleteDepressionChecklist } = useAppStore()
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null)
   const [timeFilter, setTimeFilter] = useState('all')
@@ -58,22 +58,17 @@ export function ChecklistView() {
     return filtered
   }, [depressionChecklists, timeFilter])
 
-  const handleCardClick = (id: string) => {
+  const handleCardClick = (id: string, e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (e.ctrlKey || e.metaKey) {
+      return
+    }
+    e.preventDefault()
+    e.currentTarget.blur()
     if (expandedId === id) {
       setExpandedId(null)
     } else {
       setExpandedId(id)
     }
-  }
-
-  const handleView = (id: string) => {
-    setSelectedChecklistId(id)
-    setView('checklist-detail')
-  }
-
-  const handleEdit = (id: string) => {
-    setSelectedChecklistId(id)
-    setView('new-checklist')
   }
 
   const handleDelete = async (id: string) => {
@@ -115,15 +110,9 @@ export function ChecklistView() {
       />
 
       <div className="flex items-center justify-center mb-4">
-        <button
-          onClick={() => {
-            setSelectedChecklistId(null)
-            setView('new-checklist')
-          }}
-          className="btn-primary text-sm py-2.5 px-4"
-        >
+        <AppLink to="new-checklist" className="btn-primary text-sm py-2.5 px-4 text-center">
           New checklist
-        </button>
+        </AppLink>
       </div>
 
       {depressionChecklists.length > 0 && (
@@ -173,15 +162,12 @@ export function ChecklistView() {
             </svg>
           </div>
           <p className="text-stone-500 dark:text-stone-400 mb-4">No checklists completed yet</p>
-          <button
-            onClick={() => {
-              setSelectedChecklistId(null)
-              setView('new-checklist')
-            }}
+          <AppLink
+            to="new-checklist"
             className="text-sage-600 dark:text-sage-400 hover:text-sage-700 dark:hover:text-sage-300 font-medium"
           >
             Complete your first checklist
-          </button>
+          </AppLink>
         </div>
       ) : filteredChecklists.length === 0 ? (
         <div className="text-center py-16">
@@ -212,9 +198,10 @@ export function ChecklistView() {
                     : 'hover:shadow-soft-lg dark:hover:shadow-soft-lg-dark'
                 }`}
               >
-                <button
-                  onClick={() => handleCardClick(entry.id)}
-                  className="w-full text-left p-5 focus:ring-0 focus:ring-offset-0"
+                <a
+                  href={`#checklist-entry/${entry.id}`}
+                  onClick={(e) => handleCardClick(entry.id, e)}
+                  className="block w-full text-left p-5 focus:ring-0 focus:ring-offset-0"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="text-sm text-stone-400 dark:text-stone-500">
@@ -270,7 +257,7 @@ export function ChecklistView() {
                       }}
                     />
                   </div>
-                </button>
+                </a>
 
                 {isExpanded && (
                   <div className="px-5 pb-5">
@@ -309,24 +296,22 @@ export function ChecklistView() {
                     </div>
 
                     <div className="flex gap-2 pt-4 border-t border-stone-100 dark:border-stone-700">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleView(entry.id)
-                        }}
-                        className="flex-1 btn-secondary py-2.5 text-sm"
+                      <AppLink
+                        to="checklist-detail"
+                        id={entry.id}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-1 btn-secondary py-2.5 text-sm text-center"
                       >
                         View details
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleEdit(entry.id)
-                        }}
-                        className="flex-1 btn-secondary py-2.5 text-sm"
+                      </AppLink>
+                      <AppLink
+                        to="new-checklist"
+                        id={entry.id}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-1 btn-secondary py-2.5 text-sm text-center"
                       >
                         Edit
-                      </button>
+                      </AppLink>
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
