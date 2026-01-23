@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useAppStore } from '@/stores/appStore'
 import { useThemeStore } from '@/stores/themeStore'
-import { COGNITIVE_DISTORTIONS, getDepressionLevel, getPHQ9Level, getGAD7Level } from '@/types'
-import { format, parseISO, getDay } from 'date-fns'
+import { getDepressionLevel, getPHQ9Level, getGAD7Level } from '@/types'
+import { format, parseISO } from 'date-fns'
 import {
   LineChart,
   Line,
@@ -26,8 +26,6 @@ import {
   type DistortionInsight,
   type PersonalInsight,
 } from '@/utils/insightGenerator'
-
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 function InsightCard({ insight }: { insight: PersonalInsight }) {
   const bgColors = {
@@ -568,7 +566,7 @@ export function InsightsView() {
                 {emotion.commonTriggers.length > 0 && (
                   <div className="mt-2 text-xs text-stone-500 dark:text-stone-400">
                     Common triggers:{' '}
-                    {emotion.commonTriggers.map((t, i) => (
+                    {emotion.commonTriggers.map((t) => (
                       <span
                         key={t}
                         className="bg-stone-100 dark:bg-stone-700 px-1.5 py-0.5 rounded ml-1"

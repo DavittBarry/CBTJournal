@@ -436,7 +436,7 @@ function calculateStreaks(sortedRecords: ThoughtRecord[]): {
 }
 
 export function generatePersonalInsights(
-  records: ThoughtRecord[],
+  _records: ThoughtRecord[],
   distortionInsights: DistortionInsight[],
   emotionPatterns: EmotionPattern[],
   progressMetrics: ProgressMetrics | null
