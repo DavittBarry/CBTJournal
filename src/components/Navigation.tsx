@@ -360,11 +360,15 @@ export function Navigation() {
       {/* Desktop sidebar navigation */}
       <nav className="hidden lg:flex fixed left-0 top-0 bottom-0 w-64 bg-white dark:bg-stone-800 border-r border-stone-200 dark:border-stone-700 flex-col z-50">
         <div className="p-6 border-b border-stone-100 dark:border-stone-700">
-          <div className="flex items-center">
-            <AppLogo className="w-8 h-8 flex-shrink-0" />
-            <div className="flex-1 text-center pr-8">
-              <h1 className="text-xl font-semibold text-sage-700 dark:text-sage-400">CBTJournal</h1>
-              <p className="text-xs text-stone-400 dark:text-stone-500">Evidence-based tools</p>
+          <div className="flex items-center gap-3">
+            <AppLogo className="w-9 h-9 flex-shrink-0" />
+            <div>
+              <h1 className="text-lg font-semibold text-stone-700 dark:text-stone-200 tracking-tight">
+                CBTJournal
+              </h1>
+              <p className="text-[11px] text-stone-400 dark:text-stone-500 tracking-wide">
+                Evidence-based tools
+              </p>
             </div>
           </div>
         </div>
