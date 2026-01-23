@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useAppStore } from '@/stores/appStore'
+import { useAppStore, type ViewType } from '@/stores/appStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { Navigation } from '@/components/Navigation'
 import { BackupReminder } from '@/components/BackupReminder'
@@ -26,12 +26,18 @@ import { logger } from '@/utils/logger'
 function App() {
   const {
     currentView,
+    setView,
     isLoading,
     loadData,
     selectedRecordId,
+    setSelectedRecordId,
+    selectedGratitudeId,
+    setSelectedGratitudeId,
     thoughtRecords,
     selectedChecklistId,
+    setSelectedChecklistId,
     selectedMoodCheckId,
+    setSelectedMoodCheckId,
     moodChecks,
     initializeAutoSave,
     initializeCloudSync,
@@ -41,6 +47,115 @@ function App() {
   useEffect(() => {
     initTheme()
   }, [initTheme])
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.slice(1)
+      if (!hash) return
+
+      const parts = hash.split('/')
+      const route = parts[0]
+      const id = parts[1]
+
+      const routeMap: Record<string, ViewType> = {
+        records: 'home',
+        record: 'thought-detail',
+        'new-record': 'new-thought',
+        gratitude: 'gratitude',
+        'gratitude-entry': 'new-gratitude',
+        mood: 'mood-check',
+        'mood-entry': 'new-mood-check',
+        activities: 'activities',
+        toolkit: 'toolkit',
+        insights: 'insights',
+        settings: 'settings',
+        checklist: 'checklist',
+        'new-checklist': 'new-checklist',
+        'checklist-entry': 'checklist-detail',
+      }
+
+      const view = routeMap[route]
+      if (view) {
+        if (route === 'record' && id) {
+          setSelectedRecordId(id)
+        } else if (route === 'gratitude-entry' && id) {
+          setSelectedGratitudeId(id)
+        } else if (route === 'mood-entry' && id) {
+          setSelectedMoodCheckId(id)
+        } else if (route === 'checklist-entry' && id) {
+          setSelectedChecklistId(id)
+        }
+        setView(view)
+      }
+    }
+
+    if (window.location.hash) {
+      handleHashChange()
+    }
+
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [
+    setView,
+    setSelectedRecordId,
+    setSelectedGratitudeId,
+    setSelectedMoodCheckId,
+    setSelectedChecklistId,
+  ])
+
+  useEffect(() => {
+    const currentHash = window.location.hash.slice(1)
+    const currentParts = currentHash.split('/')
+    const currentRoute = currentParts[0]
+    const currentId = currentParts[1]
+
+    const detailRoutes = [
+      'record',
+      'gratitude-entry',
+      'mood-entry',
+      'checklist-entry',
+      'new-record',
+    ]
+    if (detailRoutes.includes(currentRoute) && currentId) {
+      const stateHasId =
+        (currentRoute === 'record' && selectedRecordId === currentId) ||
+        (currentRoute === 'new-record' && selectedRecordId === currentId) ||
+        (currentRoute === 'gratitude-entry' && selectedGratitudeId === currentId) ||
+        (currentRoute === 'mood-entry' && selectedMoodCheckId === currentId) ||
+        (currentRoute === 'checklist-entry' && selectedChecklistId === currentId)
+
+      if (!stateHasId) {
+        return
+      }
+    }
+
+    const viewToRoute: Partial<Record<ViewType, string>> = {
+      home: 'records',
+      'thought-detail': selectedRecordId ? `record/${selectedRecordId}` : 'records',
+      'new-thought': selectedRecordId ? `new-record/${selectedRecordId}` : 'new-record',
+      gratitude: 'gratitude',
+      'new-gratitude': selectedGratitudeId ? `gratitude-entry/${selectedGratitudeId}` : 'gratitude',
+      'mood-check': 'mood',
+      'new-mood-check': selectedMoodCheckId ? `mood-entry/${selectedMoodCheckId}` : 'mood',
+      activities: 'activities',
+      toolkit: 'toolkit',
+      insights: 'insights',
+      settings: 'settings',
+      checklist: 'checklist',
+      'new-checklist': 'new-checklist',
+      'checklist-detail': selectedChecklistId
+        ? `checklist-entry/${selectedChecklistId}`
+        : 'checklist',
+    }
+
+    const route = viewToRoute[currentView]
+    if (route) {
+      const newHash = `#${route}`
+      if (window.location.hash !== newHash) {
+        window.history.replaceState(null, '', newHash)
+      }
+    }
+  }, [currentView, selectedRecordId, selectedGratitudeId, selectedMoodCheckId, selectedChecklistId])
 
   useEffect(() => {
     logger.debug('App', 'Loading initial data')

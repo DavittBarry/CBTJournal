@@ -6,6 +6,7 @@ import { PageIntro, SearchBar, TimeFilter } from '@/components/InfoComponents'
 import { toast } from '@/stores/toastStore'
 import { ReminderBanner } from '@/components/ReminderBanner'
 import { useReminders } from '@/hooks/useReminders'
+import { AppLink } from '@/components/AppLink'
 
 export function HomeView() {
   const {
@@ -66,21 +67,13 @@ export function HomeView() {
     return filtered
   }, [thoughtRecords, searchQuery, timeFilter])
 
-  const handleCardClick = (id: string, e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleCardClick = (id: string, e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (e.ctrlKey || e.metaKey) {
+      return
+    }
+    e.preventDefault()
     e.currentTarget.blur()
     setExpandedId((current) => (current === id ? null : id))
-  }
-
-  const handleView = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    setSelectedRecordId(id)
-    setView('thought-detail')
-  }
-
-  const handleEdit = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    setSelectedRecordId(id)
-    setView('new-thought')
   }
 
   const handleDelete = async (id: string) => {
@@ -237,10 +230,10 @@ export function HomeView() {
                   !isExpanded ? 'card-thought-record' : 'h-auto col-span-full'
                 }`}
               >
-                <button
+                <a
+                  href={`#record/${record.id}`}
                   onClick={(e) => handleCardClick(record.id, e)}
-                  className={`w-full text-left p-5 focus:outline-none focus:ring-2 focus:ring-sage-400/50 dark:focus:ring-sage-500/50 rounded-t-xl overflow-hidden ${!isExpanded ? 'flex flex-col h-full rounded-xl' : ''}`}
-                  type="button"
+                  className={`block w-full text-left p-5 focus:outline-none focus:ring-2 focus:ring-sage-400/50 dark:focus:ring-sage-500/50 rounded-t-xl overflow-hidden ${!isExpanded ? 'flex flex-col h-full rounded-xl' : ''}`}
                 >
                   <div className={`flex-shrink-0 space-y-3 ${!isExpanded ? 'h-24' : ''}`}>
                     <div className="flex items-start justify-between">
@@ -331,25 +324,27 @@ export function HomeView() {
                       )}
                     </div>
                   </div>
-                </button>
+                </a>
 
                 {isExpanded && (
-                  <div className="px-5 pb-3 space-y-4">
-                    <div className="flex gap-2 pb-4">
-                      <button
-                        onClick={(e) => handleView(record.id, e)}
-                        className="flex-1 btn-secondary py-2 text-sm"
-                        type="button"
+                  <div className="px-5 pb-5">
+                    <div className="flex gap-2 mb-6">
+                      <AppLink
+                        to="thought-detail"
+                        id={record.id}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-1 btn-secondary py-2 text-sm text-center"
                       >
                         View
-                      </button>
-                      <button
-                        onClick={(e) => handleEdit(record.id, e)}
-                        className="flex-1 btn-secondary py-2 text-sm"
-                        type="button"
+                      </AppLink>
+                      <AppLink
+                        to="new-thought"
+                        id={record.id}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-1 btn-secondary py-2 text-sm text-center"
                       >
                         Edit
-                      </button>
+                      </AppLink>
                       <button
                         onClick={(e) => handleDuplicate(record.id, e)}
                         className="flex-1 btn-secondary py-2 text-sm"
@@ -366,45 +361,103 @@ export function HomeView() {
                       </button>
                     </div>
 
-                    {record.automaticThoughts && (
-                      <div className="pt-4 border-t border-stone-100 dark:border-stone-700">
-                        <h4 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide mb-2">
-                          Automatic thoughts
-                        </h4>
-                        <p className="text-stone-700 dark:text-stone-300 text-sm leading-relaxed whitespace-pre-wrap">
-                          {record.automaticThoughts}
-                        </p>
-                      </div>
-                    )}
-
-                    {record.rationalResponse && (
-                      <div className="pt-4 border-t border-stone-100 dark:border-stone-700">
-                        <h4 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide mb-2">
-                          Rational response
-                        </h4>
-                        <p className="text-stone-700 dark:text-stone-300 text-sm leading-relaxed whitespace-pre-wrap">
-                          {record.rationalResponse}
-                        </p>
-                      </div>
-                    )}
-
-                    {record.outcomeEmotions.length > 0 && record.outcomeEmotions[0].name && (
-                      <div className="pt-4 border-t border-stone-100 dark:border-stone-700">
-                        <h4 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide mb-2">
-                          Outcome emotions
-                        </h4>
-                        <div className="flex flex-wrap gap-1.5">
-                          {record.outcomeEmotions.map((emotion, i) => (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-stone-50 dark:bg-stone-800/50 rounded-xl p-4 flex flex-col">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="w-6 h-6 rounded-full bg-critical-100 dark:bg-critical-900/30 text-critical-600 dark:text-critical-400 text-xs font-bold flex items-center justify-center">
+                            1
+                          </span>
+                          <h4 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide">
+                            Emotions (before)
+                          </h4>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 mb-4">
+                          {record.emotions.map((emotion, i) => (
                             <span
                               key={i}
-                              className="text-xs bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-2.5 py-1 rounded-full"
+                              className="text-xs bg-critical-100 dark:bg-critical-900/30 text-critical-700 dark:text-critical-300 px-2.5 py-1 rounded-full"
                             >
                               {emotion.name} {emotion.intensity}%
                             </span>
                           ))}
                         </div>
+                        <div className="mt-auto pt-3 border-t border-stone-200 dark:border-stone-700">
+                          <div className="text-xs text-stone-400 dark:text-stone-500 mb-1">
+                            Peak intensity
+                          </div>
+                          <div className="text-2xl font-semibold text-critical-500 dark:text-critical-400">
+                            {maxEmotion?.intensity || 0}%
+                          </div>
+                        </div>
                       </div>
-                    )}
+
+                      <div className="bg-stone-50 dark:bg-stone-800/50 rounded-xl p-4 flex flex-col">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-xs font-bold flex items-center justify-center">
+                            2
+                          </span>
+                          <h4 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide">
+                            Automatic thoughts
+                          </h4>
+                        </div>
+                        <p className="text-stone-700 dark:text-stone-300 text-sm leading-relaxed whitespace-pre-wrap flex-grow">
+                          {record.automaticThoughts || 'No automatic thoughts recorded'}
+                        </p>
+                        {record.distortions.length > 0 && (
+                          <div className="mt-auto pt-3 border-t border-stone-200 dark:border-stone-700">
+                            <div className="text-xs text-stone-400 dark:text-stone-500 mb-2">
+                              Distortions identified
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {record.distortions.map((id) => (
+                                <span
+                                  key={id}
+                                  className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded"
+                                >
+                                  {getDistortionName(id)}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="bg-stone-50 dark:bg-stone-800/50 rounded-xl p-4 flex flex-col">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="w-6 h-6 rounded-full bg-helpful-100 dark:bg-helpful-900/30 text-helpful-600 dark:text-helpful-400 text-xs font-bold flex items-center justify-center">
+                            3
+                          </span>
+                          <h4 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide">
+                            Rational response
+                          </h4>
+                        </div>
+                        <p className="text-stone-700 dark:text-stone-300 text-sm leading-relaxed whitespace-pre-wrap flex-grow">
+                          {record.rationalResponse || 'No rational response recorded'}
+                        </p>
+                        {hasOutcome && (
+                          <div className="mt-auto pt-3 border-t border-stone-200 dark:border-stone-700">
+                            <div className="text-xs text-stone-400 dark:text-stone-500 mb-2">
+                              Emotions after
+                            </div>
+                            <div className="flex flex-wrap gap-1.5 mb-2">
+                              {record.outcomeEmotions.map((emotion, i) => (
+                                <span
+                                  key={i}
+                                  className="text-xs bg-helpful-100 dark:bg-helpful-900/30 text-helpful-700 dark:text-helpful-300 px-2.5 py-1 rounded-full"
+                                >
+                                  {emotion.name} {emotion.intensity}%
+                                </span>
+                              ))}
+                            </div>
+                            {improvement > 0 && (
+                              <div className="text-sm font-medium text-helpful-600 dark:text-helpful-400">
+                                ↓ {improvement}% reduction
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

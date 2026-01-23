@@ -35,6 +35,8 @@ export function SettingsView() {
     setFileHandle,
     syncToCloud,
     syncFromCloud,
+    setView,
+    setSelectedChecklistId,
   } = useAppStore()
   const { theme, setTheme } = useThemeStore()
   const {
@@ -475,6 +477,41 @@ export function SettingsView() {
         Settings & guide
       </h1>
 
+      {/* Mobile-only link to Burns checklist if user has legacy data */}
+      {depressionChecklists.length > 0 && (
+        <section className="lg:hidden mb-8">
+          <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300 mb-4">
+            Legacy features
+          </h2>
+          <button
+            onClick={() => {
+              setSelectedChecklistId(null)
+              setView('checklist')
+            }}
+            className="card p-4 flex items-center gap-3 hover:bg-stone-50 dark:hover:bg-stone-700/50 transition-colors text-left w-full"
+          >
+            <svg
+              className="w-5 h-5 text-sage-600 dark:text-sage-400 flex-shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M9 11l3 3L22 4" />
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+            </svg>
+            <div>
+              <span className="text-sm font-medium text-stone-700 dark:text-stone-200">
+                Burns checklist
+              </span>
+              <span className="text-xs text-stone-400 dark:text-stone-500 ml-2">(legacy)</span>
+            </div>
+          </button>
+        </section>
+      )}
+
       {importStep === 'choose-mode' && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="card p-6 max-w-sm w-full">
@@ -678,9 +715,9 @@ export function SettingsView() {
                   Overview
                 </h4>
                 <p className="text-sm leading-relaxed mb-4">
-                  CBTJournal is a cognitive behavioral therapy (CBT) thought journal designed to
-                  help users track and manage their thoughts, emotions, and mental wellness. Your
-                  privacy is our top priority.
+                  CBTJournal is a mental wellness app that combines cognitive behavioral therapy
+                  techniques with clinically validated mood assessments to help you track and manage
+                  your thoughts, emotions, and mental health. Your privacy is our top priority.
                 </p>
 
                 <h4 className="text-stone-800 dark:text-stone-100 font-semibold mt-4 mb-2">
@@ -718,8 +755,9 @@ export function SettingsView() {
                     Thought records (situations, emotions, cognitive distortions, rational
                     responses).
                   </li>
+                  <li>Mood assessments (PHQ-9 depression scores, GAD-7 anxiety scores).</li>
                   <li>Gratitude journal entries.</li>
-                  <li>Depression checklist responses.</li>
+                  <li>Activity tracking and safety plans.</li>
                   <li>User preferences (theme, settings).</li>
                   <li>Backup timestamps.</li>
                 </ul>
@@ -1239,8 +1277,9 @@ export function SettingsView() {
         <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300 mb-4">About</h2>
         <div className="card p-5">
           <p className="text-stone-600 dark:text-stone-300 mb-3 leading-relaxed">
-            CBTJournal is based on the cognitive behavioral therapy techniques from "Feeling Good"
-            by David D. Burns, M.D.
+            CBTJournal combines evidence-based techniques from cognitive behavioral therapy,
+            including thought records, behavioral activation, and clinically validated mood
+            assessments like PHQ-9 and GAD-7.
           </p>
           <p className="text-stone-500 dark:text-stone-400 text-sm leading-relaxed mb-3">
             This app is not a replacement for professional mental health care. If you're struggling,
@@ -1354,11 +1393,12 @@ export function SettingsView() {
 
           <div className="pt-3 border-t border-stone-100 dark:border-stone-700">
             <h3 className="text-sm font-medium text-stone-700 dark:text-stone-200 mb-2">
-              Depression checklist
+              Mood assessments
             </h3>
             <p className="text-sm text-stone-600 dark:text-stone-300">
-              Track your mood with the Burns Depression Checklist. Regular tracking helps you spot
-              patterns and measure progress.
+              Track your mood with clinically validated assessments. PHQ-9 measures depression
+              symptoms and GAD-7 measures anxiety. Regular tracking helps you spot patterns and
+              measure progress.
             </p>
           </div>
 
@@ -1382,16 +1422,14 @@ export function SettingsView() {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <a
-            href="https://feelinggood.com/"
+            href="https://www.apa.org/topics/cognitive-behavioral-therapy"
             target="_blank"
             rel="noopener noreferrer"
             className="card block p-5 hover:shadow-soft-lg dark:hover:shadow-soft-lg-dark transition-shadow duration-200"
           >
-            <div className="text-stone-800 dark:text-stone-100 font-medium">
-              Feeling Good (David D. Burns)
-            </div>
+            <div className="text-stone-800 dark:text-stone-100 font-medium">About CBT (APA)</div>
             <div className="text-stone-500 dark:text-stone-400 text-sm mt-1">
-              Official website with resources and podcasts.
+              Learn about cognitive behavioral therapy from the American Psychological Association.
             </div>
           </a>
           <a
@@ -1400,7 +1438,7 @@ export function SettingsView() {
             rel="noopener noreferrer"
             className="card block p-5 hover:shadow-soft-lg dark:hover:shadow-soft-lg-dark transition-shadow duration-200"
           >
-            <div className="text-stone-800 dark:text-stone-100 font-medium">Find a Helpline</div>
+            <div className="text-stone-800 dark:text-stone-100 font-medium">Find a helpline</div>
             <div className="text-stone-500 dark:text-stone-400 text-sm mt-1">
               Free emotional support helplines worldwide.
             </div>

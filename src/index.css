@@ -38,6 +38,15 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   overflow: hidden;
 }
 
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 input:focus, textarea:focus, button:focus {
   @apply outline-none ring-2 ring-sage-400/70 ring-offset-2 ring-offset-warm-200;
   @apply dark:ring-sage-600/60 dark:ring-offset-stone-900;
