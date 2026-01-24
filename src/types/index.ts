@@ -749,13 +749,34 @@ export interface ActivityEntry {
   moodAfter?: number
   pleasureRating?: number // 0-10 enjoyment
   masteryRating?: number // 0-10 sense of accomplishment
-  connectionRating?: number // 0-10 social connection (new)
-  meaningRating?: number // 0-10 alignment with values (new)
+  connectionRating?: number // 0-10 social connection
+  meaningRating?: number // 0-10 alignment with values
   notes?: string
   isPlanned: boolean
   isCompleted: boolean
   linkedValue?: string
   barriers?: string // What got in the way (if not completed)
+
+  // Google Calendar sync fields
+  googleCalendarEventId?: string
+  googleCalendarId?: string
+  syncWithCalendar?: boolean
+  lastSyncedAt?: string
+  source?: 'local' | 'google-calendar'
+}
+
+// Represents a Google Calendar event displayed in the activities view
+// These are read-only and don't have CBT-specific fields
+export interface CalendarEventDisplay {
+  id: string
+  googleEventId: string
+  title: string
+  date: string
+  startTime?: string
+  endTime?: string
+  isAllDay: boolean
+  description?: string
+  htmlLink?: string
 }
 
 export type ActivityCategory =

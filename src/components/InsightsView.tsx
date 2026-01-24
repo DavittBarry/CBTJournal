@@ -15,6 +15,12 @@ import {
   Legend,
   AreaChart,
   Area,
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  ComposedChart,
 } from 'recharts'
 import { PageIntro, StatInfoButton } from '@/components/InfoComponents'
 import {
@@ -26,8 +32,9 @@ import {
   type DistortionInsight,
   type PersonalInsight,
 } from '@/utils/insightGenerator'
+import { generateActivityInsights, type ActivityPatternInsight } from '@/utils/activityInsights'
 
-function InsightCard({ insight }: { insight: PersonalInsight }) {
+function InsightCard({ insight }: { insight: PersonalInsight | ActivityPatternInsight }) {
   const bgColors = {
     celebration:
       'bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-amber-200 dark:border-amber-800',
@@ -161,10 +168,12 @@ function DistortionCard({
 }
 
 export function InsightsView() {
-  const { thoughtRecords, depressionChecklists, gratitudeEntries, moodChecks } = useAppStore()
+  const { thoughtRecords, depressionChecklists, gratitudeEntries, moodChecks, activities } =
+    useAppStore()
   const { resolvedTheme } = useThemeStore()
   const isDark = resolvedTheme === 'dark'
   const [expandedDistortion, setExpandedDistortion] = useState<number | null>(null)
+  const [activeTab, setActiveTab] = useState<'overview' | 'thoughts' | 'activities'>('overview')
 
   const chartColors = {
     axis: isDark ? '#78716c' : '#a8a29e',
@@ -179,6 +188,9 @@ export function InsightsView() {
     legacy: isDark ? '#9ca3af' : '#6b7280',
     area: isDark ? '#7d8f7d' : '#617161',
     areaFill: isDark ? 'rgba(125, 143, 125, 0.2)' : 'rgba(97, 113, 97, 0.1)',
+    activity: isDark ? '#8bb88b' : '#5a8a5a',
+    activityFill: isDark ? 'rgba(139, 184, 139, 0.2)' : 'rgba(90, 138, 90, 0.1)',
+    moodChange: isDark ? '#6bbb6b' : '#4a9a4a',
   }
 
   const distortionInsights = useMemo(
@@ -202,6 +214,8 @@ export function InsightsView() {
   )
 
   const timePatterns = useMemo(() => generateTimePatterns(thoughtRecords), [thoughtRecords])
+
+  const activityInsights = useMemo(() => generateActivityInsights(activities), [activities])
 
   const emotionalTrend = useMemo(() => {
     if (thoughtRecords.length < 3) return null
@@ -300,19 +314,48 @@ export function InsightsView() {
     }
   }, [gratitudeEntries])
 
+  const activityBalanceData = useMemo(() => {
+    if (!activityInsights) return null
+
+    const categoryGroups = {
+      Pleasure: ['leisure', 'creative', 'self-care'],
+      Mastery: ['productive', 'physical'],
+      Social: ['social'],
+      Meaning: ['values-aligned', 'mindfulness'],
+    }
+
+    return Object.entries(categoryGroups).map(([name, categories]) => {
+      const count = activityInsights.categoryBreakdown
+        .filter((c) => categories.includes(c.category))
+        .reduce((sum, c) => sum + c.completedCount, 0)
+      const avgMood =
+        activityInsights.categoryBreakdown
+          .filter((c) => categories.includes(c.category) && c.completedCount > 0)
+          .reduce((sum, c) => sum + c.avgMoodChange * c.completedCount, 0) / Math.max(count, 1)
+
+      return {
+        name,
+        count,
+        avgMoodChange: Math.round(avgMood * 10) / 10,
+        fullMark: Math.max(activityInsights.completedActivities / 2, 5),
+      }
+    })
+  }, [activityInsights])
+
   const hasAnyData =
     progressMetrics ||
     moodTrends.hasPhq9 ||
     moodTrends.hasGad7 ||
     legacyDepressionTrend.length > 0 ||
-    gratitudeStats
+    gratitudeStats ||
+    activityInsights
 
   if (!hasAnyData) {
     return (
       <div>
         <PageIntro
           title="Insights"
-          description="This section shows patterns in your thought records, mood assessments, and gratitude practice. As you add more data, you'll see trends emerge that can help you understand your thinking patterns and track your progress over time."
+          description="This section shows patterns in your thought records, mood assessments, activities, and gratitude practice. As you add more data, you'll see trends emerge."
         />
         <div className="text-center py-16">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-sage-100 dark:bg-sage-900/30 flex items-center justify-center">
@@ -329,49 +372,200 @@ export function InsightsView() {
             </svg>
           </div>
           <p className="text-stone-500 dark:text-stone-400">
-            Add some records to see your patterns.
+            Add some records or activities to see your patterns.
           </p>
         </div>
       </div>
     )
   }
 
+  const allInsights = [...personalInsights, ...(activityInsights?.personalInsights || [])]
+
   return (
     <div className="space-y-6">
       <PageIntro
         title="Insights"
-        description="Personalized analysis of your CBT practice. Track your progress, understand your patterns, and get evidence-based tips tailored to your thinking style."
+        description="Personalized analysis of your CBT practice and behavioral activation. Track your progress and discover what works for you."
       />
 
-      {personalInsights.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {personalInsights.map((insight, i) => (
-            <InsightCard key={i} insight={insight} />
-          ))}
-        </div>
+      <div className="flex gap-2 p-1 bg-stone-100 dark:bg-stone-800 rounded-xl">
+        <button
+          onClick={() => setActiveTab('overview')}
+          className={`flex-1 py-2 px-4 text-sm font-medium rounded-lg transition-colors ${
+            activeTab === 'overview'
+              ? 'bg-white dark:bg-stone-700 text-stone-800 dark:text-stone-100 shadow-sm'
+              : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
+          }`}
+        >
+          Overview
+        </button>
+        <button
+          onClick={() => setActiveTab('thoughts')}
+          className={`flex-1 py-2 px-4 text-sm font-medium rounded-lg transition-colors ${
+            activeTab === 'thoughts'
+              ? 'bg-white dark:bg-stone-700 text-stone-800 dark:text-stone-100 shadow-sm'
+              : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
+          }`}
+        >
+          Thoughts
+        </button>
+        <button
+          onClick={() => setActiveTab('activities')}
+          className={`flex-1 py-2 px-4 text-sm font-medium rounded-lg transition-colors ${
+            activeTab === 'activities'
+              ? 'bg-white dark:bg-stone-700 text-stone-800 dark:text-stone-100 shadow-sm'
+              : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
+          }`}
+        >
+          Activities
+        </button>
+      </div>
+
+      {activeTab === 'overview' && (
+        <>
+          {allInsights.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {allInsights.slice(0, 4).map((insight, i) => (
+                <InsightCard key={i} insight={insight} />
+              ))}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {progressMetrics && (
+              <>
+                <div className="card p-4">
+                  <div className="text-2xl font-semibold text-stone-800 dark:text-stone-100">
+                    {progressMetrics.totalRecords}
+                  </div>
+                  <div className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+                    Thought records
+                  </div>
+                </div>
+                <div className="card p-4">
+                  <div className="text-2xl font-semibold text-helpful-500">
+                    {progressMetrics.avgImprovementAllTime > 0
+                      ? `↓${progressMetrics.avgImprovementAllTime}%`
+                      : '—'}
+                  </div>
+                  <div className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+                    Thought improvement
+                  </div>
+                </div>
+              </>
+            )}
+            {activityInsights && (
+              <>
+                <div className="card p-4">
+                  <div className="text-2xl font-semibold text-stone-800 dark:text-stone-100">
+                    {activityInsights.activitiesWithMoodData}
+                  </div>
+                  <div className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+                    Activities tracked
+                  </div>
+                </div>
+                <div className="card p-4">
+                  <div
+                    className={`text-2xl font-semibold ${activityInsights.overallAvgMoodChange >= 0 ? 'text-helpful-500' : 'text-amber-500'}`}
+                  >
+                    {activityInsights.overallAvgMoodChange > 0 ? '+' : ''}
+                    {activityInsights.overallAvgMoodChange}
+                  </div>
+                  <div className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+                    Avg mood change
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          {(moodTrends.hasPhq9 || moodTrends.hasGad7) && (
+            <div className="card p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300">
+                  Clinical assessments
+                </h2>
+                <StatInfoButton
+                  title="PHQ-9 & GAD-7"
+                  content="PHQ-9 measures depression (0-27) and GAD-7 measures anxiety (0-21). Lower scores mean fewer symptoms."
+                />
+              </div>
+              <div className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={moodTrends.combined}>
+                    <XAxis
+                      dataKey="date"
+                      stroke={chartColors.axis}
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      stroke={chartColors.axis}
+                      fontSize={12}
+                      domain={[0, 'auto']}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: chartColors.tooltipBg,
+                        border: `1px solid ${chartColors.tooltipBorder}`,
+                        borderRadius: '12px',
+                      }}
+                    />
+                    <Legend />
+                    {moodTrends.hasPhq9 && (
+                      <Line
+                        type="monotone"
+                        dataKey="phq9"
+                        name="PHQ-9"
+                        stroke={chartColors.phq9}
+                        strokeWidth={2}
+                        dot={{ r: 3 }}
+                        connectNulls
+                      />
+                    )}
+                    {moodTrends.hasGad7 && (
+                      <Line
+                        type="monotone"
+                        dataKey="gad7"
+                        name="GAD-7"
+                        stroke={chartColors.gad7}
+                        strokeWidth={2}
+                        dot={{ r: 3 }}
+                        connectNulls
+                      />
+                    )}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
-      {progressMetrics && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="card p-5">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="text-3xl font-semibold text-stone-800 dark:text-stone-100">
-                  {progressMetrics.totalRecords}
-                </div>
-                <div className="text-sm text-stone-500 dark:text-stone-400 mt-1">
-                  Thought records
+      {activeTab === 'thoughts' && (
+        <>
+          {progressMetrics && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="card p-5">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="text-3xl font-semibold text-stone-800 dark:text-stone-100">
+                      {progressMetrics.totalRecords}
+                    </div>
+                    <div className="text-sm text-stone-500 dark:text-stone-400 mt-1">
+                      Thought records
+                    </div>
+                  </div>
+                  <StatInfoButton
+                    title="Thought records"
+                    content="Research shows 3+ records/week leads to measurable improvement within 4-6 weeks."
+                  />
                 </div>
               </div>
-              <StatInfoButton
-                title="Thought records"
-                content="Total thought records completed. Research shows that regular practice (3+ records/week) leads to measurable improvement in mood within 4-6 weeks."
-              />
-            </div>
-          </div>
-          <div className="card p-5">
-            <div className="flex items-start justify-between">
-              <div>
+              <div className="card p-5">
                 <div className="text-3xl font-semibold text-helpful-500">
                   {progressMetrics.avgImprovementAllTime > 0
                     ? `↓${progressMetrics.avgImprovementAllTime}%`
@@ -381,29 +575,13 @@ export function InsightsView() {
                   Avg improvement
                 </div>
               </div>
-              <StatInfoButton
-                title="Average improvement"
-                content="Average reduction in emotional intensity after completing thought records. This measures how effectively the cognitive restructuring process is working for you."
-              />
-            </div>
-          </div>
-          <div className="card p-5">
-            <div className="flex items-start justify-between">
-              <div>
+              <div className="card p-5">
                 <div className="text-3xl font-semibold text-stone-800 dark:text-stone-100">
                   {progressMetrics.streak > 0 ? `${progressMetrics.streak}🔥` : '0'}
                 </div>
                 <div className="text-sm text-stone-500 dark:text-stone-400 mt-1">Day streak</div>
               </div>
-              <StatInfoButton
-                title="Current streak"
-                content="Consecutive days with at least one thought record. Building a habit of regular practice is one of the strongest predictors of CBT success."
-              />
-            </div>
-          </div>
-          <div className="card p-5">
-            <div className="flex items-start justify-between">
-              <div>
+              <div className="card p-5">
                 <div className="text-3xl font-semibold text-stone-800 dark:text-stone-100">
                   {progressMetrics.completionRate}%
                 </div>
@@ -411,416 +589,532 @@ export function InsightsView() {
                   Completion rate
                 </div>
               </div>
-              <StatInfoButton
-                title="Completion rate"
-                content="Percentage of records where you tracked outcome emotions. Completing the full process helps you measure what works and builds the skill of re-evaluating thoughts."
-              />
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
-      {emotionalTrend && emotionalTrend.length >= 3 && (
-        <div className="card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300">
-              Emotional intensity over time
-            </h2>
-            <StatInfoButton
-              title="Emotional intensity trend"
-              content="Shows your peak emotional intensity before (darker line) and after (lighter area) completing thought records. A widening gap indicates your CBT practice is becoming more effective."
-            />
-          </div>
-          <div className="h-48 sm:h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={emotionalTrend}>
-                <XAxis
-                  dataKey="date"
-                  stroke={chartColors.axis}
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
+          {emotionalTrend && emotionalTrend.length >= 3 && (
+            <div className="card p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300">
+                  Emotional intensity over time
+                </h2>
+                <StatInfoButton
+                  title="Emotional intensity"
+                  content="Shows intensity before and after thought records. A widening gap indicates CBT is becoming more effective."
                 />
-                <YAxis
-                  stroke={chartColors.axis}
-                  fontSize={12}
-                  domain={[0, 100]}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: chartColors.tooltipBg,
-                    border: `1px solid ${chartColors.tooltipBorder}`,
-                    borderRadius: '12px',
-                    boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.06)',
-                  }}
-                  labelStyle={{ color: chartColors.tooltipText }}
-                  formatter={(value: number, name: string) => [
-                    `${value}%`,
-                    name === 'before' ? 'Before' : 'After',
-                  ]}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="before"
-                  stroke={chartColors.area}
-                  strokeWidth={2}
-                  fill={chartColors.areaFill}
-                  dot={{ fill: chartColors.area, strokeWidth: 0, r: 3 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="after"
-                  stroke={chartColors.line}
-                  strokeWidth={2}
-                  strokeDasharray="5 5"
-                  dot={{ fill: chartColors.line, strokeWidth: 0, r: 3 }}
-                  connectNulls
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="flex gap-4 mt-2 text-xs text-stone-500 dark:text-stone-400">
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-0.5 bg-sage-600 dark:bg-sage-400" />
-              <span>Before</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div
-                className="w-3 h-0.5 bg-sage-600 dark:bg-sage-400 opacity-50"
-                style={{ borderBottom: '2px dashed' }}
-              />
-              <span>After</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {distortionInsights.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300">
-              Your thinking patterns
-            </h2>
-            <StatInfoButton
-              title="Cognitive distortions"
-              content="These are the thinking patterns that appear most often in your thought records. Understanding your patterns helps you catch them faster. Click each one for personalized tips."
-            />
-          </div>
-          <div className="space-y-2">
-            {distortionInsights.map((d) => (
-              <DistortionCard
-                key={d.id}
-                distortion={d}
-                isExpanded={expandedDistortion === d.id}
-                onToggle={() => setExpandedDistortion(expandedDistortion === d.id ? null : d.id)}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {emotionPatterns.length > 0 && (
-        <div className="card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300">
-              Emotion analysis
-            </h2>
-            <StatInfoButton
-              title="Emotion patterns"
-              content="Detailed analysis of your most frequent emotions, including average improvement and common triggers. Understanding your emotional patterns helps you prepare coping strategies."
-            />
-          </div>
-          <div className="space-y-4">
-            {emotionPatterns.slice(0, 3).map((emotion) => (
-              <div
-                key={emotion.name}
-                className="border-b border-stone-100 dark:border-stone-700 pb-4 last:border-0 last:pb-0"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-stone-800 dark:text-stone-100 font-medium capitalize">
-                      {emotion.name}
-                    </span>
-                    <span className="text-xs text-stone-400 dark:text-stone-500">
-                      ({emotion.count} records)
-                    </span>
-                  </div>
-                  {emotion.avgImprovement > 0 && (
-                    <span className="text-sm text-helpful-600 dark:text-helpful-400">
-                      ↓{emotion.avgImprovement}% avg improvement
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-4 text-xs text-stone-500 dark:text-stone-400">
-                  <span>
-                    Avg before:{' '}
-                    <strong className="text-critical-500">{emotion.avgIntensityBefore}%</strong>
-                  </span>
-                  {emotion.avgIntensityAfter > 0 && (
-                    <span>
-                      Avg after:{' '}
-                      <strong className="text-helpful-500">{emotion.avgIntensityAfter}%</strong>
-                    </span>
-                  )}
-                </div>
-                {emotion.commonTriggers.length > 0 && (
-                  <div className="mt-2 text-xs text-stone-500 dark:text-stone-400">
-                    Common triggers:{' '}
-                    {emotion.commonTriggers.map((t) => (
-                      <span
-                        key={t}
-                        className="bg-stone-100 dark:bg-stone-700 px-1.5 py-0.5 rounded ml-1"
-                      >
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                )}
               </div>
-            ))}
-          </div>
-        </div>
-      )}
+              <div className="h-48 sm:h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={emotionalTrend}>
+                    <XAxis
+                      dataKey="date"
+                      stroke={chartColors.axis}
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      stroke={chartColors.axis}
+                      fontSize={12}
+                      domain={[0, 100]}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: chartColors.tooltipBg,
+                        border: `1px solid ${chartColors.tooltipBorder}`,
+                        borderRadius: '12px',
+                      }}
+                      formatter={(value: number, name: string) => [
+                        `${value}%`,
+                        name === 'before' ? 'Before' : 'After',
+                      ]}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="before"
+                      stroke={chartColors.area}
+                      strokeWidth={2}
+                      fill={chartColors.areaFill}
+                      dot={{ r: 3 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="after"
+                      stroke={chartColors.line}
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      dot={{ r: 3 }}
+                      connectNulls
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
 
-      {(moodTrends.hasPhq9 || moodTrends.hasGad7) && (
-        <div className="card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300">
-              Clinical assessment trends
-            </h2>
-            <StatInfoButton
-              title="PHQ-9 & GAD-7"
-              content="PHQ-9 measures depression (0-27) and GAD-7 measures anxiety (0-21). These are clinically validated tools used worldwide. Lower scores mean fewer symptoms. A downward trend shows improvement."
-            />
-          </div>
-          <div className="h-48 sm:h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={moodTrends.combined}>
-                <XAxis
-                  dataKey="date"
-                  stroke={chartColors.axis}
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
+          {distortionInsights.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300">
+                  Your thinking patterns
+                </h2>
+                <StatInfoButton
+                  title="Cognitive distortions"
+                  content="Patterns that appear most in your records. Click each for tips."
                 />
-                <YAxis
-                  stroke={chartColors.axis}
-                  fontSize={12}
-                  domain={[0, 'auto']}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: chartColors.tooltipBg,
-                    border: `1px solid ${chartColors.tooltipBorder}`,
-                    borderRadius: '12px',
-                    boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.06)',
-                  }}
-                  labelStyle={{ color: chartColors.tooltipText }}
-                />
-                <Legend />
-                {moodTrends.hasPhq9 && (
-                  <Line
-                    type="monotone"
-                    dataKey="phq9"
-                    name="PHQ-9 (Depression)"
-                    stroke={chartColors.phq9}
-                    strokeWidth={2}
-                    dot={{ fill: chartColors.phq9, strokeWidth: 0, r: 4 }}
-                    activeDot={{ fill: chartColors.phq9, strokeWidth: 0, r: 6 }}
-                    connectNulls
+              </div>
+              <div className="space-y-2">
+                {distortionInsights.map((d) => (
+                  <DistortionCard
+                    key={d.id}
+                    distortion={d}
+                    isExpanded={expandedDistortion === d.id}
+                    onToggle={() =>
+                      setExpandedDistortion(expandedDistortion === d.id ? null : d.id)
+                    }
                   />
-                )}
-                {moodTrends.hasGad7 && (
-                  <Line
-                    type="monotone"
-                    dataKey="gad7"
-                    name="GAD-7 (Anxiety)"
-                    stroke={chartColors.gad7}
-                    strokeWidth={2}
-                    dot={{ fill: chartColors.gad7, strokeWidth: 0, r: 4 }}
-                    activeDot={{ fill: chartColors.gad7, strokeWidth: 0, r: 6 }}
-                    connectNulls
-                  />
-                )}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="flex flex-wrap gap-4 mt-4 text-xs text-stone-500 dark:text-stone-400">
-            {moodTrends.hasPhq9 && moodTrends.phq9.length > 0 && (
-              <div>
-                Latest PHQ-9:{' '}
-                <span className={moodTrends.phq9[moodTrends.phq9.length - 1].color}>
-                  {moodTrends.phq9[moodTrends.phq9.length - 1].score} (
-                  {moodTrends.phq9[moodTrends.phq9.length - 1].level})
-                </span>
+                ))}
               </div>
-            )}
-            {moodTrends.hasGad7 && moodTrends.gad7.length > 0 && (
-              <div>
-                Latest GAD-7:{' '}
-                <span className={moodTrends.gad7[moodTrends.gad7.length - 1].color}>
-                  {moodTrends.gad7[moodTrends.gad7.length - 1].score} (
-                  {moodTrends.gad7[moodTrends.gad7.length - 1].level})
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+            </div>
+          )}
 
-      {legacyDepressionTrend.length > 0 && (
-        <div className="card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300">
-                Burns checklist
+          {emotionPatterns.length > 0 && (
+            <div className="card p-5">
+              <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300 mb-4">
+                Emotion analysis
               </h2>
-              <span className="text-xs bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-400 px-2 py-0.5 rounded-full">
-                Legacy
-              </span>
+              <div className="space-y-4">
+                {emotionPatterns.slice(0, 3).map((emotion) => (
+                  <div
+                    key={emotion.name}
+                    className="border-b border-stone-100 dark:border-stone-700 pb-4 last:border-0 last:pb-0"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-stone-800 dark:text-stone-100 font-medium capitalize">
+                          {emotion.name}
+                        </span>
+                        <span className="text-xs text-stone-400">({emotion.count} records)</span>
+                      </div>
+                      {emotion.avgImprovement > 0 && (
+                        <span className="text-sm text-helpful-600 dark:text-helpful-400">
+                          ↓{emotion.avgImprovement}%
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-stone-500 dark:text-stone-400">
+                      <span>
+                        Before:{' '}
+                        <strong className="text-critical-500">{emotion.avgIntensityBefore}%</strong>
+                      </span>
+                      {emotion.avgIntensityAfter > 0 && (
+                        <span>
+                          After:{' '}
+                          <strong className="text-helpful-500">{emotion.avgIntensityAfter}%</strong>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <StatInfoButton
-              title="Burns Depression Checklist"
-              content="Historical data from the Burns Depression Checklist (0-100 scale). For new assessments, we recommend PHQ-9 which is clinically validated and widely used in healthcare."
-            />
+          )}
+        </>
+      )}
+
+      {activeTab === 'activities' && activityInsights && (
+        <>
+          {activityInsights.personalInsights.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {activityInsights.personalInsights.map((insight, i) => (
+                <InsightCard key={i} insight={insight} />
+              ))}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="card p-5">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-3xl font-semibold text-stone-800 dark:text-stone-100">
+                    {activityInsights.activitiesWithMoodData}
+                  </div>
+                  <div className="text-sm text-stone-500 dark:text-stone-400 mt-1">Tracked</div>
+                </div>
+                <StatInfoButton
+                  title="Tracked activities"
+                  content="Activities where you recorded mood before and after. This data builds your personal evidence base."
+                />
+              </div>
+            </div>
+            <div className="card p-5">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div
+                    className={`text-3xl font-semibold ${activityInsights.positiveOutcomePercentage >= 50 ? 'text-helpful-500' : 'text-amber-500'}`}
+                  >
+                    {activityInsights.positiveOutcomePercentage}%
+                  </div>
+                  <div className="text-sm text-stone-500 dark:text-stone-400 mt-1">Helped mood</div>
+                </div>
+                <StatInfoButton
+                  title="Positive outcomes"
+                  content="Percentage of activities that improved your mood. This combats the depression lie that 'nothing helps.'"
+                />
+              </div>
+            </div>
+            <div className="card p-5">
+              <div
+                className={`text-3xl font-semibold ${activityInsights.overallAvgMoodChange >= 0 ? 'text-helpful-500' : 'text-amber-500'}`}
+              >
+                {activityInsights.overallAvgMoodChange > 0 ? '+' : ''}
+                {activityInsights.overallAvgMoodChange}
+              </div>
+              <div className="text-sm text-stone-500 dark:text-stone-400 mt-1">Avg mood Δ</div>
+            </div>
+            <div className="card p-5">
+              <div className="text-3xl font-semibold text-stone-800 dark:text-stone-100">
+                {activityInsights.balanceScore}%
+              </div>
+              <div className="text-sm text-stone-500 dark:text-stone-400 mt-1">Balance score</div>
+            </div>
           </div>
-          <div className="h-48 sm:h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={legacyDepressionTrend}>
-                <XAxis
-                  dataKey="date"
-                  stroke={chartColors.axis}
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
+
+          {activityBalanceData && activityInsights.completedActivities >= 3 && (
+            <div className="card p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300">
+                  Activity balance
+                </h2>
+                <StatInfoButton
+                  title="Activity balance"
+                  content="Research shows balancing four types of activities works best: Pleasure (fun), Mastery (achievement), Social (connection), and Meaning (values). Aim for activities in all four areas."
                 />
-                <YAxis
-                  stroke={chartColors.axis}
-                  fontSize={12}
-                  domain={[0, 100]}
-                  tickLine={false}
-                  axisLine={false}
+              </div>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart data={activityBalanceData}>
+                    <PolarGrid stroke={chartColors.axis} />
+                    <PolarAngleAxis
+                      dataKey="name"
+                      tick={{ fill: chartColors.tooltipText, fontSize: 12 }}
+                    />
+                    <PolarRadiusAxis tick={{ fill: chartColors.axis, fontSize: 10 }} />
+                    <Radar
+                      name="Activities"
+                      dataKey="count"
+                      stroke={chartColors.activity}
+                      fill={chartColors.activityFill}
+                      fillOpacity={0.6}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: chartColors.tooltipBg,
+                        border: `1px solid ${chartColors.tooltipBorder}`,
+                        borderRadius: '12px',
+                      }}
+                      formatter={(
+                        value: number,
+                        name: string,
+                        props: { payload: { avgMoodChange: number } }
+                      ) => [
+                        `${value} activities (avg mood: ${props.payload.avgMoodChange > 0 ? '+' : ''}${props.payload.avgMoodChange})`,
+                        name,
+                      ]}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex flex-wrap gap-4 mt-2 text-xs text-stone-500 dark:text-stone-400 justify-center">
+                <span>
+                  <strong>Pleasure:</strong> Leisure, creative, self-care
+                </span>
+                <span>
+                  <strong>Mastery:</strong> Productive, physical
+                </span>
+                <span>
+                  <strong>Social:</strong> Connection
+                </span>
+                <span>
+                  <strong>Meaning:</strong> Values, mindfulness
+                </span>
+              </div>
+            </div>
+          )}
+
+          {activityInsights.topMoodBoosters.length > 0 && (
+            <div className="card p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300">
+                  Your top mood boosters
+                </h2>
+                <StatInfoButton
+                  title="Top mood boosters"
+                  content="Activities that consistently improved your mood the most. This is your personal 'prescription' based on your own data."
                 />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: chartColors.tooltipBg,
-                    border: `1px solid ${chartColors.tooltipBorder}`,
-                    borderRadius: '12px',
-                    boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.06)',
-                  }}
-                  labelStyle={{ color: chartColors.tooltipText }}
+              </div>
+              <div className="space-y-3">
+                {activityInsights.topMoodBoosters.slice(0, 5).map((activity, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between p-3 bg-stone-50 dark:bg-stone-800/50 rounded-xl"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">{activity.categoryIcon}</span>
+                      <div>
+                        <div className="font-medium text-stone-700 dark:text-stone-300 text-sm">
+                          {activity.activity}
+                        </div>
+                        <div className="text-xs text-stone-500 dark:text-stone-400">
+                          {activity.occurrences}x · 😊 {activity.avgPleasure} · 💪{' '}
+                          {activity.avgMastery}
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      className={`text-lg font-bold ${activity.avgMoodChange >= 0 ? 'text-helpful-500' : 'text-amber-500'}`}
+                    >
+                      {activity.avgMoodChange > 0 ? '+' : ''}
+                      {activity.avgMoodChange}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activityInsights.categoryBreakdown.length > 0 && (
+            <div className="card p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300">
+                  Activity types
+                </h2>
+                <StatInfoButton
+                  title="Activity categories"
+                  content="Breakdown of your activity types and their average mood impact. Different categories serve different psychological needs."
                 />
-                <Line
-                  type="monotone"
-                  dataKey="score"
-                  stroke={chartColors.legacy}
-                  strokeWidth={2}
-                  dot={{ fill: chartColors.legacy, strokeWidth: 0, r: 4 }}
-                  activeDot={{ fill: chartColors.legacy, strokeWidth: 0, r: 6 }}
+              </div>
+              <div className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={activityInsights.categoryBreakdown.slice(0, 6)} layout="vertical">
+                    <XAxis
+                      type="number"
+                      stroke={chartColors.axis}
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="label"
+                      stroke={chartColors.axis}
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                      width={80}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: chartColors.tooltipBg,
+                        border: `1px solid ${chartColors.tooltipBorder}`,
+                        borderRadius: '12px',
+                      }}
+                      formatter={(
+                        value: number,
+                        name: string,
+                        props: { payload: { avgMoodChange: number } }
+                      ) => {
+                        if (name === 'completedCount') {
+                          return [
+                            `${value} completed (avg mood: ${props.payload.avgMoodChange > 0 ? '+' : ''}${props.payload.avgMoodChange})`,
+                            'Activities',
+                          ]
+                        }
+                        return [value, name]
+                      }}
+                    />
+                    <Bar
+                      dataKey="completedCount"
+                      fill={chartColors.activity}
+                      radius={[0, 6, 6, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
+          {activityInsights.weeklyTrend.length >= 3 && (
+            <div className="card p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300">
+                  Weekly activity trend
+                </h2>
+                <StatInfoButton
+                  title="Activity over time"
+                  content="Activity count and average mood change per week. Research shows activity level often predicts mood before symptoms appear."
                 />
-              </LineChart>
-            </ResponsiveContainer>
+              </div>
+              <div className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={activityInsights.weeklyTrend}>
+                    <XAxis
+                      dataKey="week"
+                      stroke={chartColors.axis}
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      yAxisId="left"
+                      stroke={chartColors.axis}
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      yAxisId="right"
+                      orientation="right"
+                      stroke={chartColors.moodChange}
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                      domain={[-5, 5]}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: chartColors.tooltipBg,
+                        border: `1px solid ${chartColors.tooltipBorder}`,
+                        borderRadius: '12px',
+                      }}
+                    />
+                    <Legend />
+                    <Bar
+                      yAxisId="left"
+                      dataKey="activityCount"
+                      name="Activities"
+                      fill={chartColors.activity}
+                      radius={[6, 6, 0, 0]}
+                    />
+                    <Line
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="avgMoodChange"
+                      name="Avg mood Δ"
+                      stroke={chartColors.moodChange}
+                      strokeWidth={2}
+                      dot={{ r: 4 }}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
+          {activityInsights.activitiesWithMoodData === 0 &&
+            activityInsights.totalActivities > 0 && (
+              <div className="card p-5 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">💡</span>
+                  <div>
+                    <h3 className="font-semibold text-stone-800 dark:text-stone-100 text-sm">
+                      Track mood to unlock insights
+                    </h3>
+                    <p className="text-stone-600 dark:text-stone-400 text-sm mt-1">
+                      You have {activityInsights.totalActivities} activities but none with mood data
+                      yet. When completing activities, rate your mood before and after to discover
+                      which activities actually help you feel better.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+        </>
+      )}
+
+      {activeTab === 'activities' && !activityInsights && (
+        <div className="text-center py-12">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-sage-100 dark:bg-sage-900/30 flex items-center justify-center">
+            <span className="text-2xl">📊</span>
           </div>
+          <h3 className="text-stone-700 dark:text-stone-300 font-medium mb-2">
+            No activity data yet
+          </h3>
+          <p className="text-stone-500 dark:text-stone-400 text-sm max-w-md mx-auto">
+            Start tracking activities with mood ratings to see which ones help you feel better. This
+            builds your personal evidence base.
+          </p>
         </div>
       )}
 
-      {timePatterns && (
-        <div className="card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300">
-              Weekly patterns
-            </h2>
-            <StatInfoButton
-              title="Weekly patterns"
-              content="Shows which days you tend to experience more intense emotions and when you're most likely to practice CBT. Understanding your patterns helps you prepare."
-            />
-          </div>
-          <div className="h-40 sm:h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={timePatterns.dayOfWeek}>
-                <XAxis
-                  dataKey="day"
-                  stroke={chartColors.axis}
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke={chartColors.axis}
-                  fontSize={12}
-                  allowDecimals={false}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: chartColors.tooltipBg,
-                    border: `1px solid ${chartColors.tooltipBorder}`,
-                    borderRadius: '12px',
-                    boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.06)',
-                  }}
-                  formatter={(value: number, name: string) => [
-                    value,
-                    name === 'count' ? 'Records' : 'Avg intensity',
-                  ]}
-                />
-                <Bar dataKey="count" fill={chartColors.bar} radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="flex flex-wrap gap-4 mt-4 text-xs text-stone-500 dark:text-stone-400">
-            <div>
-              Most records:{' '}
-              <span className="font-medium text-stone-700 dark:text-stone-300">
-                {timePatterns.peakDay}
-              </span>
+      {activeTab === 'overview' && (
+        <>
+          {timePatterns && (
+            <div className="card p-5">
+              <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300 mb-4">
+                Weekly patterns
+              </h2>
+              <div className="h-40">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={timePatterns.dayOfWeek}>
+                    <XAxis
+                      dataKey="day"
+                      stroke={chartColors.axis}
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      stroke={chartColors.axis}
+                      fontSize={12}
+                      allowDecimals={false}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: chartColors.tooltipBg,
+                        border: `1px solid ${chartColors.tooltipBorder}`,
+                        borderRadius: '12px',
+                      }}
+                    />
+                    <Bar dataKey="count" fill={chartColors.bar} radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-            <div>
-              Highest intensity:{' '}
-              <span className="font-medium text-stone-700 dark:text-stone-300">
-                {timePatterns.peakDay}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
+          )}
 
-      {gratitudeStats && (
-        <div className="card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300">
-              Gratitude practice
-            </h2>
-            <StatInfoButton
-              title="Gratitude journaling"
-              content="Research shows that writing 3-5 gratitude items daily for 2+ weeks measurably increases happiness and reduces depression symptoms. Consistency matters more than quantity."
-            />
-          </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-semibold text-stone-800 dark:text-stone-100">
-                {gratitudeStats.totalDays}
+          {gratitudeStats && (
+            <div className="card p-5">
+              <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300 mb-4">
+                Gratitude practice
+              </h2>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center">
+                  <div className="text-2xl font-semibold text-stone-800 dark:text-stone-100">
+                    {gratitudeStats.totalDays}
+                  </div>
+                  <div className="text-xs text-stone-500 dark:text-stone-400 mt-1">Days logged</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-semibold text-stone-800 dark:text-stone-100">
+                    {gratitudeStats.totalEntries}
+                  </div>
+                  <div className="text-xs text-stone-500 dark:text-stone-400 mt-1">Total items</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-semibold text-stone-800 dark:text-stone-100">
+                    {gratitudeStats.avgPerDay}
+                  </div>
+                  <div className="text-xs text-stone-500 dark:text-stone-400 mt-1">Avg per day</div>
+                </div>
               </div>
-              <div className="text-xs text-stone-500 dark:text-stone-400 mt-1">Days logged</div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-semibold text-stone-800 dark:text-stone-100">
-                {gratitudeStats.totalEntries}
-              </div>
-              <div className="text-xs text-stone-500 dark:text-stone-400 mt-1">Total items</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-semibold text-stone-800 dark:text-stone-100">
-                {gratitudeStats.avgPerDay}
-              </div>
-              <div className="text-xs text-stone-500 dark:text-stone-400 mt-1">Avg per day</div>
-            </div>
-          </div>
-        </div>
+          )}
+        </>
       )}
     </div>
   )
