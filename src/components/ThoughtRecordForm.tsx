@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useAppStore } from '@/stores/appStore'
 import {
   COGNITIVE_DISTORTIONS,
+  COMMON_EMOTIONS,
   type ThoughtRecord,
   type Emotion,
   type CognitiveDistortionId,
@@ -79,6 +80,11 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
     existingRecord?.outcomeEmotions || [{ name: '', intensity: 50 }]
   )
   const [expandedDistortion, setExpandedDistortion] = useState<CognitiveDistortionId | null>(null)
+  const [showEmotionSuggestions, setShowEmotionSuggestions] = useState(false)
+  const [activeEmotionIndex, setActiveEmotionIndex] = useState<number | null>(null)
+  const [isOutcomeEmotions, setIsOutcomeEmotions] = useState(false)
+  const [beliefBefore, setBeliefBefore] = useState(existingRecord?.beliefRatingBefore ?? 80)
+  const [beliefAfter, setBeliefAfter] = useState(existingRecord?.beliefRatingAfter ?? 50)
 
   const [experimentPrediction, setExperimentPrediction] = useState(
     existingRecord?.experimentPrediction || ''
@@ -89,6 +95,22 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
   const [defusionTechnique, setDefusionTechnique] = useState(
     existingRecord?.defusionTechnique || ''
   )
+
+  // Get challenging questions and reframing strategies for selected distortions
+  const selectedDistortionHelpers = useMemo(() => {
+    return distortions
+      .map((id) => {
+        const distortion = COGNITIVE_DISTORTIONS.find((d) => d.id === id)
+        return distortion
+          ? {
+              name: distortion.shortName,
+              questions: distortion.challengingQuestions,
+              strategy: distortion.reframingStrategy,
+            }
+          : null
+      })
+      .filter(Boolean)
+  }, [distortions])
 
   const addDate = () => {
     if (dateInput && !dates.includes(dateInput)) {
@@ -128,6 +150,8 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
       distortions,
       rationalResponse: mode === 'defusion' ? '' : rationalResponse,
       outcomeEmotions: outcomeEmotions.filter((e) => e.name.trim()),
+      beliefRatingBefore: mode === 'standard' ? beliefBefore : undefined,
+      beliefRatingAfter: mode === 'standard' ? beliefAfter : undefined,
       isBehavioralExperiment: mode === 'experiment',
       experimentPrediction: mode === 'experiment' ? experimentPrediction : undefined,
       experimentOutcome: mode === 'experiment' ? experimentOutcome : undefined,
@@ -195,6 +219,19 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
 
   const toggleDistortion = (id: CognitiveDistortionId) => {
     setDistortions((prev) => (prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]))
+  }
+
+  const handleEmotionFocus = (index: number, isOutcome: boolean) => {
+    setActiveEmotionIndex(index)
+    setIsOutcomeEmotions(isOutcome)
+    setShowEmotionSuggestions(true)
+  }
+
+  const selectEmotionSuggestion = (emotionName: string) => {
+    if (activeEmotionIndex !== null) {
+      updateEmotion(activeEmotionIndex, 'name', emotionName, isOutcomeEmotions)
+      setShowEmotionSuggestions(false)
+    }
   }
 
   return (
@@ -373,13 +410,17 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
             <div className="space-y-2">
               {emotions.map((emotion, index) => (
                 <div key={index} className="flex gap-2 items-center">
-                  <input
-                    type="text"
-                    value={emotion.name}
-                    onChange={(e) => updateEmotion(index, 'name', e.target.value, false)}
-                    placeholder="e.g., Anxious, Sad"
-                    className="input-field flex-1 min-w-0"
-                  />
+                  <div className="relative flex-1 min-w-0">
+                    <input
+                      type="text"
+                      value={emotion.name}
+                      onChange={(e) => updateEmotion(index, 'name', e.target.value, false)}
+                      onFocus={() => handleEmotionFocus(index, false)}
+                      onBlur={() => setTimeout(() => setShowEmotionSuggestions(false), 200)}
+                      placeholder="e.g., Anxious, Sad"
+                      className="input-field w-full"
+                    />
+                  </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <input
                       type="number"
@@ -414,6 +455,28 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
                 </div>
               ))}
             </div>
+
+            {/* Emotion suggestions */}
+            {showEmotionSuggestions && activeEmotionIndex !== null && !isOutcomeEmotions && (
+              <div className="mt-3 p-3 bg-stone-50 dark:bg-stone-700/50 rounded-lg">
+                <p className="text-xs text-stone-500 dark:text-stone-400 mb-2">
+                  Common emotions (tap to select):
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {COMMON_EMOTIONS.slice(0, 20).map((emotionName) => (
+                    <button
+                      key={emotionName}
+                      type="button"
+                      onClick={() => selectEmotionSuggestion(emotionName)}
+                      className="text-xs px-2 py-1 bg-white dark:bg-stone-600 rounded-full text-stone-600 dark:text-stone-300 hover:bg-sage-100 dark:hover:bg-sage-800 transition-colors"
+                    >
+                      {emotionName}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <button
               type="button"
               onClick={() => addEmotion(false)}
@@ -447,6 +510,26 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
               maxRows={12}
               placeholder="What was going through your mind?..."
             />
+
+            {mode === 'standard' && (
+              <div className="mt-4">
+                <label className="label text-sm">
+                  How strongly do you believe this thought? ({beliefBefore}%)
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={beliefBefore}
+                  onChange={(e) => setBeliefBefore(parseInt(e.target.value))}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-stone-400 dark:text-stone-500">
+                  <span>Not at all</span>
+                  <span>Completely</span>
+                </div>
+              </div>
+            )}
           </div>
         </section>
 
@@ -464,7 +547,7 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
                   Cognitive distortions
                   <InfoButton
                     title="What are cognitive distortions?"
-                    content="These are common patterns of biased thinking. Research shows they tend to represent a single underlying construct of negative bias, rather than truly separate categories. Identifying them helps you see your thoughts more objectively."
+                    content="These are common patterns of biased thinking identified by Aaron Beck and David Burns. Identifying them helps you see your thoughts more objectively. Tap the arrow to see the full description and example."
                   />
                 </label>
                 <span className="text-sm text-stone-500 dark:text-stone-400">
@@ -473,51 +556,72 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {COGNITIVE_DISTORTIONS.map((distortion) => (
-                  <div key={distortion.id} className="sm:contents">
-                    <div className={expandedDistortion === distortion.id ? 'sm:col-span-2' : ''}>
-                      <button
-                        type="button"
-                        onClick={() => toggleDistortion(distortion.id)}
-                        className={`w-full text-left p-3.5 rounded-xl border-2 transition-all duration-200 ${
-                          distortions.includes(distortion.id)
-                            ? 'bg-sage-50 dark:bg-sage-900/30 border-sage-400 dark:border-sage-600'
-                            : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-600 hover:border-stone-300 dark:hover:border-stone-500'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span
-                            className={`font-medium text-sm ${distortions.includes(distortion.id) ? 'text-sage-700 dark:text-sage-400' : 'text-stone-700 dark:text-stone-300'}`}
+                  <div
+                    key={distortion.id}
+                    className={expandedDistortion === distortion.id ? 'sm:col-span-2' : ''}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => toggleDistortion(distortion.id)}
+                      className={`w-full text-left p-3.5 rounded-xl border-2 transition-all duration-200 ${
+                        distortions.includes(distortion.id)
+                          ? 'bg-sage-50 dark:bg-sage-900/30 border-sage-400 dark:border-sage-600'
+                          : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-600 hover:border-stone-300 dark:hover:border-stone-500'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span
+                          className={`font-medium text-sm ${distortions.includes(distortion.id) ? 'text-sage-700 dark:text-sage-400' : 'text-stone-700 dark:text-stone-300'}`}
+                        >
+                          {distortion.id}. {distortion.shortName}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setExpandedDistortion(
+                              expandedDistortion === distortion.id ? null : distortion.id
+                            )
+                          }}
+                          className="text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 p-1"
+                        >
+                          <svg
+                            className={`w-4 h-4 transition-transform ${expandedDistortion === distortion.id ? 'rotate-180' : ''}`}
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
                           >
-                            {distortion.id}. {distortion.shortName}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setExpandedDistortion(
-                                expandedDistortion === distortion.id ? null : distortion.id
-                              )
-                            }}
-                            className="text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 p-1"
-                          >
-                            <svg
-                              className={`w-4 h-4 transition-transform ${expandedDistortion === distortion.id ? 'rotate-180' : ''}`}
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                            >
-                              <path d="M6 9l6 6 6-6" />
-                            </svg>
-                          </button>
-                        </div>
-                      </button>
-                      {expandedDistortion === distortion.id && (
-                        <div className="mt-1 ml-4 p-3 bg-stone-50 dark:bg-stone-700/50 rounded-lg text-sm text-stone-600 dark:text-stone-300 animate-fade-in">
+                            <path d="M6 9l6 6 6-6" />
+                          </svg>
+                        </button>
+                      </div>
+                    </button>
+                    {expandedDistortion === distortion.id && (
+                      <div className="mt-1 p-4 bg-stone-50 dark:bg-stone-700/50 rounded-lg animate-fade-in space-y-3">
+                        <p className="text-sm text-stone-600 dark:text-stone-300">
                           {distortion.description}
+                        </p>
+                        <div className="text-xs text-stone-500 dark:text-stone-400 italic">
+                          Example: {distortion.example}
                         </div>
-                      )}
-                    </div>
+                        {distortion.relatedEmotions && (
+                          <div className="flex flex-wrap gap-1">
+                            <span className="text-xs text-stone-500 dark:text-stone-400">
+                              Related feelings:
+                            </span>
+                            {distortion.relatedEmotions.map((emotion, i) => (
+                              <span
+                                key={i}
+                                className="text-xs bg-stone-200 dark:bg-stone-600 px-1.5 py-0.5 rounded"
+                              >
+                                {emotion}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -533,22 +637,92 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
               description="Challenge your automatic thoughts with a more balanced view."
             />
 
-            <div className="card p-5">
-              <label className="label">
-                Write your response
-                <InfoButton
-                  title="Creating a rational response"
-                  content="Write a more balanced, realistic response to your automatic thoughts. Consider: What evidence supports or contradicts this thought? What would you tell a friend in this situation?"
-                  example="He might just be busy. One delayed response doesn't mean he's angry."
+            <div className="card p-5 space-y-4">
+              {/* Challenging questions helper */}
+              {selectedDistortionHelpers.length > 0 && (
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <h4 className="text-sm font-medium text-blue-700 dark:text-blue-400 mb-2 flex items-center gap-2">
+                    <span>🤔</span> Questions to ask yourself
+                  </h4>
+                  <div className="space-y-3">
+                    {selectedDistortionHelpers.map((helper, idx) => (
+                      <div key={idx}>
+                        <p className="text-xs font-medium text-blue-600 dark:text-blue-300 mb-1">
+                          For {helper?.name}:
+                        </p>
+                        <ul className="space-y-1">
+                          {helper?.questions.slice(0, 2).map((q, i) => (
+                            <li
+                              key={i}
+                              className="text-xs text-blue-600 dark:text-blue-300 flex items-start gap-1.5"
+                            >
+                              <span className="text-blue-400">•</span>
+                              {q}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="label">
+                  Write your response
+                  <InfoButton
+                    title="Creating a rational response"
+                    content="Write a more balanced, realistic response to your automatic thoughts. Use the challenging questions above as prompts. Consider: What evidence supports or contradicts this thought? What would you tell a friend?"
+                    example="He might just be busy. One delayed response doesn't mean he's angry."
+                  />
+                </label>
+                <AutoExpandTextarea
+                  value={rationalResponse}
+                  onChange={(e) => setRationalResponse(e.target.value)}
+                  minRows={3}
+                  maxRows={12}
+                  placeholder="Write a more balanced perspective..."
                 />
-              </label>
-              <AutoExpandTextarea
-                value={rationalResponse}
-                onChange={(e) => setRationalResponse(e.target.value)}
-                minRows={3}
-                maxRows={12}
-                placeholder="Write a more balanced perspective..."
-              />
+              </div>
+
+              {/* Reframing strategies helper */}
+              {selectedDistortionHelpers.length > 0 && (
+                <div className="p-4 bg-sage-50 dark:bg-sage-900/20 rounded-lg border border-sage-200 dark:border-sage-800">
+                  <h4 className="text-sm font-medium text-sage-700 dark:text-sage-400 mb-2 flex items-center gap-2">
+                    <span>💡</span> Reframing strategies
+                  </h4>
+                  <div className="space-y-2">
+                    {selectedDistortionHelpers.map((helper, idx) => (
+                      <div key={idx} className="text-xs text-sage-600 dark:text-sage-300">
+                        <span className="font-medium">{helper?.name}:</span> {helper?.strategy}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="label text-sm">
+                  How strongly do you believe the original thought now? ({beliefAfter}%)
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={beliefAfter}
+                  onChange={(e) => setBeliefAfter(parseInt(e.target.value))}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-stone-400 dark:text-stone-500">
+                  <span>Not at all</span>
+                  <span>Completely</span>
+                </div>
+                {beliefBefore > beliefAfter && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                    ✓ Belief reduced by {beliefBefore - beliefAfter}%
+                  </p>
+                )}
+              </div>
             </div>
           </section>
         )}
@@ -713,13 +887,17 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
             <div className="space-y-2">
               {outcomeEmotions.map((emotion, index) => (
                 <div key={index} className="flex gap-2 items-center">
-                  <input
-                    type="text"
-                    value={emotion.name}
-                    onChange={(e) => updateEmotion(index, 'name', e.target.value, true)}
-                    placeholder="e.g., Calmer, Less anxious"
-                    className="input-field flex-1 min-w-0"
-                  />
+                  <div className="relative flex-1 min-w-0">
+                    <input
+                      type="text"
+                      value={emotion.name}
+                      onChange={(e) => updateEmotion(index, 'name', e.target.value, true)}
+                      onFocus={() => handleEmotionFocus(index, true)}
+                      onBlur={() => setTimeout(() => setShowEmotionSuggestions(false), 200)}
+                      placeholder="e.g., Calmer, Less anxious"
+                      className="input-field w-full"
+                    />
+                  </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <input
                       type="number"
@@ -754,6 +932,28 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
                 </div>
               ))}
             </div>
+
+            {/* Emotion suggestions for outcome */}
+            {showEmotionSuggestions && activeEmotionIndex !== null && isOutcomeEmotions && (
+              <div className="mt-3 p-3 bg-stone-50 dark:bg-stone-700/50 rounded-lg">
+                <p className="text-xs text-stone-500 dark:text-stone-400 mb-2">
+                  Common emotions (tap to select):
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {COMMON_EMOTIONS.slice(20).map((emotionName) => (
+                    <button
+                      key={emotionName}
+                      type="button"
+                      onClick={() => selectEmotionSuggestion(emotionName)}
+                      className="text-xs px-2 py-1 bg-white dark:bg-stone-600 rounded-full text-stone-600 dark:text-stone-300 hover:bg-sage-100 dark:hover:bg-sage-800 transition-colors"
+                    >
+                      {emotionName}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <button
               type="button"
               onClick={() => addEmotion(true)}

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAppStore } from '@/stores/appStore'
-import { type SafetyPlan } from '@/types'
+import { type SafetyPlan, SAFETY_PLAN_GUIDANCE, CRISIS_RESOURCES } from '@/types'
 import { PageIntro, InfoButton } from '@/components/InfoComponents'
 import { AutoExpandTextarea } from '@/components/AutoExpandTextarea'
 import { toast } from '@/stores/toastStore'
@@ -9,18 +9,32 @@ function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 }
 
+// Country flags for crisis resources
+const COUNTRY_FLAGS: Record<string, string> = {
+  international: '🌍',
+  us: '🇺🇸',
+  uk: '🇬🇧',
+  finland: '🇫🇮',
+  ireland: '🇮🇪',
+  canada: '🇨🇦',
+  australia: '🇦🇺',
+}
+
 function ListInput({
   items,
   onChange,
   placeholder,
   addLabel,
+  examples,
 }: {
   items: string[]
   onChange: (items: string[]) => void
   placeholder: string
   addLabel: string
+  examples?: readonly string[]
 }) {
   const [newItem, setNewItem] = useState('')
+  const [showExamples, setShowExamples] = useState(false)
 
   const addItem = () => {
     if (newItem.trim()) {
@@ -31,6 +45,12 @@ function ListInput({
 
   const removeItem = (index: number) => {
     onChange(items.filter((_, i) => i !== index))
+  }
+
+  const addExample = (example: string) => {
+    if (!items.includes(example)) {
+      onChange([...items, example])
+    }
   }
 
   return (
@@ -48,6 +68,47 @@ function ListInput({
           {addLabel}
         </button>
       </div>
+
+      {examples && examples.length > 0 && (
+        <div className="mb-3">
+          <button
+            type="button"
+            onClick={() => setShowExamples(!showExamples)}
+            className="text-xs text-sage-600 dark:text-sage-400 hover:text-sage-700 dark:hover:text-sage-300 flex items-center gap-1"
+          >
+            <svg
+              className={`w-3 h-3 transition-transform ${showExamples ? 'rotate-90' : ''}`}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+            {showExamples ? 'Hide examples' : 'Show examples'}
+          </button>
+          {showExamples && (
+            <div className="mt-2 flex flex-wrap gap-1.5 animate-fade-in">
+              {examples.map((example, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => addExample(example)}
+                  disabled={items.includes(example)}
+                  className={`text-xs px-2 py-1 rounded-full transition-colors ${
+                    items.includes(example)
+                      ? 'bg-sage-100 dark:bg-sage-900/30 text-sage-400 dark:text-sage-600 cursor-not-allowed'
+                      : 'bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300 hover:bg-sage-100 dark:hover:bg-sage-800'
+                  }`}
+                >
+                  + {example}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {items.length > 0 && (
         <div className="space-y-1">
           {items.map((item, idx) => (
@@ -287,38 +348,40 @@ export function SafetyPlanView() {
         <div className="flex items-start gap-3">
           <span className="text-xl">📞</span>
           <div>
-            <h3 className="font-medium text-stone-800 dark:text-stone-200 mb-1">
+            <h3 className="font-medium text-stone-800 dark:text-stone-200 mb-2">
               Crisis resources
             </h3>
-            <div className="text-sm text-stone-600 dark:text-stone-400 space-y-1">
-              <div>
-                <strong>🇺🇸 US:</strong>{' '}
-                <a href="tel:988" className="text-sage-600 dark:text-sage-400">
-                  988
-                </a>{' '}
-                (24/7 Suicide & Crisis Lifeline)
-              </div>
-              <div>
-                <strong>🇫🇮 Finland:</strong>{' '}
-                <a href="tel:0925250111" className="text-sage-600 dark:text-sage-400">
-                  09 2525 0111
-                </a>{' '}
-                (Mieli)
-              </div>
-              <div>
-                <strong>🇮🇪 Ireland:</strong>{' '}
-                <a href="tel:116123" className="text-sage-600 dark:text-sage-400">
-                  116 123
-                </a>{' '}
-                (Samaritans)
-              </div>
-              <div>
-                <strong>🇬🇧 UK:</strong>{' '}
-                <a href="tel:116123" className="text-sage-600 dark:text-sage-400">
-                  116 123
-                </a>{' '}
-                (Samaritans)
-              </div>
+            <div className="text-sm text-stone-600 dark:text-stone-400 space-y-1.5">
+              {Object.entries(CRISIS_RESOURCES).map(([key, resource]) => (
+                <div key={key} className="flex items-start gap-2">
+                  <span className="flex-shrink-0">{COUNTRY_FLAGS[key] || '🌐'}</span>
+                  <div>
+                    {'phone' in resource ? (
+                      <a
+                        href={`tel:${resource.phone.replace(/\s/g, '')}`}
+                        className="text-sage-600 dark:text-sage-400 font-medium"
+                      >
+                        {resource.phone}
+                      </a>
+                    ) : (
+                      <a
+                        href={resource.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sage-600 dark:text-sage-400 font-medium"
+                      >
+                        {resource.name}
+                      </a>
+                    )}
+                    <span className="text-stone-500 dark:text-stone-400"> ({resource.name})</span>
+                    {resource.description && (
+                      <span className="text-stone-400 dark:text-stone-500 text-xs block">
+                        {resource.description}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -330,8 +393,8 @@ export function SafetyPlanView() {
             <span className="text-sage-600 dark:text-sage-400">1.</span>
             Warning signs
             <InfoButton
-              title="Recognizing warning signs"
-              content="These are thoughts, feelings, behaviors, or situations that typically occur before you start feeling suicidal or in crisis. Identifying them early helps you take action before things escalate."
+              title={SAFETY_PLAN_GUIDANCE.warningSigns.title}
+              content={SAFETY_PLAN_GUIDANCE.warningSigns.description}
             />
           </h2>
           <p className="text-sm text-stone-500 dark:text-stone-400 mb-3">
@@ -342,6 +405,7 @@ export function SafetyPlanView() {
             onChange={setWarningSigns}
             placeholder="e.g., Feeling hopeless, isolating myself, not sleeping"
             addLabel="Add"
+            examples={SAFETY_PLAN_GUIDANCE.warningSigns.examples}
           />
         </section>
 
@@ -350,8 +414,8 @@ export function SafetyPlanView() {
             <span className="text-sage-600 dark:text-sage-400">2.</span>
             Internal coping strategies
             <InfoButton
-              title="Coping on your own"
-              content="Things you can do by yourself, without contacting anyone, to take your mind off problems and help you feel calmer. These should be healthy activities that have helped you before."
+              title={SAFETY_PLAN_GUIDANCE.copingStrategies.title}
+              content={SAFETY_PLAN_GUIDANCE.copingStrategies.description}
             />
           </h2>
           <p className="text-sm text-stone-500 dark:text-stone-400 mb-3">
@@ -362,6 +426,7 @@ export function SafetyPlanView() {
             onChange={setCopingStrategies}
             placeholder="e.g., Take a cold shower, go for a walk, do breathing exercises"
             addLabel="Add"
+            examples={SAFETY_PLAN_GUIDANCE.copingStrategies.examples}
           />
         </section>
 
@@ -370,8 +435,8 @@ export function SafetyPlanView() {
             <span className="text-sage-600 dark:text-sage-400">3.</span>
             Social distractions
             <InfoButton
-              title="People and places"
-              content="People you can be around and places you can go that provide a healthy distraction. You don't need to discuss your problems with them; their presence alone can help."
+              title={SAFETY_PLAN_GUIDANCE.socialDistractions.title}
+              content={SAFETY_PLAN_GUIDANCE.socialDistractions.description}
             />
           </h2>
           <p className="text-sm text-stone-500 dark:text-stone-400 mb-3">
@@ -389,8 +454,8 @@ export function SafetyPlanView() {
             <span className="text-sage-600 dark:text-sage-400">4.</span>
             People I can ask for help
             <InfoButton
-              title="Support network"
-              content="People you can reach out to when you're in crisis. These are trusted individuals who you can tell about how you're feeling and ask for support."
+              title={SAFETY_PLAN_GUIDANCE.peopleToContact.title}
+              content={SAFETY_PLAN_GUIDANCE.peopleToContact.description}
             />
           </h2>
           <p className="text-sm text-stone-500 dark:text-stone-400 mb-3">
@@ -408,8 +473,8 @@ export function SafetyPlanView() {
             <span className="text-sage-600 dark:text-sage-400">5.</span>
             Professional contacts
             <InfoButton
-              title="Professional help"
-              content="Mental health professionals and crisis services you can contact. Include your therapist, psychiatrist, local emergency room, and crisis hotlines."
+              title={SAFETY_PLAN_GUIDANCE.professionalContacts.title}
+              content={SAFETY_PLAN_GUIDANCE.professionalContacts.description}
             />
           </h2>
           <p className="text-sm text-stone-500 dark:text-stone-400 mb-3">
@@ -429,8 +494,8 @@ export function SafetyPlanView() {
             <span className="text-sage-600 dark:text-sage-400">6.</span>
             Making my environment safe
             <InfoButton
-              title="Reducing access to means"
-              content="Steps you can take to limit access to things you could use to hurt yourself. This might include removing or securing medications, firearms, sharp objects, or other items."
+              title={SAFETY_PLAN_GUIDANCE.environmentSafety.title}
+              content={SAFETY_PLAN_GUIDANCE.environmentSafety.description}
             />
           </h2>
           <p className="text-sm text-stone-500 dark:text-stone-400 mb-3">
@@ -441,6 +506,7 @@ export function SafetyPlanView() {
             onChange={setEnvironmentSafety}
             placeholder="e.g., Give medications to a friend, lock away sharp objects"
             addLabel="Add"
+            examples={SAFETY_PLAN_GUIDANCE.environmentSafety.examples}
           />
         </section>
 
@@ -449,8 +515,8 @@ export function SafetyPlanView() {
             <span className="text-sage-600 dark:text-sage-400">7.</span>
             Reasons to live
             <InfoButton
-              title="What keeps you going"
-              content="Things that are worth living for, even when things feel hopeless. These might be people, pets, goals, beliefs, or anything else that matters to you."
+              title={SAFETY_PLAN_GUIDANCE.reasonsToLive.title}
+              content={SAFETY_PLAN_GUIDANCE.reasonsToLive.description}
             />
           </h2>
           <p className="text-sm text-stone-500 dark:text-stone-400 mb-3">
@@ -461,6 +527,7 @@ export function SafetyPlanView() {
             onChange={setReasonsToLive}
             placeholder="e.g., My dog needs me, I want to see my niece grow up"
             addLabel="Add"
+            examples={SAFETY_PLAN_GUIDANCE.reasonsToLive.examples}
           />
         </section>
 
@@ -469,7 +536,8 @@ export function SafetyPlanView() {
             Personal statement (optional)
           </h2>
           <p className="text-sm text-stone-500 dark:text-stone-400 mb-3">
-            A message from your better self to read during hard times.
+            A message from your better self to read during hard times. This could be words of
+            encouragement, reminders of what matters, or instructions for what to do.
           </p>
           <AutoExpandTextarea
             value={personalStatement}
@@ -478,6 +546,20 @@ export function SafetyPlanView() {
             maxRows={8}
             placeholder="Write something to yourself that you can read when you're struggling..."
           />
+
+          {!personalStatement && (
+            <div className="mt-3 p-3 bg-stone-50 dark:bg-stone-700/50 rounded-lg">
+              <p className="text-xs text-stone-500 dark:text-stone-400 mb-2">
+                Ideas for what to write:
+              </p>
+              <ul className="text-xs text-stone-600 dark:text-stone-300 space-y-1">
+                <li>• Remind yourself that crises are temporary</li>
+                <li>• List specific things you're grateful for</li>
+                <li>• Write what you would say to a friend in your situation</li>
+                <li>• Include a phrase or quote that gives you strength</li>
+              </ul>
+            </div>
+          )}
         </section>
 
         {!isComplete && (
@@ -487,9 +569,16 @@ export function SafetyPlanView() {
           </div>
         )}
 
-        <button onClick={handleSave} className="btn-primary w-full">
-          Save safety plan
-        </button>
+        <div className="space-y-3">
+          <button onClick={handleSave} className="btn-primary w-full">
+            Save safety plan
+          </button>
+
+          <p className="text-xs text-center text-stone-400 dark:text-stone-500">
+            Your safety plan is stored locally on your device. Consider sharing a copy with someone
+            you trust.
+          </p>
+        </div>
       </div>
     </div>
   )

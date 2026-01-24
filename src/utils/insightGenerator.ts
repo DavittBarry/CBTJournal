@@ -98,6 +98,25 @@ const DISTORTION_TIPS: Record<CognitiveDistortionId, { tip: string; challenge: s
     challenge:
       "Ask: 'What percentage of this was actually in my control? What other factors were involved?'",
   },
+  11: {
+    tip: "You're holding others entirely responsible for your pain. While others may contribute, you have power over your response.",
+    challenge:
+      "Ask: 'What role, if any, did I play? Even if others contributed, what can I do now?'",
+  },
+  12: {
+    tip: "You're judging situations by your own fairness standard. 'Fair' is often subjective.",
+    challenge:
+      "Ask: 'Who decides what's fair here? How is my focus on fairness affecting my wellbeing?'",
+  },
+  13: {
+    tip: "You're making your happiness depend on others changing. You can only control yourself.",
+    challenge: "Ask: 'What if they never change? What changes can I make within myself instead?'",
+  },
+  14: {
+    tip: "You're expecting rewards for sacrifice. Do things because they align with your values, not for expected payoffs.",
+    challenge:
+      "Ask: 'Am I doing this expecting a reward? Would it still be worth doing if no reward came?'",
+  },
 }
 
 export function generateDistortionInsights(records: ThoughtRecord[]): DistortionInsight[] {
