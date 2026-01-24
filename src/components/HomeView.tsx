@@ -84,12 +84,14 @@ export function HomeView() {
   }, [thoughtRecords, searchQuery, timeFilter])
 
   const groupedByRow = useMemo(() => {
-    const rows: (typeof filteredRecords)[] = []
+    const rows: { records: typeof filteredRecords; expandedIndex: number }[] = []
     for (let i = 0; i < filteredRecords.length; i += columnCount) {
-      rows.push(filteredRecords.slice(i, i + columnCount))
+      const rowRecords = filteredRecords.slice(i, i + columnCount)
+      const expandedIndex = rowRecords.findIndex((r) => r.id === expandedId)
+      rows.push({ records: rowRecords, expandedIndex })
     }
     return rows
-  }, [filteredRecords, columnCount])
+  }, [filteredRecords, columnCount, expandedId])
 
   const handleCardClick = (id: string, e: React.MouseEvent<HTMLAnchorElement>) => {
     if (e.ctrlKey || e.metaKey) {
@@ -121,6 +123,103 @@ export function HomeView() {
       setView('new-thought')
     }
   }
+
+  // Render the small card content (reused in both normal and expanded states)
+  const renderSmallCardContent = (
+    record: (typeof filteredRecords)[0],
+    maxEmotion: { name: string; intensity: number } | undefined,
+    hasOutcome: boolean,
+    outcomeIntensity: number | null,
+    improvement: number,
+    isExpanded: boolean
+  ) => (
+    <a
+      href={`#record/${record.id}`}
+      onClick={(e) => handleCardClick(record.id, e)}
+      className="block w-full text-left p-5 focus:outline-none overflow-hidden flex flex-col h-full"
+    >
+      <div className="flex-shrink-0 space-y-3 h-24">
+        <div className="flex items-start justify-between">
+          <div className="text-sm text-stone-400 dark:text-stone-500">
+            {format(parseISO(record.date), 'MMM d, yyyy')}
+          </div>
+          <svg
+            className={`w-5 h-5 text-stone-400 dark:text-stone-500 transition-transform duration-200 flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          >
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </div>
+        <div className="text-stone-700 dark:text-stone-200 font-medium leading-relaxed line-clamp-2">
+          {record.situation}
+        </div>
+      </div>
+      <div className="flex-shrink-0 mt-3">
+        <div className="flex flex-wrap gap-1.5">
+          {record.emotions.map((emotion, i) => (
+            <span
+              key={i}
+              className="text-xs bg-warm-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-2.5 py-1 rounded-full"
+            >
+              {emotion.name} {emotion.intensity}%
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className="flex-grow" />
+      <div className="flex-shrink-0 space-y-3">
+        {maxEmotion && hasOutcome && (
+          <div className="flex items-center gap-2 py-2 px-3 bg-stone-50 dark:bg-stone-700/50 rounded-lg text-xs">
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium">
+                Before
+              </span>
+              <span className="font-semibold text-critical-500 dark:text-critical-400">
+                {maxEmotion.intensity}%
+              </span>
+            </div>
+            <svg
+              className="w-3 h-3 text-stone-300 dark:text-stone-600 flex-shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium">
+                After
+              </span>
+              <span className="font-semibold text-helpful-600 dark:text-helpful-500">
+                {outcomeIntensity}%
+              </span>
+            </div>
+            {improvement > 0 && (
+              <span className="ml-auto font-medium text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                {improvement}% better
+              </span>
+            )}
+          </div>
+        )}
+        <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs">
+          {record.distortions.slice(0, 2).map((id) => (
+            <span key={id} className="text-sage-500 dark:text-sage-400">
+              {getDistortionName(id)}
+            </span>
+          ))}
+          {record.distortions.length > 2 && (
+            <span className="text-stone-400 dark:text-stone-500">
+              +{record.distortions.length - 2} more
+            </span>
+          )}
+        </div>
+      </div>
+    </a>
+  )
 
   return (
     <div>
@@ -236,8 +335,8 @@ export function HomeView() {
         </div>
       ) : (
         <div ref={gridRef} className="space-y-4">
-          {groupedByRow.map((row, rowIndex) => {
-            const expandedRecord = row.find((r) => r.id === expandedId)
+          {groupedByRow.map(({ records: row, expandedIndex }, rowIndex) => {
+            const expandedRecord = expandedIndex >= 0 ? row[expandedIndex] : null
 
             return (
               <div key={rowIndex}>
@@ -245,7 +344,6 @@ export function HomeView() {
                   className="grid gap-4"
                   style={{
                     gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
-                    marginBottom: expandedRecord ? '0' : '1rem',
                   }}
                 >
                   {row.map((record) => {
@@ -263,109 +361,13 @@ export function HomeView() {
                     const isExpanded = expandedId === record.id
 
                     if (isExpanded) {
+                      // Render invisible placeholder to maintain grid structure
                       return (
                         <div
                           key={record.id}
-                          className="card overflow-visible transition-all duration-300 card-thought-record ring-2 ring-sage-400 dark:ring-sage-500 relative"
-                          style={{
-                            borderBottomLeftRadius: 0,
-                            borderBottomRightRadius: 0,
-                            marginBottom: 0,
-                            zIndex: 1,
-                          }}
-                        >
-                          {/* Cover to hide bottom ring */}
-                          <div
-                            className="absolute -bottom-[2px] left-0 right-0 h-[4px] bg-white dark:bg-stone-800"
-                            style={{ zIndex: 10 }}
-                          />
-                          <a
-                            href={`#record/${record.id}`}
-                            onClick={(e) => handleCardClick(record.id, e)}
-                            className="block w-full text-left p-5 focus:outline-none overflow-hidden flex flex-col h-full"
-                          >
-                            <div className="flex-shrink-0 space-y-3 h-24">
-                              <div className="flex items-start justify-between">
-                                <div className="text-sm text-stone-400 dark:text-stone-500">
-                                  {format(parseISO(record.date), 'MMM d, yyyy')}
-                                </div>
-                                <svg
-                                  className="w-5 h-5 text-stone-400 dark:text-stone-500 transition-transform duration-200 flex-shrink-0 rotate-180"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="1.5"
-                                >
-                                  <path d="M6 9l6 6 6-6" />
-                                </svg>
-                              </div>
-                              <div className="text-stone-700 dark:text-stone-200 font-medium leading-relaxed line-clamp-2">
-                                {record.situation}
-                              </div>
-                            </div>
-                            <div className="flex-shrink-0 mt-3">
-                              <div className="flex flex-wrap gap-1.5">
-                                {record.emotions.map((emotion, i) => (
-                                  <span
-                                    key={i}
-                                    className="text-xs bg-warm-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-2.5 py-1 rounded-full"
-                                  >
-                                    {emotion.name} {emotion.intensity}%
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                            <div className="flex-grow" />
-                            <div className="flex-shrink-0 space-y-3">
-                              {maxEmotion && hasOutcome && (
-                                <div className="flex items-center gap-2 py-2 px-3 bg-stone-50 dark:bg-stone-700/50 rounded-lg text-xs">
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium">
-                                      Before
-                                    </span>
-                                    <span className="font-semibold text-critical-500 dark:text-critical-400">
-                                      {maxEmotion.intensity}%
-                                    </span>
-                                  </div>
-                                  <svg
-                                    className="w-3 h-3 text-stone-300 dark:text-stone-600 flex-shrink-0"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                  >
-                                    <path d="M5 12h14M12 5l7 7-7 7" />
-                                  </svg>
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium">
-                                      After
-                                    </span>
-                                    <span className="font-semibold text-helpful-600 dark:text-helpful-500">
-                                      {outcomeIntensity}%
-                                    </span>
-                                  </div>
-                                  {improvement > 0 && (
-                                    <span className="ml-auto font-medium text-stone-500 dark:text-stone-400 whitespace-nowrap">
-                                      {improvement}% better
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                              <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs">
-                                {record.distortions.slice(0, 2).map((id) => (
-                                  <span key={id} className="text-sage-500 dark:text-sage-400">
-                                    {getDistortionName(id)}
-                                  </span>
-                                ))}
-                                {record.distortions.length > 2 && (
-                                  <span className="text-stone-400 dark:text-stone-500">
-                                    +{record.distortions.length - 2} more
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </a>
-                        </div>
+                          className="card-thought-record"
+                          style={{ visibility: 'hidden' }}
+                        />
                       )
                     }
 
@@ -374,97 +376,14 @@ export function HomeView() {
                         key={record.id}
                         className="card overflow-hidden transition-all duration-300 hover:shadow-soft-lg dark:hover:shadow-soft-lg-dark card-thought-record"
                       >
-                        <a
-                          href={`#record/${record.id}`}
-                          onClick={(e) => handleCardClick(record.id, e)}
-                          className="block w-full text-left p-5 focus:outline-none focus:ring-2 focus:ring-sage-400/50 dark:focus:ring-sage-500/50 rounded-xl overflow-hidden flex flex-col h-full"
-                        >
-                          <div className="flex-shrink-0 space-y-3 h-24">
-                            <div className="flex items-start justify-between">
-                              <div className="text-sm text-stone-400 dark:text-stone-500">
-                                {format(parseISO(record.date), 'MMM d, yyyy')}
-                              </div>
-                              <svg
-                                className="w-5 h-5 text-stone-400 dark:text-stone-500 transition-transform duration-200 flex-shrink-0"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="1.5"
-                              >
-                                <path d="M6 9l6 6 6-6" />
-                              </svg>
-                            </div>
-
-                            <div className="text-stone-700 dark:text-stone-200 font-medium leading-relaxed line-clamp-2">
-                              {record.situation}
-                            </div>
-                          </div>
-
-                          <div className="flex-shrink-0 mt-3">
-                            <div className="flex flex-wrap gap-1.5">
-                              {record.emotions.map((emotion, i) => (
-                                <span
-                                  key={i}
-                                  className="text-xs bg-warm-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-2.5 py-1 rounded-full"
-                                >
-                                  {emotion.name} {emotion.intensity}%
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div className="flex-grow" />
-
-                          <div className="flex-shrink-0 space-y-3">
-                            {maxEmotion && hasOutcome && (
-                              <div className="flex items-center gap-2 py-2 px-3 bg-stone-50 dark:bg-stone-700/50 rounded-lg text-xs">
-                                <div className="flex items-center gap-1">
-                                  <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium">
-                                    Before
-                                  </span>
-                                  <span className="font-semibold text-critical-500 dark:text-critical-400">
-                                    {maxEmotion.intensity}%
-                                  </span>
-                                </div>
-                                <svg
-                                  className="w-3 h-3 text-stone-300 dark:text-stone-600 flex-shrink-0"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                >
-                                  <path d="M5 12h14M12 5l7 7-7 7" />
-                                </svg>
-                                <div className="flex items-center gap-1">
-                                  <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium">
-                                    After
-                                  </span>
-                                  <span className="font-semibold text-helpful-600 dark:text-helpful-500">
-                                    {outcomeIntensity}%
-                                  </span>
-                                </div>
-                                {improvement > 0 && (
-                                  <span className="ml-auto font-medium text-stone-500 dark:text-stone-400 whitespace-nowrap">
-                                    {improvement}% better
-                                  </span>
-                                )}
-                              </div>
-                            )}
-
-                            <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs">
-                              {record.distortions.slice(0, 2).map((id) => (
-                                <span key={id} className="text-sage-500 dark:text-sage-400">
-                                  {getDistortionName(id)}
-                                </span>
-                              ))}
-                              {record.distortions.length > 2 && (
-                                <span className="text-stone-400 dark:text-stone-500">
-                                  +{record.distortions.length - 2} more
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </a>
+                        {renderSmallCardContent(
+                          record,
+                          maxEmotion,
+                          hasOutcome,
+                          outcomeIntensity,
+                          improvement,
+                          false
+                        )}
                       </div>
                     )
                   })}
@@ -486,64 +405,21 @@ export function HomeView() {
                         : 0
 
                     return (
-                      <div
-                        className="card ring-2 ring-sage-400 dark:ring-sage-500 overflow-visible animate-fade-in relative"
-                        style={{
-                          borderTopLeftRadius: 0,
-                          borderTopRightRadius: 0,
-                          marginBottom: '1rem',
-                          zIndex: 2,
-                        }}
-                      >
-                        {/* Cover to hide top ring */}
-                        <div
-                          className="absolute -top-[2px] left-0 right-0 h-[4px] bg-white dark:bg-stone-800"
-                          style={{ zIndex: 10 }}
-                        />
-                        <a
-                          href={`#record/${record.id}`}
-                          onClick={(e) => handleCardClick(record.id, e)}
-                          className="block w-full text-left p-5 pb-4 focus:outline-none cursor-pointer hover:bg-stone-50/50 dark:hover:bg-stone-700/30 transition-colors"
-                        >
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="text-sm text-stone-400 dark:text-stone-500">
-                              {format(parseISO(record.date), 'MMM d, yyyy')}
-                            </div>
-                            <svg
-                              className="w-5 h-5 text-stone-400 dark:text-stone-500 rotate-180 flex-shrink-0"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="1.5"
-                            >
-                              <path d="M6 9l6 6 6-6" />
-                            </svg>
-                          </div>
-                          <div className="text-stone-700 dark:text-stone-200 font-medium leading-relaxed mb-4">
-                            {record.situation}
-                          </div>
+                      <div className="rounded-xl ring-2 ring-sage-400 dark:ring-sage-500 bg-white dark:bg-stone-800 overflow-hidden animate-fade-in mt-4">
+                        {/* Small card section - matching the 300px height */}
+                        <div className="h-[300px]">
+                          {renderSmallCardContent(
+                            record,
+                            maxEmotion,
+                            hasOutcome,
+                            outcomeIntensity,
+                            improvement,
+                            true
+                          )}
+                        </div>
 
-                          <div className="flex flex-wrap gap-1.5 mb-4">
-                            {record.emotions.map((emotion, i) => (
-                              <span
-                                key={i}
-                                className="text-xs bg-warm-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-2.5 py-1 rounded-full"
-                              >
-                                {emotion.name} {emotion.intensity}%
-                              </span>
-                            ))}
-                          </div>
-
-                          <div className="flex flex-wrap gap-1.5">
-                            {record.distortions.map((id) => (
-                              <span key={id} className="text-xs text-sage-500 dark:text-sage-400">
-                                {getDistortionName(id)}
-                              </span>
-                            ))}
-                          </div>
-                        </a>
-
-                        <div className="px-5 pb-5 border-t border-stone-200/50 dark:border-stone-700/50 pt-5">
+                        {/* Expanded content section */}
+                        <div className="px-5 pb-5">
                           <div className="flex gap-2 mb-6">
                             <AppLink
                               to="thought-detail"
