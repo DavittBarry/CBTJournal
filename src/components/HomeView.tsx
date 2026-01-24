@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useAppStore } from '@/stores/appStore'
 import { COGNITIVE_DISTORTIONS } from '@/types'
 import { format, parseISO, isAfter, subDays, subMonths, subYears } from 'date-fns'
@@ -20,12 +20,28 @@ export function HomeView() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [timeFilter, setTimeFilter] = useState('all')
+  const [columnCount, setColumnCount] = useState(1)
+  const gridRef = useRef<HTMLDivElement>(null)
   const { getReminder } = useReminders()
   const recordsReminder = getReminder('records')
 
   const getDistortionName = (id: number) => {
     return COGNITIVE_DISTORTIONS.find((d) => d.id === id)?.shortName || ''
   }
+
+  useEffect(() => {
+    const updateColumnCount = () => {
+      const width = window.innerWidth
+      if (width >= 1280) setColumnCount(4)
+      else if (width >= 1024) setColumnCount(3)
+      else if (width >= 768) setColumnCount(2)
+      else setColumnCount(1)
+    }
+
+    updateColumnCount()
+    window.addEventListener('resize', updateColumnCount)
+    return () => window.removeEventListener('resize', updateColumnCount)
+  }, [])
 
   const filteredRecords = useMemo(() => {
     let filtered = thoughtRecords
@@ -66,6 +82,14 @@ export function HomeView() {
 
     return filtered
   }, [thoughtRecords, searchQuery, timeFilter])
+
+  const groupedByRow = useMemo(() => {
+    const rows: (typeof filteredRecords)[] = []
+    for (let i = 0; i < filteredRecords.length; i += columnCount) {
+      rows.push(filteredRecords.slice(i, i + columnCount))
+    }
+    return rows
+  }, [filteredRecords, columnCount])
 
   const handleCardClick = (id: string, e: React.MouseEvent<HTMLAnchorElement>) => {
     if (e.ctrlKey || e.metaKey) {
@@ -211,255 +235,449 @@ export function HomeView() {
           </button>
         </div>
       ) : (
-        <div className="card-grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 items-start">
-          {filteredRecords.map((record) => {
-            const maxEmotion = record.emotions.reduce(
-              (max, e) => (e.intensity > max.intensity ? e : max),
-              record.emotions[0]
-            )
-            const hasOutcome = record.outcomeEmotions.length > 0 && record.outcomeEmotions[0].name
-            const outcomeIntensity = hasOutcome ? record.outcomeEmotions[0].intensity : null
-            const improvement =
-              maxEmotion && outcomeIntensity !== null ? maxEmotion.intensity - outcomeIntensity : 0
-            const isExpanded = expandedId === record.id
+        <div ref={gridRef} className="space-y-4">
+          {groupedByRow.map((row, rowIndex) => {
+            const expandedRecord = row.find((r) => r.id === expandedId)
 
             return (
-              <div
-                key={record.id}
-                className={`card overflow-hidden transition-all duration-300 hover:shadow-soft-lg dark:hover:shadow-soft-lg-dark ${
-                  !isExpanded ? 'card-thought-record' : 'h-auto col-span-full'
-                }`}
-              >
-                <a
-                  href={`#record/${record.id}`}
-                  onClick={(e) => handleCardClick(record.id, e)}
-                  className={`block w-full text-left p-5 focus:outline-none focus:ring-2 focus:ring-sage-400/50 dark:focus:ring-sage-500/50 rounded-t-xl overflow-hidden ${!isExpanded ? 'flex flex-col h-full rounded-xl' : ''}`}
+              <div key={rowIndex}>
+                <div
+                  className="grid gap-4"
+                  style={{
+                    gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
+                    marginBottom: expandedRecord ? '0' : '1rem',
+                  }}
                 >
-                  <div className={`flex-shrink-0 space-y-3 ${!isExpanded ? 'h-24' : ''}`}>
-                    <div className="flex items-start justify-between">
-                      <div className="text-sm text-stone-400 dark:text-stone-500">
-                        {format(parseISO(record.date), 'MMM d, yyyy')}
-                      </div>
-                      <svg
-                        className={`w-5 h-5 text-stone-400 dark:text-stone-500 transition-transform duration-200 flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`}
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                      >
-                        <path d="M6 9l6 6 6-6" />
-                      </svg>
-                    </div>
+                  {row.map((record) => {
+                    const maxEmotion = record.emotions.reduce(
+                      (max, e) => (e.intensity > max.intensity ? e : max),
+                      record.emotions[0]
+                    )
+                    const hasOutcome =
+                      record.outcomeEmotions.length > 0 && record.outcomeEmotions[0].name
+                    const outcomeIntensity = hasOutcome ? record.outcomeEmotions[0].intensity : null
+                    const improvement =
+                      maxEmotion && outcomeIntensity !== null
+                        ? maxEmotion.intensity - outcomeIntensity
+                        : 0
+                    const isExpanded = expandedId === record.id
 
-                    <div
-                      className={`text-stone-700 dark:text-stone-200 font-medium leading-relaxed ${isExpanded ? '' : 'line-clamp-2'}`}
-                    >
-                      {record.situation}
-                    </div>
-                  </div>
-
-                  <div className={`flex-shrink-0 ${!isExpanded ? 'mt-3' : 'mt-6'}`}>
-                    <div className="flex flex-wrap gap-1.5">
-                      {record.emotions.map((emotion, i) => (
-                        <span
-                          key={i}
-                          className="text-xs bg-warm-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-2.5 py-1 rounded-full"
+                    if (isExpanded) {
+                      return (
+                        <div
+                          key={record.id}
+                          className="card overflow-visible transition-all duration-300 card-thought-record ring-2 ring-sage-400 dark:ring-sage-500 relative"
+                          style={{
+                            borderBottomLeftRadius: 0,
+                            borderBottomRightRadius: 0,
+                            marginBottom: 0,
+                            zIndex: 1,
+                          }}
                         >
-                          {emotion.name} {emotion.intensity}%
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {!isExpanded && <div className="flex-grow" />}
-
-                  <div className={`flex-shrink-0 space-y-3 ${!isExpanded ? '' : 'mt-6'}`}>
-                    {maxEmotion && hasOutcome && (
-                      <div className="flex items-center gap-2 py-2 px-3 bg-stone-50 dark:bg-stone-700/50 rounded-lg text-xs">
-                        <div className="flex items-center gap-1">
-                          <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium">
-                            Before
-                          </span>
-                          <span className="font-semibold text-critical-500 dark:text-critical-400">
-                            {maxEmotion.intensity}%
-                          </span>
-                        </div>
-                        <svg
-                          className="w-3 h-3 text-stone-300 dark:text-stone-600 flex-shrink-0"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                        >
-                          <path d="M5 12h14M12 5l7 7-7 7" />
-                        </svg>
-                        <div className="flex items-center gap-1">
-                          <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium">
-                            After
-                          </span>
-                          <span className="font-semibold text-helpful-600 dark:text-helpful-500">
-                            {outcomeIntensity}%
-                          </span>
-                        </div>
-                        {improvement > 0 && (
-                          <span className="ml-auto font-medium text-stone-500 dark:text-stone-400 whitespace-nowrap">
-                            {improvement}% better
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs">
-                      {(isExpanded ? record.distortions : record.distortions.slice(0, 2)).map(
-                        (id) => (
-                          <span key={id} className="text-sage-500 dark:text-sage-400">
-                            {getDistortionName(id)}
-                          </span>
-                        )
-                      )}
-                      {!isExpanded && record.distortions.length > 2 && (
-                        <span className="text-stone-400 dark:text-stone-500">
-                          +{record.distortions.length - 2} more
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </a>
-
-                {isExpanded && (
-                  <div className="px-5 pb-5">
-                    <div className="flex gap-2 mb-6">
-                      <AppLink
-                        to="thought-detail"
-                        id={record.id}
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex-1 btn-secondary py-2 text-sm text-center"
-                      >
-                        View
-                      </AppLink>
-                      <AppLink
-                        to="new-thought"
-                        id={record.id}
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex-1 btn-secondary py-2 text-sm text-center"
-                      >
-                        Edit
-                      </AppLink>
-                      <button
-                        onClick={(e) => handleDuplicate(record.id, e)}
-                        className="flex-1 btn-secondary py-2 text-sm"
-                        type="button"
-                      >
-                        Duplicate
-                      </button>
-                      <button
-                        onClick={(e) => handleDeleteClick(record.id, e)}
-                        className="px-3 py-2 text-sm font-medium text-critical-500 dark:text-critical-400 hover:text-critical-600 dark:hover:text-critical-300 hover:bg-critical-50 dark:hover:bg-critical-500/10 rounded-xl transition-colors"
-                        type="button"
-                      >
-                        Delete
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="bg-stone-50 dark:bg-stone-800/50 rounded-xl p-4 flex flex-col">
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="w-6 h-6 rounded-full bg-critical-100 dark:bg-critical-900/30 text-critical-600 dark:text-critical-400 text-xs font-bold flex items-center justify-center">
-                            1
-                          </span>
-                          <h4 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide">
-                            Emotions (before)
-                          </h4>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5 mb-4">
-                          {record.emotions.map((emotion, i) => (
-                            <span
-                              key={i}
-                              className="text-xs bg-critical-100 dark:bg-critical-900/30 text-critical-700 dark:text-critical-300 px-2.5 py-1 rounded-full"
-                            >
-                              {emotion.name} {emotion.intensity}%
-                            </span>
-                          ))}
-                        </div>
-                        <div className="mt-auto pt-3 border-t border-stone-200 dark:border-stone-700">
-                          <div className="text-xs text-stone-400 dark:text-stone-500 mb-1">
-                            Peak intensity
-                          </div>
-                          <div className="text-2xl font-semibold text-critical-500 dark:text-critical-400">
-                            {maxEmotion?.intensity || 0}%
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="bg-stone-50 dark:bg-stone-800/50 rounded-xl p-4 flex flex-col">
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-xs font-bold flex items-center justify-center">
-                            2
-                          </span>
-                          <h4 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide">
-                            Automatic thoughts
-                          </h4>
-                        </div>
-                        <p className="text-stone-700 dark:text-stone-300 text-sm leading-relaxed whitespace-pre-wrap flex-grow">
-                          {record.automaticThoughts || 'No automatic thoughts recorded'}
-                        </p>
-                        {record.distortions.length > 0 && (
-                          <div className="mt-auto pt-3 border-t border-stone-200 dark:border-stone-700">
-                            <div className="text-xs text-stone-400 dark:text-stone-500 mb-2">
-                              Distortions identified
-                            </div>
-                            <div className="flex flex-wrap gap-1">
-                              {record.distortions.map((id) => (
-                                <span
-                                  key={id}
-                                  className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded"
+                          {/* Cover to hide bottom ring */}
+                          <div
+                            className="absolute -bottom-[2px] left-0 right-0 h-[4px] bg-white dark:bg-stone-800"
+                            style={{ zIndex: 10 }}
+                          />
+                          <a
+                            href={`#record/${record.id}`}
+                            onClick={(e) => handleCardClick(record.id, e)}
+                            className="block w-full text-left p-5 focus:outline-none overflow-hidden flex flex-col h-full"
+                          >
+                            <div className="flex-shrink-0 space-y-3 h-24">
+                              <div className="flex items-start justify-between">
+                                <div className="text-sm text-stone-400 dark:text-stone-500">
+                                  {format(parseISO(record.date), 'MMM d, yyyy')}
+                                </div>
+                                <svg
+                                  className="w-5 h-5 text-stone-400 dark:text-stone-500 transition-transform duration-200 flex-shrink-0 rotate-180"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="1.5"
                                 >
-                                  {getDistortionName(id)}
-                                </span>
-                              ))}
+                                  <path d="M6 9l6 6 6-6" />
+                                </svg>
+                              </div>
+                              <div className="text-stone-700 dark:text-stone-200 font-medium leading-relaxed line-clamp-2">
+                                {record.situation}
+                              </div>
+                            </div>
+                            <div className="flex-shrink-0 mt-3">
+                              <div className="flex flex-wrap gap-1.5">
+                                {record.emotions.map((emotion, i) => (
+                                  <span
+                                    key={i}
+                                    className="text-xs bg-warm-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-2.5 py-1 rounded-full"
+                                  >
+                                    {emotion.name} {emotion.intensity}%
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="flex-grow" />
+                            <div className="flex-shrink-0 space-y-3">
+                              {maxEmotion && hasOutcome && (
+                                <div className="flex items-center gap-2 py-2 px-3 bg-stone-50 dark:bg-stone-700/50 rounded-lg text-xs">
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium">
+                                      Before
+                                    </span>
+                                    <span className="font-semibold text-critical-500 dark:text-critical-400">
+                                      {maxEmotion.intensity}%
+                                    </span>
+                                  </div>
+                                  <svg
+                                    className="w-3 h-3 text-stone-300 dark:text-stone-600 flex-shrink-0"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                  >
+                                    <path d="M5 12h14M12 5l7 7-7 7" />
+                                  </svg>
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium">
+                                      After
+                                    </span>
+                                    <span className="font-semibold text-helpful-600 dark:text-helpful-500">
+                                      {outcomeIntensity}%
+                                    </span>
+                                  </div>
+                                  {improvement > 0 && (
+                                    <span className="ml-auto font-medium text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                                      {improvement}% better
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                              <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs">
+                                {record.distortions.slice(0, 2).map((id) => (
+                                  <span key={id} className="text-sage-500 dark:text-sage-400">
+                                    {getDistortionName(id)}
+                                  </span>
+                                ))}
+                                {record.distortions.length > 2 && (
+                                  <span className="text-stone-400 dark:text-stone-500">
+                                    +{record.distortions.length - 2} more
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </a>
+                        </div>
+                      )
+                    }
+
+                    return (
+                      <div
+                        key={record.id}
+                        className="card overflow-hidden transition-all duration-300 hover:shadow-soft-lg dark:hover:shadow-soft-lg-dark card-thought-record"
+                      >
+                        <a
+                          href={`#record/${record.id}`}
+                          onClick={(e) => handleCardClick(record.id, e)}
+                          className="block w-full text-left p-5 focus:outline-none focus:ring-2 focus:ring-sage-400/50 dark:focus:ring-sage-500/50 rounded-xl overflow-hidden flex flex-col h-full"
+                        >
+                          <div className="flex-shrink-0 space-y-3 h-24">
+                            <div className="flex items-start justify-between">
+                              <div className="text-sm text-stone-400 dark:text-stone-500">
+                                {format(parseISO(record.date), 'MMM d, yyyy')}
+                              </div>
+                              <svg
+                                className="w-5 h-5 text-stone-400 dark:text-stone-500 transition-transform duration-200 flex-shrink-0"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.5"
+                              >
+                                <path d="M6 9l6 6 6-6" />
+                              </svg>
+                            </div>
+
+                            <div className="text-stone-700 dark:text-stone-200 font-medium leading-relaxed line-clamp-2">
+                              {record.situation}
                             </div>
                           </div>
-                        )}
-                      </div>
 
-                      <div className="bg-stone-50 dark:bg-stone-800/50 rounded-xl p-4 flex flex-col">
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="w-6 h-6 rounded-full bg-helpful-100 dark:bg-helpful-900/30 text-helpful-600 dark:text-helpful-400 text-xs font-bold flex items-center justify-center">
-                            3
-                          </span>
-                          <h4 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide">
-                            Rational response
-                          </h4>
-                        </div>
-                        <p className="text-stone-700 dark:text-stone-300 text-sm leading-relaxed whitespace-pre-wrap flex-grow">
-                          {record.rationalResponse || 'No rational response recorded'}
-                        </p>
-                        {hasOutcome && (
-                          <div className="mt-auto pt-3 border-t border-stone-200 dark:border-stone-700">
-                            <div className="text-xs text-stone-400 dark:text-stone-500 mb-2">
-                              Emotions after
-                            </div>
-                            <div className="flex flex-wrap gap-1.5 mb-2">
-                              {record.outcomeEmotions.map((emotion, i) => (
+                          <div className="flex-shrink-0 mt-3">
+                            <div className="flex flex-wrap gap-1.5">
+                              {record.emotions.map((emotion, i) => (
                                 <span
                                   key={i}
-                                  className="text-xs bg-helpful-100 dark:bg-helpful-900/30 text-helpful-700 dark:text-helpful-300 px-2.5 py-1 rounded-full"
+                                  className="text-xs bg-warm-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-2.5 py-1 rounded-full"
                                 >
                                   {emotion.name} {emotion.intensity}%
                                 </span>
                               ))}
                             </div>
-                            {improvement > 0 && (
-                              <div className="text-sm font-medium text-helpful-600 dark:text-helpful-400">
-                                ↓ {improvement}% reduction
+                          </div>
+
+                          <div className="flex-grow" />
+
+                          <div className="flex-shrink-0 space-y-3">
+                            {maxEmotion && hasOutcome && (
+                              <div className="flex items-center gap-2 py-2 px-3 bg-stone-50 dark:bg-stone-700/50 rounded-lg text-xs">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium">
+                                    Before
+                                  </span>
+                                  <span className="font-semibold text-critical-500 dark:text-critical-400">
+                                    {maxEmotion.intensity}%
+                                  </span>
+                                </div>
+                                <svg
+                                  className="w-3 h-3 text-stone-300 dark:text-stone-600 flex-shrink-0"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
+                                  <path d="M5 12h14M12 5l7 7-7 7" />
+                                </svg>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium">
+                                    After
+                                  </span>
+                                  <span className="font-semibold text-helpful-600 dark:text-helpful-500">
+                                    {outcomeIntensity}%
+                                  </span>
+                                </div>
+                                {improvement > 0 && (
+                                  <span className="ml-auto font-medium text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                                    {improvement}% better
+                                  </span>
+                                )}
                               </div>
                             )}
+
+                            <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs">
+                              {record.distortions.slice(0, 2).map((id) => (
+                                <span key={id} className="text-sage-500 dark:text-sage-400">
+                                  {getDistortionName(id)}
+                                </span>
+                              ))}
+                              {record.distortions.length > 2 && (
+                                <span className="text-stone-400 dark:text-stone-500">
+                                  +{record.distortions.length - 2} more
+                                </span>
+                              )}
+                            </div>
                           </div>
-                        )}
+                        </a>
                       </div>
-                    </div>
-                  </div>
-                )}
+                    )
+                  })}
+                </div>
+
+                {expandedRecord &&
+                  (() => {
+                    const record = expandedRecord
+                    const maxEmotion = record.emotions.reduce(
+                      (max, e) => (e.intensity > max.intensity ? e : max),
+                      record.emotions[0]
+                    )
+                    const hasOutcome =
+                      record.outcomeEmotions.length > 0 && record.outcomeEmotions[0].name
+                    const outcomeIntensity = hasOutcome ? record.outcomeEmotions[0].intensity : null
+                    const improvement =
+                      maxEmotion && outcomeIntensity !== null
+                        ? maxEmotion.intensity - outcomeIntensity
+                        : 0
+
+                    return (
+                      <div
+                        className="card ring-2 ring-sage-400 dark:ring-sage-500 overflow-visible animate-fade-in relative"
+                        style={{
+                          borderTopLeftRadius: 0,
+                          borderTopRightRadius: 0,
+                          marginBottom: '1rem',
+                          zIndex: 2,
+                        }}
+                      >
+                        {/* Cover to hide top ring */}
+                        <div
+                          className="absolute -top-[2px] left-0 right-0 h-[4px] bg-white dark:bg-stone-800"
+                          style={{ zIndex: 10 }}
+                        />
+                        <a
+                          href={`#record/${record.id}`}
+                          onClick={(e) => handleCardClick(record.id, e)}
+                          className="block w-full text-left p-5 pb-4 focus:outline-none cursor-pointer hover:bg-stone-50/50 dark:hover:bg-stone-700/30 transition-colors"
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="text-sm text-stone-400 dark:text-stone-500">
+                              {format(parseISO(record.date), 'MMM d, yyyy')}
+                            </div>
+                            <svg
+                              className="w-5 h-5 text-stone-400 dark:text-stone-500 rotate-180 flex-shrink-0"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                            >
+                              <path d="M6 9l6 6 6-6" />
+                            </svg>
+                          </div>
+                          <div className="text-stone-700 dark:text-stone-200 font-medium leading-relaxed mb-4">
+                            {record.situation}
+                          </div>
+
+                          <div className="flex flex-wrap gap-1.5 mb-4">
+                            {record.emotions.map((emotion, i) => (
+                              <span
+                                key={i}
+                                className="text-xs bg-warm-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-2.5 py-1 rounded-full"
+                              >
+                                {emotion.name} {emotion.intensity}%
+                              </span>
+                            ))}
+                          </div>
+
+                          <div className="flex flex-wrap gap-1.5">
+                            {record.distortions.map((id) => (
+                              <span key={id} className="text-xs text-sage-500 dark:text-sage-400">
+                                {getDistortionName(id)}
+                              </span>
+                            ))}
+                          </div>
+                        </a>
+
+                        <div className="px-5 pb-5 border-t border-stone-200/50 dark:border-stone-700/50 pt-5">
+                          <div className="flex gap-2 mb-6">
+                            <AppLink
+                              to="thought-detail"
+                              id={record.id}
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex-1 btn-secondary py-2 text-sm text-center"
+                            >
+                              View
+                            </AppLink>
+                            <AppLink
+                              to="new-thought"
+                              id={record.id}
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex-1 btn-secondary py-2 text-sm text-center"
+                            >
+                              Edit
+                            </AppLink>
+                            <button
+                              onClick={(e) => handleDuplicate(record.id, e)}
+                              className="flex-1 btn-secondary py-2 text-sm"
+                              type="button"
+                            >
+                              Duplicate
+                            </button>
+                            <button
+                              onClick={(e) => handleDeleteClick(record.id, e)}
+                              className="px-3 py-2 text-sm font-medium text-critical-500 dark:text-critical-400 hover:text-critical-600 dark:hover:text-critical-300 hover:bg-critical-50 dark:hover:bg-critical-500/10 rounded-xl transition-colors"
+                              type="button"
+                            >
+                              Delete
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="bg-stone-50 dark:bg-stone-800/50 rounded-xl p-4 flex flex-col">
+                              <div className="flex items-center gap-2 mb-3">
+                                <span className="w-6 h-6 rounded-full bg-critical-100 dark:bg-critical-900/30 text-critical-600 dark:text-critical-400 text-xs font-bold flex items-center justify-center">
+                                  1
+                                </span>
+                                <h4 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide">
+                                  Emotions (before)
+                                </h4>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5 mb-4">
+                                {record.emotions.map((emotion, i) => (
+                                  <span
+                                    key={i}
+                                    className="text-xs bg-critical-100 dark:bg-critical-900/30 text-critical-700 dark:text-critical-300 px-2.5 py-1 rounded-full"
+                                  >
+                                    {emotion.name} {emotion.intensity}%
+                                  </span>
+                                ))}
+                              </div>
+                              <div className="mt-auto pt-3 border-t border-stone-200 dark:border-stone-700">
+                                <div className="text-xs text-stone-400 dark:text-stone-500 mb-1">
+                                  Peak intensity
+                                </div>
+                                <div className="text-2xl font-semibold text-critical-500 dark:text-critical-400">
+                                  {maxEmotion?.intensity || 0}%
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="bg-stone-50 dark:bg-stone-800/50 rounded-xl p-4 flex flex-col">
+                              <div className="flex items-center gap-2 mb-3">
+                                <span className="w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-xs font-bold flex items-center justify-center">
+                                  2
+                                </span>
+                                <h4 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide">
+                                  Automatic thoughts
+                                </h4>
+                              </div>
+                              <p className="text-stone-700 dark:text-stone-300 text-sm leading-relaxed whitespace-pre-wrap flex-grow">
+                                {record.automaticThoughts || 'No automatic thoughts recorded'}
+                              </p>
+                              {record.distortions.length > 0 && (
+                                <div className="mt-auto pt-3 border-t border-stone-200 dark:border-stone-700">
+                                  <div className="text-xs text-stone-400 dark:text-stone-500 mb-2">
+                                    Distortions identified
+                                  </div>
+                                  <div className="flex flex-wrap gap-1">
+                                    {record.distortions.map((id) => (
+                                      <span
+                                        key={id}
+                                        className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded"
+                                      >
+                                        {getDistortionName(id)}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="bg-stone-50 dark:bg-stone-800/50 rounded-xl p-4 flex flex-col">
+                              <div className="flex items-center gap-2 mb-3">
+                                <span className="w-6 h-6 rounded-full bg-helpful-100 dark:bg-helpful-900/30 text-helpful-600 dark:text-helpful-400 text-xs font-bold flex items-center justify-center">
+                                  3
+                                </span>
+                                <h4 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide">
+                                  Rational response
+                                </h4>
+                              </div>
+                              <p className="text-stone-700 dark:text-stone-300 text-sm leading-relaxed whitespace-pre-wrap flex-grow">
+                                {record.rationalResponse || 'No rational response recorded'}
+                              </p>
+                              {hasOutcome && (
+                                <div className="mt-auto pt-3 border-t border-stone-200 dark:border-stone-700">
+                                  <div className="text-xs text-stone-400 dark:text-stone-500 mb-2">
+                                    Emotions after
+                                  </div>
+                                  <div className="flex flex-wrap gap-1.5 mb-2">
+                                    {record.outcomeEmotions.map((emotion, i) => (
+                                      <span
+                                        key={i}
+                                        className="text-xs bg-helpful-100 dark:bg-helpful-900/30 text-helpful-700 dark:text-helpful-300 px-2.5 py-1 rounded-full"
+                                      >
+                                        {emotion.name} {emotion.intensity}%
+                                      </span>
+                                    ))}
+                                  </div>
+                                  {improvement > 0 && (
+                                    <div className="text-sm font-medium text-helpful-600 dark:text-helpful-400">
+                                      ↓ {improvement}% reduction
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })()}
               </div>
             )
           })}
