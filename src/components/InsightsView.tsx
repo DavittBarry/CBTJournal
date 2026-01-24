@@ -818,9 +818,9 @@ export function InsightsView() {
                       formatter={(
                         value: number,
                         name: string,
-                        props: { payload: { avgMoodChange: number } }
+                        props: { payload?: { avgMoodChange?: number } }
                       ) => [
-                        `${value} activities (avg mood: ${props.payload.avgMoodChange > 0 ? '+' : ''}${props.payload.avgMoodChange})`,
+                        `${value} activities (avg mood: ${props.payload?.avgMoodChange && props.payload.avgMoodChange > 0 ? '+' : ''}${props.payload?.avgMoodChange ?? 0})`,
                         name,
                       ]}
                     />
@@ -924,11 +924,12 @@ export function InsightsView() {
                       formatter={(
                         value: number,
                         name: string,
-                        props: { payload: { avgMoodChange: number } }
+                        props: { payload?: { avgMoodChange?: number } }
                       ) => {
                         if (name === 'completedCount') {
+                          const moodChange = props.payload?.avgMoodChange ?? 0
                           return [
-                            `${value} completed (avg mood: ${props.payload.avgMoodChange > 0 ? '+' : ''}${props.payload.avgMoodChange})`,
+                            `${value} completed (avg mood: ${moodChange > 0 ? '+' : ''}${moodChange})`,
                             'Activities',
                           ]
                         }
