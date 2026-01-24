@@ -9,6 +9,17 @@ function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 }
 
+// Country flags for crisis resources
+const COUNTRY_FLAGS: Record<string, string> = {
+  international: '🌍',
+  us: '🇺🇸',
+  uk: '🇬🇧',
+  finland: '🇫🇮',
+  ireland: '🇮🇪',
+  canada: '🇨🇦',
+  australia: '🇦🇺',
+}
+
 function ListInput({
   items,
   onChange,
@@ -306,11 +317,6 @@ export function SafetyPlanView() {
     (socialDistractions.length > 0 || peopleToContact.length > 0) &&
     professionalContacts.length > 0
 
-  // Get guidance for each step
-  const getGuidance = (step: number) => {
-    return SAFETY_PLAN_GUIDANCE.find((g) => g.step === step)
-  }
-
   return (
     <div className="max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-4">
@@ -346,16 +352,27 @@ export function SafetyPlanView() {
               Crisis resources
             </h3>
             <div className="text-sm text-stone-600 dark:text-stone-400 space-y-1.5">
-              {CRISIS_RESOURCES.map((resource) => (
-                <div key={resource.country} className="flex items-start gap-2">
-                  <span className="flex-shrink-0">{resource.flag}</span>
+              {Object.entries(CRISIS_RESOURCES).map(([key, resource]) => (
+                <div key={key} className="flex items-start gap-2">
+                  <span className="flex-shrink-0">{COUNTRY_FLAGS[key] || '🌐'}</span>
                   <div>
-                    <a
-                      href={`tel:${resource.number.replace(/\s/g, '')}`}
-                      className="text-sage-600 dark:text-sage-400 font-medium"
-                    >
-                      {resource.number}
-                    </a>
+                    {'phone' in resource ? (
+                      <a
+                        href={`tel:${resource.phone.replace(/\s/g, '')}`}
+                        className="text-sage-600 dark:text-sage-400 font-medium"
+                      >
+                        {resource.phone}
+                      </a>
+                    ) : (
+                      <a
+                        href={resource.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sage-600 dark:text-sage-400 font-medium"
+                      >
+                        {resource.name}
+                      </a>
+                    )}
                     <span className="text-stone-500 dark:text-stone-400"> ({resource.name})</span>
                     {resource.description && (
                       <span className="text-stone-400 dark:text-stone-500 text-xs block">
@@ -376,8 +393,8 @@ export function SafetyPlanView() {
             <span className="text-sage-600 dark:text-sage-400">1.</span>
             Warning signs
             <InfoButton
-              title={getGuidance(1)?.title || 'Warning signs'}
-              content={getGuidance(1)?.description || ''}
+              title={SAFETY_PLAN_GUIDANCE.warningSigns.title}
+              content={SAFETY_PLAN_GUIDANCE.warningSigns.description}
             />
           </h2>
           <p className="text-sm text-stone-500 dark:text-stone-400 mb-3">
@@ -388,7 +405,7 @@ export function SafetyPlanView() {
             onChange={setWarningSigns}
             placeholder="e.g., Feeling hopeless, isolating myself, not sleeping"
             addLabel="Add"
-            examples={getGuidance(1)?.examples}
+            examples={SAFETY_PLAN_GUIDANCE.warningSigns.examples}
           />
         </section>
 
@@ -397,8 +414,8 @@ export function SafetyPlanView() {
             <span className="text-sage-600 dark:text-sage-400">2.</span>
             Internal coping strategies
             <InfoButton
-              title={getGuidance(2)?.title || 'Coping strategies'}
-              content={getGuidance(2)?.description || ''}
+              title={SAFETY_PLAN_GUIDANCE.copingStrategies.title}
+              content={SAFETY_PLAN_GUIDANCE.copingStrategies.description}
             />
           </h2>
           <p className="text-sm text-stone-500 dark:text-stone-400 mb-3">
@@ -409,7 +426,7 @@ export function SafetyPlanView() {
             onChange={setCopingStrategies}
             placeholder="e.g., Take a cold shower, go for a walk, do breathing exercises"
             addLabel="Add"
-            examples={getGuidance(2)?.examples}
+            examples={SAFETY_PLAN_GUIDANCE.copingStrategies.examples}
           />
         </section>
 
@@ -418,8 +435,8 @@ export function SafetyPlanView() {
             <span className="text-sage-600 dark:text-sage-400">3.</span>
             Social distractions
             <InfoButton
-              title={getGuidance(3)?.title || 'Social distractions'}
-              content={getGuidance(3)?.description || ''}
+              title={SAFETY_PLAN_GUIDANCE.socialDistractions.title}
+              content={SAFETY_PLAN_GUIDANCE.socialDistractions.description}
             />
           </h2>
           <p className="text-sm text-stone-500 dark:text-stone-400 mb-3">
@@ -437,8 +454,8 @@ export function SafetyPlanView() {
             <span className="text-sage-600 dark:text-sage-400">4.</span>
             People I can ask for help
             <InfoButton
-              title={getGuidance(4)?.title || 'Support network'}
-              content={getGuidance(4)?.description || ''}
+              title={SAFETY_PLAN_GUIDANCE.peopleToContact.title}
+              content={SAFETY_PLAN_GUIDANCE.peopleToContact.description}
             />
           </h2>
           <p className="text-sm text-stone-500 dark:text-stone-400 mb-3">
@@ -456,8 +473,8 @@ export function SafetyPlanView() {
             <span className="text-sage-600 dark:text-sage-400">5.</span>
             Professional contacts
             <InfoButton
-              title={getGuidance(5)?.title || 'Professional help'}
-              content={getGuidance(5)?.description || ''}
+              title={SAFETY_PLAN_GUIDANCE.professionalContacts.title}
+              content={SAFETY_PLAN_GUIDANCE.professionalContacts.description}
             />
           </h2>
           <p className="text-sm text-stone-500 dark:text-stone-400 mb-3">
@@ -477,8 +494,8 @@ export function SafetyPlanView() {
             <span className="text-sage-600 dark:text-sage-400">6.</span>
             Making my environment safe
             <InfoButton
-              title={getGuidance(6)?.title || 'Environment safety'}
-              content={getGuidance(6)?.description || ''}
+              title={SAFETY_PLAN_GUIDANCE.environmentSafety.title}
+              content={SAFETY_PLAN_GUIDANCE.environmentSafety.description}
             />
           </h2>
           <p className="text-sm text-stone-500 dark:text-stone-400 mb-3">
@@ -489,7 +506,7 @@ export function SafetyPlanView() {
             onChange={setEnvironmentSafety}
             placeholder="e.g., Give medications to a friend, lock away sharp objects"
             addLabel="Add"
-            examples={getGuidance(6)?.examples}
+            examples={SAFETY_PLAN_GUIDANCE.environmentSafety.examples}
           />
         </section>
 
@@ -498,8 +515,8 @@ export function SafetyPlanView() {
             <span className="text-sage-600 dark:text-sage-400">7.</span>
             Reasons to live
             <InfoButton
-              title={getGuidance(7)?.title || 'Reasons to live'}
-              content={getGuidance(7)?.description || ''}
+              title={SAFETY_PLAN_GUIDANCE.reasonsToLive.title}
+              content={SAFETY_PLAN_GUIDANCE.reasonsToLive.description}
             />
           </h2>
           <p className="text-sm text-stone-500 dark:text-stone-400 mb-3">
@@ -510,7 +527,7 @@ export function SafetyPlanView() {
             onChange={setReasonsToLive}
             placeholder="e.g., My dog needs me, I want to see my niece grow up"
             addLabel="Add"
-            examples={getGuidance(7)?.examples}
+            examples={SAFETY_PLAN_GUIDANCE.reasonsToLive.examples}
           />
         </section>
 

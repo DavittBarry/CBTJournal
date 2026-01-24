@@ -550,7 +550,7 @@ export interface GratitudeEntry {
   date: string
   entries: string[]
   // Enhanced gratitude practice fields
-  whyGrateful?: string[] // Why each item matters
+  whyGrateful?: string // Why these items matter to you
   savoring?: string // A moment to savor from the day
 }
 
