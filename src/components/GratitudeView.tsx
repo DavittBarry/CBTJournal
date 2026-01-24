@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useAppStore } from '@/stores/appStore'
 import { format, parseISO, isAfter, subDays, subMonths, subYears } from 'date-fns'
 import { PageIntro, SearchBar, TimeFilter } from '@/components/InfoComponents'
@@ -13,8 +13,23 @@ export function GratitudeView() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [timeFilter, setTimeFilter] = useState('all')
+  const [columnCount, setColumnCount] = useState(1)
   const { getReminder } = useReminders()
   const gratitudeReminder = getReminder('gratitude')
+
+  useEffect(() => {
+    const updateColumnCount = () => {
+      const width = window.innerWidth
+      if (width >= 1280) setColumnCount(4)
+      else if (width >= 1024) setColumnCount(3)
+      else if (width >= 768) setColumnCount(2)
+      else setColumnCount(1)
+    }
+
+    updateColumnCount()
+    window.addEventListener('resize', updateColumnCount)
+    return () => window.removeEventListener('resize', updateColumnCount)
+  }, [])
 
   const filteredEntries = useMemo(() => {
     let filtered = gratitudeEntries
@@ -51,6 +66,16 @@ export function GratitudeView() {
     return filtered
   }, [gratitudeEntries, searchQuery, timeFilter])
 
+  const groupedByRow = useMemo(() => {
+    const rows: { entries: typeof filteredEntries; expandedIndex: number }[] = []
+    for (let i = 0; i < filteredEntries.length; i += columnCount) {
+      const rowEntries = filteredEntries.slice(i, i + columnCount)
+      const expandedIndex = rowEntries.findIndex((e) => e.id === expandedId)
+      rows.push({ entries: rowEntries, expandedIndex })
+    }
+    return rows
+  }, [filteredEntries, columnCount, expandedId])
+
   const handleCardClick = (id: string, e: React.MouseEvent<HTMLAnchorElement>) => {
     if (e.ctrlKey || e.metaKey) {
       return
@@ -71,6 +96,52 @@ export function GratitudeView() {
     e.stopPropagation()
     setShowDeleteConfirm(id)
   }
+
+  // Render the small card content (reused in both normal and expanded states)
+  const renderSmallCardContent = (entry: (typeof filteredEntries)[0], isExpanded: boolean) => (
+    <a
+      href={`#gratitude-entry/${entry.id}`}
+      onClick={(e) => handleCardClick(entry.id, e)}
+      className="block w-full text-left p-5 focus:outline-none overflow-hidden flex flex-col h-full"
+    >
+      <div className="flex items-center justify-between mb-3 flex-shrink-0">
+        <div className="text-sm text-stone-400 dark:text-stone-500">
+          {format(parseISO(entry.date), 'MMM d, yyyy')}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-sage-500 dark:text-sage-400 font-medium whitespace-nowrap">
+            {entry.entries.length} item{entry.entries.length !== 1 ? 's' : ''}
+          </span>
+          <svg
+            className={`w-5 h-5 text-stone-400 dark:text-stone-500 transition-transform duration-200 flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          >
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </div>
+      </div>
+
+      <ul className="space-y-1.5">
+        {entry.entries.slice(0, 3).map((item, i) => (
+          <li
+            key={i}
+            className="text-stone-700 dark:text-stone-300 text-sm leading-relaxed flex items-start gap-2"
+          >
+            <span className="text-sage-400 dark:text-sage-500 mt-0.5 flex-shrink-0">•</span>
+            <span className="line-clamp-1">{item}</span>
+          </li>
+        ))}
+        {entry.entries.length > 3 && (
+          <li className="text-stone-400 dark:text-stone-500 text-sm pl-4">
+            +{entry.entries.length - 3} more
+          </li>
+        )}
+      </ul>
+    </a>
+  )
 
   return (
     <div>
@@ -183,80 +254,106 @@ export function GratitudeView() {
           </button>
         </div>
       ) : (
-        <div className="card-grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 items-start">
-          {filteredEntries.map((entry) => {
-            const isExpanded = expandedId === entry.id
+        <div className="space-y-4">
+          {groupedByRow.map(({ entries: row, expandedIndex }, rowIndex) => {
+            const expandedEntry = expandedIndex >= 0 ? row[expandedIndex] : null
 
             return (
-              <div
-                key={entry.id}
-                className={`card overflow-hidden transition-all duration-300 hover:shadow-soft-lg dark:hover:shadow-soft-lg-dark ${
-                  isExpanded ? 'h-auto col-span-full' : 'card-gratitude'
-                }`}
-              >
-                <a
-                  href={`#gratitude-entry/${entry.id}`}
-                  onClick={(e) => handleCardClick(entry.id, e)}
-                  className={`block w-full text-left p-5 focus:outline-none focus:ring-2 focus:ring-sage-400/50 dark:focus:ring-sage-500/50 rounded-t-xl overflow-hidden ${!isExpanded ? 'flex flex-col h-full rounded-xl' : ''}`}
+              <div key={rowIndex}>
+                <div
+                  className="grid gap-4"
+                  style={{
+                    gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
+                  }}
                 >
-                  <div className="flex items-center justify-between mb-3 flex-shrink-0">
-                    <div className="text-sm text-stone-400 dark:text-stone-500">
-                      {format(parseISO(entry.date), 'MMM d, yyyy')}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-sage-500 dark:text-sage-400 font-medium whitespace-nowrap">
-                        {entry.entries.length} item{entry.entries.length !== 1 ? 's' : ''}
-                      </span>
-                      <svg
-                        className={`w-5 h-5 text-stone-400 dark:text-stone-500 transition-transform duration-200 flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`}
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                      >
-                        <path d="M6 9l6 6 6-6" />
-                      </svg>
-                    </div>
-                  </div>
+                  {row.map((entry) => {
+                    const isExpanded = expandedId === entry.id
 
-                  <ul className="space-y-1.5">
-                    {(isExpanded ? entry.entries : entry.entries.slice(0, 3)).map((item, i) => (
-                      <li
-                        key={i}
-                        className="text-stone-700 dark:text-stone-300 text-sm leading-relaxed flex items-start gap-2"
-                      >
-                        <span className="text-sage-400 dark:text-sage-500 mt-0.5 flex-shrink-0">
-                          •
-                        </span>
-                        <span className={isExpanded ? '' : 'line-clamp-1'}>{item}</span>
-                      </li>
-                    ))}
-                    {!isExpanded && entry.entries.length > 3 && (
-                      <li className="text-stone-400 dark:text-stone-500 text-sm pl-4">
-                        +{entry.entries.length - 3} more
-                      </li>
-                    )}
-                  </ul>
-                </a>
+                    if (isExpanded) {
+                      // Render invisible placeholder to maintain grid structure
+                      return (
+                        <div
+                          key={entry.id}
+                          className="card-gratitude"
+                          style={{ visibility: 'hidden' }}
+                        />
+                      )
+                    }
 
-                {isExpanded && (
-                  <div className="px-5 pb-5">
-                    <div className="flex gap-2 pt-4 border-t border-stone-100 dark:border-stone-700">
-                      <AppLink
-                        to="new-gratitude"
-                        id={entry.id}
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex-1 btn-secondary py-2 text-sm text-center"
+                    return (
+                      <div
+                        key={entry.id}
+                        className="card overflow-hidden transition-all duration-300 hover:shadow-soft-lg dark:hover:shadow-soft-lg-dark card-gratitude"
                       >
-                        Edit
-                      </AppLink>
-                      <button
-                        onClick={(e) => handleDeleteClick(entry.id, e)}
-                        className="px-3 py-2 text-sm font-medium text-critical-500 dark:text-critical-400 hover:text-critical-600 dark:hover:text-critical-300 hover:bg-critical-50 dark:hover:bg-critical-500/10 rounded-xl transition-colors"
-                        type="button"
-                      >
-                        Delete
-                      </button>
+                        {renderSmallCardContent(entry, false)}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {expandedEntry && (
+                  <div className="rounded-xl ring-2 ring-sage-400 dark:ring-sage-500 bg-white dark:bg-stone-800 overflow-hidden animate-fade-in mt-4">
+                    {/* Small card section */}
+                    <a
+                      href={`#gratitude-entry/${expandedEntry.id}`}
+                      onClick={(e) => handleCardClick(expandedEntry.id, e)}
+                      className="block w-full text-left p-5 focus:outline-none"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="text-sm text-stone-400 dark:text-stone-500">
+                          {format(parseISO(expandedEntry.date), 'MMM d, yyyy')}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-sage-500 dark:text-sage-400 font-medium whitespace-nowrap">
+                            {expandedEntry.entries.length} item
+                            {expandedEntry.entries.length !== 1 ? 's' : ''}
+                          </span>
+                          <svg
+                            className="w-5 h-5 text-stone-400 dark:text-stone-500 transition-transform duration-200 flex-shrink-0 rotate-180"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                          >
+                            <path d="M6 9l6 6 6-6" />
+                          </svg>
+                        </div>
+                      </div>
+
+                      <ul className="space-y-1.5">
+                        {expandedEntry.entries.map((item, i) => (
+                          <li
+                            key={i}
+                            className="text-stone-700 dark:text-stone-300 text-sm leading-relaxed flex items-start gap-2"
+                          >
+                            <span className="text-sage-400 dark:text-sage-500 mt-0.5 flex-shrink-0">
+                              •
+                            </span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </a>
+
+                    {/* Expanded content section */}
+                    <div className="px-5 pb-5">
+                      <div className="flex gap-2">
+                        <AppLink
+                          to="new-gratitude"
+                          id={expandedEntry.id}
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex-1 btn-secondary py-2 text-sm text-center"
+                        >
+                          Edit
+                        </AppLink>
+                        <button
+                          onClick={(e) => handleDeleteClick(expandedEntry.id, e)}
+                          className="px-3 py-2 text-sm font-medium text-critical-500 dark:text-critical-400 hover:text-critical-600 dark:hover:text-critical-300 hover:bg-critical-50 dark:hover:bg-critical-500/10 rounded-xl transition-colors"
+                          type="button"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}

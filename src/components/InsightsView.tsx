@@ -81,7 +81,9 @@ function DistortionCard({
   }
 
   return (
-    <div className="card overflow-hidden">
+    <div
+      className={`card overflow-hidden transition-all duration-300 ${isExpanded ? 'ring-2 ring-sage-400 dark:ring-sage-500' : ''}`}
+    >
       <button
         onClick={onToggle}
         className="w-full text-left p-4 hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors"

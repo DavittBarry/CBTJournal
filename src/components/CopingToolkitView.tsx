@@ -24,7 +24,9 @@ function SkillCard({ skill, onPractice }: SkillCardProps) {
   const [expanded, setExpanded] = useState(false)
 
   return (
-    <div className="card overflow-hidden">
+    <div
+      className={`card overflow-hidden transition-all duration-300 ${expanded ? 'ring-2 ring-sage-400 dark:ring-sage-500' : ''}`}
+    >
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full p-4 text-left flex items-start justify-between gap-3"
