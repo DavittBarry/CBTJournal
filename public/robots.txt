@@ -1,0 +1,9 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Disallow crawling of sensitive paths (none for this PWA)
+# All content is client-side rendered and private
+
+# Sitemap (not applicable for PWA)
+# Sitemap: https://example.com/sitemap.xml

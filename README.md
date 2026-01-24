@@ -1,18 +1,36 @@
 # CBTJournal
 
-Track your thoughts with cognitive behavioral therapy techniques based on "Feeling Good" by David D. Burns, M.D. Identify cognitive distortions using the untwist technique and monitor your mental health over time.
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue.svg)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-18-61dafb.svg)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-5-646cff.svg)](https://vitejs.dev/)
+[![PWA](https://img.shields.io/badge/PWA-Ready-5A0FC8.svg)](https://web.dev/progressive-web-apps/)
+
+A private, offline-first mental wellness application built with cognitive behavioral therapy techniques. Based on "Feeling Good" by David D. Burns, M.D.
 
 ## Features
 
-- **Daily thought records**: Log situations, emotions, automatic thoughts, cognitive distortions, and rational responses.
-- **Gratitude journal**: Daily gratitude practice to build positive thought patterns.
-- **Depression checklist**: Track symptoms using the Burns Depression Checklist (25 items, scored 0-100).
-- **Pattern insights**: Visualize your most common cognitive distortions, emotional patterns, and trends over time.
-- **Offline-first**: Works without internet connection, all data stays on your device.
-- **PWA support**: Install as an app on your phone or desktop.
-- **Data export/import**: Export your data as JSON for backup or analysis, import to restore.
-- **Auto-save** (Chrome/Edge): Set up a local file that automatically stays in sync with your data.
-- **Cloud sync** (optional): Sync your data across devices via Google Drive or Dropbox.
+### Core tools
+- **Thought records**: Log situations, emotions, automatic thoughts, cognitive distortions, and rational responses
+- **Mood assessments**: Clinically validated PHQ-9 (depression) and GAD-7 (anxiety) screenings
+- **Gratitude journal**: Daily gratitude practice to build positive thought patterns
+- **Activity scheduling**: Plan and track activities with mood ratings
+- **Coping toolkit**: DBT, ACT, and MBCT techniques including TIPP skills, grounding, and breathing exercises
+- **Safety plan**: Crisis management tool following evidence-based protocols
+
+### Privacy and data
+- **Offline-first**: Works without internet, all data stays on your device
+- **No tracking**: Zero analytics, no data collection
+- **Local storage**: IndexedDB for reliable local persistence
+- **Cloud sync** (optional): Sync via your own Google Drive or Dropbox
+- **Auto-save** (Chrome/Edge): File System Access API for automatic local backups
+- **Export/Import**: JSON backup and restore
+
+### Technical
+- **PWA**: Install as an app on any device
+- **Dark mode**: System preference detection with manual override
+- **Responsive**: Mobile, tablet, and desktop optimized
+- **Accessible**: WCAG compliant with keyboard navigation support
 
 ## The 10 cognitive distortions
 
@@ -31,40 +49,57 @@ Based on David D. Burns' work:
 
 ## Getting started
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
+### Prerequisites
 
-2. Start the development server:
-   ```bash
-   npm run dev
-   ```
+- Node.js 18 or higher
+- npm 9 or higher
 
-3. Open http://localhost:5173 in your browser
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/cbtjournal.git
+cd cbtjournal
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+Open http://localhost:5173 in your browser.
+
+### Available scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server |
+| `npm run build` | Build for production |
+| `npm run preview` | Preview production build |
+| `npm run lint` | Run ESLint |
+| `npm run lint:fix` | Fix ESLint issues |
+| `npm run format` | Format with Prettier |
 
 ## Cloud sync setup (optional)
 
-Cloud sync allows you to keep your data synchronized across multiple devices. To enable it, you'll need to set up API credentials.
+Cloud sync keeps your data synchronized across devices using your own cloud storage.
 
 ### Google Drive
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select an existing one
+2. Create a new project
 3. Enable the Google Drive API
-4. Go to "Credentials" and create:
-   - An OAuth 2.0 Client ID (Web application type)
-   - An API key
-5. Add your domain to authorized JavaScript origins in the OAuth client
-6. Restrict the API key to Google Drive API only
+4. Create OAuth 2.0 credentials (Web application)
+5. Add your domain to authorized JavaScript origins
+6. Create an API key restricted to Google Drive API
 
 ### Dropbox
 
 1. Go to [Dropbox Developer Apps](https://www.dropbox.com/developers/apps)
-2. Create a new app with "Scoped access" 
-3. Choose "Full Dropbox" or "App folder" access
-4. Copy the App key
-5. Add your redirect URI: `https://yourdomain.com/dropbox-callback`
+2. Create a new app with "Scoped access"
+3. Copy the App key
+4. Add your redirect URI
 
 ### Environment variables
 
@@ -76,52 +111,52 @@ VITE_GOOGLE_API_KEY=your-api-key
 VITE_DROPBOX_APP_KEY=your-app-key
 ```
 
-## Local auto-save (Chrome/Edge only)
-
-On desktop Chrome and Edge browsers, you can set up auto-save to automatically save your data to a local file. The app remembers the file location and updates it whenever you make changes. This works without any cloud setup.
-
-1. Go to Settings
-2. Click "Set up auto-save"
-3. Choose where to save your data file
-4. The app will automatically keep this file updated
-
-## Building for production
-
-```bash
-npm run build
-```
-
-The built files will be in the `dist` folder. Deploy to any static hosting service (Netlify, Vercel, GitHub Pages, etc.).
-
 ## Tech stack
 
-- React 18 + TypeScript
-- Vite
-- Tailwind CSS
-- Zustand (state management)
-- IndexedDB via idb (local storage)
-- Recharts (visualizations)
-- File System Access API (auto-save)
-- Google Drive API / Dropbox API (cloud sync)
+| Category | Technology |
+|----------|------------|
+| Framework | React 18 + TypeScript |
+| Build | Vite 5 |
+| Styling | Tailwind CSS |
+| State | Zustand |
+| Storage | IndexedDB (idb) |
+| Charts | Recharts |
+| PWA | vite-plugin-pwa |
+| Mobile | Capacitor (iOS/Android) |
 
-## Data privacy
+## Project structure
 
-All data is stored locally in your browser's IndexedDB by default. No data is sent to any server unless you explicitly enable cloud sync. When cloud sync is enabled, your data is stored in your own Google Drive or Dropbox account - we never see or store your data.
-
-Export regularly for backup, or enable auto-save/cloud sync for automatic backups.
+```
+src/
+├── components/     # React components
+├── db/             # IndexedDB database layer
+├── hooks/          # Custom React hooks
+├── stores/         # Zustand state management
+├── types/          # TypeScript types and constants
+└── utils/          # Utility functions
+```
 
 ## Contributing
 
-Contributions are welcome. Please open an issue first to discuss what you would like to change.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for security policy and reporting vulnerabilities.
 
 ## Disclaimer
 
 This app is a self-help tool and is not a replacement for professional mental health care. If you're struggling with depression, anxiety, or other mental health issues, please reach out to a qualified mental health professional.
 
+**Crisis resources:**
+- International: [IASP Crisis Centers](https://www.iasp.info/resources/Crisis_Centres/)
+- US: 988 Suicide & Crisis Lifeline
+- UK: Samaritans (116 123)
+
 ## License
 
-MIT
+[MIT](LICENSE)
 
 ## Acknowledgments
 
-Based on the cognitive behavioral therapy techniques from "Feeling Good: The New Mood Therapy" by David D. Burns, M.D.
+Based on cognitive behavioral therapy techniques from "Feeling Good: The New Mood Therapy" by David D. Burns, M.D.

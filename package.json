@@ -1,8 +1,26 @@
 {
   "name": "cbtjournal",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
+  "description": "A private mental wellness app with CBT thought records, clinically validated mood assessments (PHQ-9, GAD-7), and gratitude journaling",
+  "keywords": [
+    "cbt",
+    "cognitive-behavioral-therapy",
+    "mental-health",
+    "mood-tracker",
+    "thought-journal",
+    "phq-9",
+    "gad-7",
+    "gratitude",
+    "pwa"
+  ],
+  "author": "Davitt Barry",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
