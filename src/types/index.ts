@@ -182,6 +182,12 @@ export interface MoodCheckEntry {
   notes?: string
 }
 
+/**
+ * Get the depression severity level based on PHQ-9 score.
+ * @param score - Total PHQ-9 score (0-27)
+ * @returns Object containing level, severity, color class, and clinical recommendation
+ * @see https://www.phqscreeners.com/
+ */
 export function getPHQ9Level(score: number): {
   level: string
   severity: string
@@ -226,6 +232,12 @@ export function getPHQ9Level(score: number): {
   }
 }
 
+/**
+ * Get the anxiety severity level based on GAD-7 score.
+ * @param score - Total GAD-7 score (0-21)
+ * @returns Object containing level, severity, color class, and clinical recommendation
+ * @see https://www.phqscreeners.com/
+ */
 export function getGAD7Level(score: number): {
   level: string
   severity: string
@@ -729,6 +741,11 @@ export const DEPRESSION_ITEMS: { key: keyof DepressionScores; label: string; cat
     { key: 'wishingDead', label: 'Wishing you were dead', category: 'Suicidal Urges' },
   ]
 
+/**
+ * Get the depression severity level based on Burns Depression Checklist score.
+ * @param score - Total Burns checklist score (0-100)
+ * @returns Object containing level description and color class
+ */
 export function getDepressionLevel(score: number): { level: string; color: string } {
   if (score <= 5) return { level: 'No depression', color: 'text-green-500' }
   if (score <= 10) return { level: 'Normal but unhappy', color: 'text-green-400' }
