@@ -16,6 +16,8 @@ interface SkillCardProps {
     readonly description: string
     readonly instructions: readonly string[]
     readonly duration: string
+    readonly scienceNote?: string
+    readonly caution?: string
   }
   onPractice: () => void
 }
@@ -64,6 +66,25 @@ function SkillCard({ skill, onPractice }: SkillCardProps) {
               </li>
             ))}
           </ol>
+
+          {skill.scienceNote && (
+            <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex gap-2">
+                <span className="text-blue-500 flex-shrink-0">🔬</span>
+                <p className="text-xs text-blue-700 dark:text-blue-300">{skill.scienceNote}</p>
+              </div>
+            </div>
+          )}
+
+          {skill.caution && (
+            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+              <div className="flex gap-2">
+                <span className="text-amber-500 flex-shrink-0">⚠️</span>
+                <p className="text-xs text-amber-700 dark:text-amber-300">{skill.caution}</p>
+              </div>
+            </div>
+          )}
+
           <button
             onClick={(e) => {
               e.stopPropagation()
@@ -91,6 +112,7 @@ function PracticeLogModal({ skill, category, onClose, onSave }: PracticeLogModal
   const [distressAfter, setDistressAfter] = useState(5)
   const [notes, setNotes] = useState('')
   const [helpful, setHelpful] = useState(true)
+  const [wouldUseAgain, setWouldUseAgain] = useState(true)
 
   const handleSave = () => {
     const log: CopingSkillLog = {
@@ -103,16 +125,23 @@ function PracticeLogModal({ skill, category, onClose, onSave }: PracticeLogModal
       distressAfter,
       notes: notes.trim() || undefined,
       helpful,
+      wouldUseAgain,
     }
     onSave(log)
   }
+
+  const reduction = distressBefore - distressAfter
+  const reductionPercent = distressBefore > 0 ? Math.round((reduction / distressBefore) * 100) : 0
 
   return (
     <div
       className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
       onClick={onClose}
     >
-      <div className="card p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="card p-6 max-w-md w-full max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         <h3 className="text-lg font-semibold text-stone-800 dark:text-stone-200 mb-4">
           Log: {skill.name}
         </h3>
@@ -152,6 +181,22 @@ function PracticeLogModal({ skill, category, onClose, onSave }: PracticeLogModal
             </div>
           </div>
 
+          {reduction !== 0 && (
+            <div
+              className={`p-3 rounded-lg text-center ${
+                reduction > 0
+                  ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+                  : 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300'
+              }`}
+            >
+              <span className="text-sm font-medium">
+                {reduction > 0
+                  ? `Reduced distress by ${reduction} points (${reductionPercent}%)`
+                  : `Distress increased by ${Math.abs(reduction)} points`}
+              </span>
+            </div>
+          )}
+
           <div>
             <label className="label">Was this helpful?</label>
             <div className="flex gap-2">
@@ -181,13 +226,41 @@ function PracticeLogModal({ skill, category, onClose, onSave }: PracticeLogModal
           </div>
 
           <div>
+            <label className="label">Would you use this again?</label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setWouldUseAgain(true)}
+                className={`flex-1 py-2 rounded-lg border-2 transition-all ${
+                  wouldUseAgain
+                    ? 'bg-sage-50 dark:bg-sage-900/30 border-sage-400 dark:border-sage-600 text-sage-700 dark:text-sage-400'
+                    : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-600 text-stone-500 dark:text-stone-400'
+                }`}
+              >
+                Yes
+              </button>
+              <button
+                type="button"
+                onClick={() => setWouldUseAgain(false)}
+                className={`flex-1 py-2 rounded-lg border-2 transition-all ${
+                  !wouldUseAgain
+                    ? 'bg-stone-100 dark:bg-stone-700 border-stone-400 dark:border-stone-500 text-stone-700 dark:text-stone-300'
+                    : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-600 text-stone-500 dark:text-stone-400'
+                }`}
+              >
+                Probably not
+              </button>
+            </div>
+          </div>
+
+          <div>
             <label className="label">Notes (optional)</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               className="input-field"
               rows={2}
-              placeholder="Any observations..."
+              placeholder="What did you notice? Any observations about what worked or didn't..."
             />
           </div>
         </div>
@@ -213,12 +286,42 @@ export function CopingToolkitView() {
     category: CopingCategory
   } | null>(null)
 
-  const categories: { id: CopingCategory; icon: string }[] = [
-    { id: 'tipp', icon: '🧊' },
-    { id: 'grounding', icon: '🌿' },
-    { id: 'defusion', icon: '☁️' },
-    { id: 'breathing', icon: '🌬️' },
-  ]
+  // All categories with their icons, organized by type
+  const categoryGroups = {
+    crisis: {
+      label: 'Crisis skills',
+      description: 'For intense distress (7+/10)',
+      categories: [
+        { id: 'tipp' as CopingCategory, icon: '🧊', label: 'TIPP' },
+        { id: 'stop' as CopingCategory, icon: '🛑', label: 'STOP' },
+      ],
+    },
+    distressTolerance: {
+      label: 'Distress tolerance',
+      description: 'Getting through hard times',
+      categories: [
+        { id: 'accepts' as CopingCategory, icon: '🎯', label: 'ACCEPTS' },
+        { id: 'improve' as CopingCategory, icon: '✨', label: 'IMPROVE' },
+        { id: 'grounding' as CopingCategory, icon: '🌿', label: 'Grounding' },
+      ],
+    },
+    regulation: {
+      label: 'Emotional regulation',
+      description: 'Working with thoughts and feelings',
+      categories: [
+        { id: 'defusion' as CopingCategory, icon: '☁️', label: 'Defusion' },
+        { id: 'selfCompassion' as CopingCategory, icon: '💚', label: 'Self-compassion' },
+      ],
+    },
+    nervous: {
+      label: 'Nervous system',
+      description: 'Calming your body',
+      categories: [
+        { id: 'breathing' as CopingCategory, icon: '🌬️', label: 'Breathing' },
+        { id: 'windowOfTolerance' as CopingCategory, icon: '🪟', label: 'Window' },
+      ],
+    },
+  }
 
   const handlePractice = async (log: CopingSkillLog) => {
     await addCopingSkillLog(log)
@@ -247,7 +350,7 @@ export function CopingToolkitView() {
     <div className="max-w-2xl mx-auto">
       <PageIntro
         title="Coping toolkit"
-        description="Evidence-based techniques for managing intense emotions and distress. These skills come from Dialectical Behavior Therapy (DBT), Acceptance and Commitment Therapy (ACT), and Mindfulness-Based Cognitive Therapy (MBCT)."
+        description="Evidence-based techniques for managing intense emotions. These skills come from Dialectical Behavior Therapy (DBT), Acceptance and Commitment Therapy (ACT), Compassion-Focused Therapy (CFT), and polyvagal research."
         centered={false}
       />
 
@@ -274,27 +377,59 @@ export function CopingToolkitView() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
-        {categories.map((cat) => (
-          <button
-            key={cat.id}
-            onClick={() => setActiveCategory(cat.id)}
-            className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl transition-all text-sm ${
-              activeCategory === cat.id
-                ? 'bg-sage-100 dark:bg-sage-900/40 text-sage-700 dark:text-sage-400 font-medium'
-                : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700'
-            }`}
-          >
-            <span>{cat.icon}</span>
-            <span>{COPING_SKILLS[cat.id].name}</span>
-          </button>
+      {/* Category selection organized by group */}
+      <div className="space-y-4 mb-6">
+        {Object.entries(categoryGroups).map(([groupKey, group]) => (
+          <div key={groupKey}>
+            <div className="flex items-baseline gap-2 mb-2">
+              <h3 className="text-xs font-medium text-stone-500 dark:text-stone-400 uppercase tracking-wide">
+                {group.label}
+              </h3>
+              <span className="text-xs text-stone-400 dark:text-stone-500">
+                {group.description}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {group.categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setActiveCategory(cat.id)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl transition-all text-sm ${
+                    activeCategory === cat.id
+                      ? 'bg-sage-100 dark:bg-sage-900/40 text-sage-700 dark:text-sage-400 font-medium ring-2 ring-sage-300 dark:ring-sage-600'
+                      : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700'
+                  }`}
+                >
+                  <span>{cat.icon}</span>
+                  <span>{cat.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
 
+      {/* Current category details */}
       <div className="mb-8">
-        <p className="text-sm text-stone-500 dark:text-stone-400 mb-4">
-          {currentCategory.description}
-        </p>
+        <div className="card p-4 mb-4 bg-gradient-to-r from-sage-50 to-stone-50 dark:from-sage-900/20 dark:to-stone-800/50">
+          <h2 className="font-semibold text-stone-800 dark:text-stone-200 mb-1">
+            {currentCategory.name}
+          </h2>
+          <p className="text-sm text-stone-600 dark:text-stone-400 mb-2">
+            {currentCategory.description}
+          </p>
+          <div className="flex flex-wrap gap-3 text-xs">
+            <span className="text-sage-600 dark:text-sage-400">
+              📚 Source: {currentCategory.source}
+            </span>
+            {currentCategory.whenToUse && (
+              <span className="text-blue-600 dark:text-blue-400">
+                ⏰ When: {currentCategory.whenToUse}
+              </span>
+            )}
+          </div>
+        </div>
+
         <div className="space-y-3">
           {currentCategory.skills.map((skill) => (
             <SkillCard
@@ -314,7 +449,7 @@ export function CopingToolkitView() {
           <div className="space-y-2">
             {recentLogs.map((log) => {
               const category = COPING_SKILLS[log.category]
-              const skill = category.skills.find((s) => s.id === log.skillId)
+              const skill = category?.skills.find((s) => s.id === log.skillId)
               const reduction = log.distressBefore - log.distressAfter
 
               return (

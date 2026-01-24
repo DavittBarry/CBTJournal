@@ -37,7 +37,19 @@ function ActivityForm({ existingActivity, onSave, onCancel }: ActivityFormProps)
   const [moodAfter, setMoodAfter] = useState(existingActivity?.moodAfter ?? 5)
   const [pleasureRating, setPleasureRating] = useState(existingActivity?.pleasureRating ?? 5)
   const [masteryRating, setMasteryRating] = useState(existingActivity?.masteryRating ?? 5)
+  const [connectionRating, setConnectionRating] = useState(existingActivity?.connectionRating ?? 5)
+  const [meaningRating, setMeaningRating] = useState(existingActivity?.meaningRating ?? 5)
+  const [barriers, setBarriers] = useState(existingActivity?.barriers || '')
   const [notes, setNotes] = useState(existingActivity?.notes || '')
+  const [showAdvanced, setShowAdvanced] = useState(
+    Boolean(
+      existingActivity?.connectionRating ||
+      existingActivity?.meaningRating ||
+      existingActivity?.barriers
+    )
+  )
+
+  const selectedCategory = ACTIVITY_CATEGORIES.find((c) => c.id === category)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -60,6 +72,9 @@ function ActivityForm({ existingActivity, onSave, onCancel }: ActivityFormProps)
       moodAfter: isCompleted ? moodAfter : undefined,
       pleasureRating: isCompleted ? pleasureRating : undefined,
       masteryRating: isCompleted ? masteryRating : undefined,
+      connectionRating: isCompleted && showAdvanced ? connectionRating : undefined,
+      meaningRating: isCompleted && showAdvanced ? meaningRating : undefined,
+      barriers: barriers.trim() || undefined,
       notes: notes.trim() || undefined,
     }
 
@@ -80,8 +95,14 @@ function ActivityForm({ existingActivity, onSave, onCancel }: ActivityFormProps)
       </div>
 
       <div className="card p-5">
-        <label className="label">Category</label>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <label className="label">
+          Category
+          <InfoButton
+            title="Activity categories"
+            content="Different types of activities serve different psychological needs. A balanced mix of pleasure, mastery, social connection, and values-aligned activities tends to be most effective for improving mood and wellbeing."
+          />
+        </label>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {ACTIVITY_CATEGORIES.map((cat) => (
             <button
               key={cat.id}
@@ -102,6 +123,14 @@ function ActivityForm({ existingActivity, onSave, onCancel }: ActivityFormProps)
             </button>
           ))}
         </div>
+
+        {selectedCategory?.whyItHelps && (
+          <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <p className="text-xs text-blue-700 dark:text-blue-300">
+              <span className="font-medium">Why it helps:</span> {selectedCategory.whyItHelps}
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -124,6 +153,26 @@ function ActivityForm({ existingActivity, onSave, onCancel }: ActivityFormProps)
           />
         </div>
       </div>
+
+      {/* Barriers section for planned activities */}
+      {!isCompleted && (
+        <div className="card p-5">
+          <label className="label">
+            Potential barriers (optional)
+            <InfoButton
+              title="Anticipating obstacles"
+              content="Research on implementation intentions shows that anticipating obstacles and planning how to overcome them significantly increases the likelihood of following through. What might get in the way, and how will you handle it?"
+            />
+          </label>
+          <AutoExpandTextarea
+            value={barriers}
+            onChange={(e) => setBarriers(e.target.value)}
+            minRows={2}
+            maxRows={4}
+            placeholder="What might get in the way? How will you overcome it?"
+          />
+        </div>
+      )}
 
       <div className="card p-5">
         <label className="label flex items-center gap-2">
@@ -180,6 +229,12 @@ function ActivityForm({ existingActivity, onSave, onCancel }: ActivityFormProps)
                 </div>
               </div>
             </div>
+
+            {moodAfter > moodBefore && (
+              <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                ✓ Mood improved by {moodAfter - moodBefore} points
+              </p>
+            )}
           </div>
 
           <div className="card p-5">
@@ -189,7 +244,7 @@ function ActivityForm({ existingActivity, onSave, onCancel }: ActivityFormProps)
                   Pleasure (0-10)
                   <InfoButton
                     title="Pleasure rating"
-                    content="How enjoyable was this activity? Even small amounts of pleasure matter."
+                    content="How enjoyable was this activity? Even small amounts of pleasure matter. Pleasure activities are important for maintaining positive affect."
                   />
                 </label>
                 <input
@@ -211,7 +266,7 @@ function ActivityForm({ existingActivity, onSave, onCancel }: ActivityFormProps)
                   Mastery (0-10)
                   <InfoButton
                     title="Mastery rating"
-                    content="How much sense of accomplishment did you feel? Even small accomplishments count."
+                    content="How much sense of accomplishment did you feel? Mastery activities build self-efficacy and help counteract feelings of helplessness."
                   />
                 </label>
                 <input
@@ -230,6 +285,75 @@ function ActivityForm({ existingActivity, onSave, onCancel }: ActivityFormProps)
               </div>
             </div>
           </div>
+
+          {/* Advanced ratings toggle */}
+          <button
+            type="button"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="flex items-center gap-2 text-sm text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200"
+          >
+            <svg
+              className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-90' : ''}`}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+            Additional ratings (optional)
+          </button>
+
+          {showAdvanced && (
+            <div className="card p-5 animate-fade-in">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="label">
+                    Connection (0-10)
+                    <InfoButton
+                      title="Social connection"
+                      content="Did this activity involve meaningful social connection? Social support is one of the strongest protective factors for mental health."
+                    />
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="10"
+                    value={connectionRating}
+                    onChange={(e) => setConnectionRating(parseInt(e.target.value))}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-stone-500 dark:text-stone-400">
+                    <span>None</span>
+                    <span className="font-medium">{connectionRating}</span>
+                    <span>High</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="label">
+                    Meaning (0-10)
+                    <InfoButton
+                      title="Sense of meaning"
+                      content="Did this activity feel meaningful or aligned with your values? Activities connected to personal values tend to have more lasting positive effects."
+                    />
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="10"
+                    value={meaningRating}
+                    onChange={(e) => setMeaningRating(parseInt(e.target.value))}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-stone-500 dark:text-stone-400">
+                    <span>None</span>
+                    <span className="font-medium">{meaningRating}</span>
+                    <span>High</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -304,11 +428,16 @@ export function ActivitiesView() {
   const completedCount = activitiesThisWeek.filter((a) => a.isCompleted).length
   const plannedCount = activitiesThisWeek.filter((a) => !a.isCompleted).length
 
+  const completedActivities = activitiesThisWeek.filter(
+    (a) => a.isCompleted && a.moodBefore !== undefined && a.moodAfter !== undefined
+  )
   const avgMoodChange =
-    activitiesThisWeek
-      .filter((a) => a.isCompleted && a.moodBefore !== undefined && a.moodAfter !== undefined)
-      .reduce((sum, a) => sum + ((a.moodAfter || 0) - (a.moodBefore || 0)), 0) /
-    (activitiesThisWeek.filter((a) => a.isCompleted && a.moodBefore !== undefined).length || 1)
+    completedActivities.length > 0
+      ? completedActivities.reduce(
+          (sum, a) => sum + ((a.moodAfter || 0) - (a.moodBefore || 0)),
+          0
+        ) / completedActivities.length
+      : 0
 
   if (showForm) {
     return (
@@ -337,7 +466,7 @@ export function ActivitiesView() {
 
         <PageIntro
           title={editingActivity ? 'Edit activity' : 'New activity'}
-          description="Schedule activities that bring pleasure or a sense of accomplishment. Behavioral activation is one of the most effective treatments for depression, with research showing it's as effective as full cognitive therapy."
+          description="Schedule activities that bring pleasure, accomplishment, connection, or meaning. Behavioral activation is one of the most effective treatments for depression, with effect sizes comparable to medication and full cognitive therapy."
           centered={false}
         />
 
@@ -524,7 +653,7 @@ export function ActivitiesView() {
                             {activity.plannedTime && ` at ${activity.plannedTime}`}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap justify-end">
                           {activity.isCompleted ? (
                             <span className="text-xs font-medium text-sage-600 dark:text-sage-400 bg-sage-50 dark:bg-sage-900/30 px-2 py-0.5 rounded-full">
                               ✓ Done
@@ -550,6 +679,35 @@ export function ActivitiesView() {
                           )}
                         </div>
                       </div>
+
+                      {/* Show ratings if available */}
+                      {activity.isCompleted &&
+                        (activity.pleasureRating !== undefined ||
+                          activity.masteryRating !== undefined) && (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {activity.pleasureRating !== undefined && (
+                              <span className="text-xs text-stone-500 dark:text-stone-400">
+                                Pleasure: {activity.pleasureRating}/10
+                              </span>
+                            )}
+                            {activity.masteryRating !== undefined && (
+                              <span className="text-xs text-stone-500 dark:text-stone-400">
+                                Mastery: {activity.masteryRating}/10
+                              </span>
+                            )}
+                            {activity.connectionRating !== undefined && (
+                              <span className="text-xs text-stone-500 dark:text-stone-400">
+                                Connection: {activity.connectionRating}/10
+                              </span>
+                            )}
+                            {activity.meaningRating !== undefined && (
+                              <span className="text-xs text-stone-500 dark:text-stone-400">
+                                Meaning: {activity.meaningRating}/10
+                              </span>
+                            )}
+                          </div>
+                        )}
+
                       {activity.notes && (
                         <p className="text-sm text-stone-500 dark:text-stone-400 mt-1 line-clamp-2">
                           {activity.notes}
@@ -584,9 +742,9 @@ export function ActivitiesView() {
         </h3>
         <div className="text-xs text-stone-500 dark:text-stone-400 space-y-2">
           <p>
-            Behavioral activation (BA) is one of the most effective treatments for depression.
-            Meta-analyses show it's as effective as full cognitive therapy, with effect sizes of
-            0.69-0.87.
+            Behavioral activation (BA) is one of the most effective treatments for depression,
+            developed by Martell, Addis, and Jacobson. Meta-analyses show it's as effective as full
+            cognitive therapy, with effect sizes of 0.69-0.87.
           </p>
           <p>
             The key insight is that <strong>action often comes before motivation</strong>, not
@@ -594,8 +752,9 @@ export function ActivitiesView() {
             can gradually rebuild positive experiences.
           </p>
           <p>
-            Focus on activities that provide <strong>pleasure</strong> (enjoyment) or{' '}
-            <strong>mastery</strong> (sense of accomplishment). Both are important for wellbeing.
+            Focus on activities that provide <strong>pleasure</strong> (enjoyment),{' '}
+            <strong>mastery</strong> (accomplishment), <strong>connection</strong> (social support),
+            or <strong>meaning</strong> (values alignment). A balanced mix tends to work best.
           </p>
         </div>
       </div>
