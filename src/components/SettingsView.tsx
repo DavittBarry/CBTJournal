@@ -20,6 +20,7 @@ import {
   findOrCreateGoogleDriveFile,
   initDropboxAuth,
   disconnectCloud as disconnectCloudProvider,
+  reauthorizeGoogleDrive,
 } from '@/utils/cloudSync'
 
 type ImportStep = 'idle' | 'choose-mode' | 'confirm-replace'
@@ -432,6 +433,71 @@ export function SettingsView() {
   const handleDisconnectCloud = async (provider: CloudProvider) => {
     await disconnectCloudProvider(provider)
     removeCloudConnection(provider)
+  }
+
+  const handleReconnectCloud = async (provider: CloudProvider) => {
+    if (provider === 'google-drive') {
+      setIsConnectingCloud(true)
+      try {
+        const newToken = await reauthorizeGoogleDrive()
+        if (newToken) {
+          const connection = cloudConnections.find((c) => c.provider === provider)
+          if (connection) {
+            addCloudConnection({
+              ...connection,
+              accessToken: newToken,
+              lastError: null,
+            })
+            toast.success('Reconnected to Google Drive')
+          }
+        } else {
+          const accessToken = await initGoogleDriveAuth()
+          const fileId = await findOrCreateGoogleDriveFile(accessToken)
+          const existingConnection = cloudConnections.find((c) => c.provider === provider)
+          addCloudConnection({
+            provider: 'google-drive',
+            accessToken,
+            fileId,
+            fileName: 'cbtjournal-data.json',
+            lastSyncAt: existingConnection?.lastSyncAt,
+            syncMode: existingConnection?.syncMode || 'manual',
+            syncOnStartup: existingConnection?.syncOnStartup,
+            lastError: null,
+          })
+          toast.success('Reconnected to Google Drive')
+        }
+      } catch (error) {
+        if (error instanceof Error && error.message !== 'Authentication cancelled') {
+          toast.error('Failed to reconnect to Google Drive')
+          logger.error('Settings', 'Google Drive reconnection failed', error)
+        }
+      } finally {
+        setIsConnectingCloud(false)
+      }
+    } else if (provider === 'dropbox') {
+      setIsConnectingCloud(true)
+      try {
+        const accessToken = await initDropboxAuth()
+        const existingConnection = cloudConnections.find((c) => c.provider === provider)
+        addCloudConnection({
+          provider: 'dropbox',
+          accessToken,
+          fileName: 'cbtjournal-data.json',
+          lastSyncAt: existingConnection?.lastSyncAt,
+          syncMode: existingConnection?.syncMode || 'manual',
+          syncOnStartup: existingConnection?.syncOnStartup,
+          lastError: null,
+        })
+        toast.success('Reconnected to Dropbox')
+      } catch (error) {
+        if (error instanceof Error && error.message !== 'Authentication cancelled') {
+          toast.error('Failed to reconnect to Dropbox')
+          logger.error('Settings', 'Dropbox reconnection failed', error)
+        }
+      } finally {
+        setIsConnectingCloud(false)
+      }
+    }
   }
 
   const handleSyncToCloud = async (provider: CloudProvider) => {
@@ -1024,7 +1090,14 @@ export function SettingsView() {
 
                   {connection.lastError && (
                     <div className="bg-critical-50 dark:bg-critical-900/20 text-critical-700 dark:text-critical-300 text-sm p-3 rounded-lg mb-4">
-                      Sync error: {connection.lastError}
+                      <div className="mb-2">{connection.lastError}</div>
+                      <button
+                        onClick={() => handleReconnectCloud(connection.provider)}
+                        disabled={isConnectingCloud}
+                        className="text-sm font-medium text-critical-600 dark:text-critical-400 hover:text-critical-700 dark:hover:text-critical-300 underline"
+                      >
+                        {isConnectingCloud ? 'Reconnecting...' : 'Reconnect now'}
+                      </button>
                     </div>
                   )}
 

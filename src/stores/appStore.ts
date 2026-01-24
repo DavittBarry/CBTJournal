@@ -25,6 +25,7 @@ import {
   validateDropboxToken,
   getGoogleDriveFileMetadata,
   getDropboxFileMetadata,
+  reauthorizeGoogleDrive,
 } from '@/utils/cloudSync'
 import { logger } from '@/utils/logger'
 import { toast } from '@/stores/toastStore'
@@ -382,17 +383,31 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       try {
         let isValid = false
+        let newToken: string | null = null
 
         if (connection.provider === 'google-drive') {
           isValid = await validateGoogleToken(connection.accessToken)
 
           if (!isValid) {
-            logger.warn('App', 'Google token expired, user must reconnect')
-            backupState.setConnectionError(
-              connection.provider,
-              'Session expired. Please reconnect in Settings.'
-            )
-            continue
+            logger.info('App', 'Google token expired, attempting silent re-auth')
+            newToken = await reauthorizeGoogleDrive()
+
+            if (newToken) {
+              backupState.updateCloudConnection(connection.provider, {
+                accessToken: newToken,
+                lastError: null,
+              })
+              logger.info('App', 'Google Drive re-authenticated silently')
+              isValid = true
+            } else {
+              logger.warn('App', 'Google token expired, user must reconnect')
+              backupState.setConnectionError(
+                connection.provider,
+                'Session expired. Please reconnect.'
+              )
+              toast.warning('Google Drive session expired. Please reconnect in Settings.', 8000)
+              continue
+            }
           }
         } else if (connection.provider === 'dropbox') {
           isValid = await validateDropboxToken(connection.accessToken)
@@ -401,8 +416,9 @@ export const useAppStore = create<AppState>((set, get) => ({
             logger.warn('App', 'Dropbox token expired, user must reconnect')
             backupState.setConnectionError(
               connection.provider,
-              'Session expired. Please reconnect in Settings.'
+              'Session expired. Please reconnect.'
             )
+            toast.warning('Dropbox session expired. Please reconnect in Settings.', 8000)
             continue
           }
         }
@@ -422,6 +438,9 @@ export const useAppStore = create<AppState>((set, get) => ({
           error,
         })
         backupState.setConnectionError(connection.provider, 'Failed to connect to cloud')
+        toast.error(
+          `Failed to connect to ${connection.provider === 'google-drive' ? 'Google Drive' : 'Dropbox'}`
+        )
       }
     }
   },
