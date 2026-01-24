@@ -352,7 +352,7 @@ export function HomeView() {
                       record.emotions[0]
                     )
                     const hasOutcome =
-                      record.outcomeEmotions.length > 0 && record.outcomeEmotions[0].name
+                      record.outcomeEmotions.length > 0 && !!record.outcomeEmotions[0].name
                     const outcomeIntensity = hasOutcome ? record.outcomeEmotions[0].intensity : null
                     const improvement =
                       maxEmotion && outcomeIntensity !== null
@@ -397,7 +397,7 @@ export function HomeView() {
                       record.emotions[0]
                     )
                     const hasOutcome =
-                      record.outcomeEmotions.length > 0 && record.outcomeEmotions[0].name
+                      record.outcomeEmotions.length > 0 && !!record.outcomeEmotions[0].name
                     const outcomeIntensity = hasOutcome ? record.outcomeEmotions[0].intensity : null
                     const improvement =
                       maxEmotion && outcomeIntensity !== null
