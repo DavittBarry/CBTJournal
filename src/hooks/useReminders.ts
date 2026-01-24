@@ -24,43 +24,52 @@ const REMINDER_CONFIGS: ReminderConfig[] = [
   {
     type: 'mood',
     intervalDays: 14,
-    firstTimeMessage: 'Complete your first PHQ-9 and GAD-7 assessment to establish a baseline for tracking your mental health over time.',
+    firstTimeMessage:
+      'Complete your first PHQ-9 and GAD-7 assessment to establish a baseline for tracking your mental health over time.',
     firstTimeShort: 'Set your baseline',
-    overdueMessage: (days) => `It's been ${days} days since your last mood check. The PHQ-9 and GAD-7 assessments measure symptoms over 2-week periods, so it's time for a new one.`,
+    overdueMessage: (days) =>
+      `It's been ${days} days since your last mood check. The PHQ-9 and GAD-7 assessments measure symptoms over 2-week periods, so it's time for a new one.`,
     overdueShort: (days) => `${days} days since last check`,
     priority: 'high',
   },
   {
     type: 'records',
     intervalDays: 7,
-    firstTimeMessage: 'Start your first thought record to practice identifying and reframing unhelpful thinking patterns.',
+    firstTimeMessage:
+      'Start your first thought record to practice identifying and reframing unhelpful thinking patterns.',
     firstTimeShort: 'Get started',
-    overdueMessage: (days) => `You haven't logged a thought record in ${days} days. Regular practice helps build cognitive flexibility.`,
+    overdueMessage: (days) =>
+      `You haven't logged a thought record in ${days} days. Regular practice helps build cognitive flexibility.`,
     overdueShort: (days) => `${days} days since last entry`,
     priority: 'medium',
   },
   {
     type: 'gratitude',
     intervalDays: 7,
-    firstTimeMessage: 'Begin a gratitude practice. Research shows regular gratitude journaling improves wellbeing and sleep quality.',
+    firstTimeMessage:
+      'Begin a gratitude practice. Research shows regular gratitude journaling improves wellbeing and sleep quality.',
     firstTimeShort: 'Start practicing',
-    overdueMessage: (days) => `It's been ${days} days since your last gratitude entry. Even brief entries can shift your focus toward the positive.`,
+    overdueMessage: (days) =>
+      `It's been ${days} days since your last gratitude entry. Even brief entries can shift your focus toward the positive.`,
     overdueShort: (days) => `${days} days ago`,
     priority: 'low',
   },
   {
     type: 'activities',
-    intervalDays: 7,
-    firstTimeMessage: 'Start tracking activities to see how they affect your mood. Behavioral activation is one of the most effective depression treatments.',
-    firstTimeShort: 'Start tracking',
-    overdueMessage: (days) => `No activities logged in ${days} days. Tracking helps you identify which activities lift your mood.`,
-    overdueShort: (days) => `${days} days since last log`,
+    intervalDays: 3,
+    firstTimeMessage:
+      'Log your first activity with mood ratings to start building evidence of what helps you feel better.',
+    firstTimeShort: 'Log an activity',
+    overdueMessage: (days) =>
+      `No activities tracked in ${days} days. Logging how activities affect your mood builds valuable self-knowledge.`,
+    overdueShort: (days) => `${days} days ago`,
     priority: 'medium',
   },
   {
     type: 'safety-plan',
-    intervalDays: 0, // One-time setup, no recurring reminder
-    firstTimeMessage: 'Create a safety plan. Having one ready before a crisis makes it easier to use when you need it most.',
+    intervalDays: 0,
+    firstTimeMessage:
+      'Create a safety plan. Having one ready before a crisis makes it easier to use when you need it most.',
     firstTimeShort: 'Create your plan',
     overdueMessage: () => '',
     overdueShort: () => '',
@@ -70,17 +79,17 @@ const REMINDER_CONFIGS: ReminderConfig[] = [
 
 function getLatestEntryDate(entries: Array<{ date?: string; createdAt?: string }>): Date | null {
   if (entries.length === 0) return null
-  
-  const dates = entries.map(e => {
-    const dateStr = e.date || e.createdAt
-    return dateStr ? new Date(dateStr) : null
-  }).filter((d): d is Date => d !== null)
-  
+
+  const dates = entries
+    .map((e) => {
+      const dateStr = e.date || e.createdAt
+      return dateStr ? new Date(dateStr) : null
+    })
+    .filter((d): d is Date => d !== null)
+
   if (dates.length === 0) return null
-  
-  return dates.reduce((latest, current) => 
-    current > latest ? current : latest
-  )
+
+  return dates.reduce((latest, current) => (current > latest ? current : latest))
 }
 
 function getDaysSince(date: Date | null): number | null {
@@ -91,22 +100,15 @@ function getDaysSince(date: Date | null): number | null {
 }
 
 export function useReminders() {
-  const {
-    moodChecks,
-    thoughtRecords,
-    gratitudeEntries,
-    activities,
-    safetyPlan,
-  } = useAppStore()
+  const { moodChecks, thoughtRecords, gratitudeEntries, activities, safetyPlan } = useAppStore()
 
   const reminders = useMemo(() => {
     const result: Reminder[] = []
 
-    // Mood check reminder (PHQ-9/GAD-7)
-    const moodConfig = REMINDER_CONFIGS.find(c => c.type === 'mood')!
+    const moodConfig = REMINDER_CONFIGS.find((c) => c.type === 'mood')!
     const latestMood = getLatestEntryDate(moodChecks)
     const daysSinceMood = getDaysSince(latestMood)
-    
+
     if (moodChecks.length === 0) {
       result.push({
         type: 'mood',
@@ -127,11 +129,10 @@ export function useReminders() {
       })
     }
 
-    // Thought records reminder
-    const recordsConfig = REMINDER_CONFIGS.find(c => c.type === 'records')!
+    const recordsConfig = REMINDER_CONFIGS.find((c) => c.type === 'records')!
     const latestRecord = getLatestEntryDate(thoughtRecords)
     const daysSinceRecord = getDaysSince(latestRecord)
-    
+
     if (thoughtRecords.length === 0) {
       result.push({
         type: 'records',
@@ -152,11 +153,10 @@ export function useReminders() {
       })
     }
 
-    // Gratitude reminder
-    const gratitudeConfig = REMINDER_CONFIGS.find(c => c.type === 'gratitude')!
+    const gratitudeConfig = REMINDER_CONFIGS.find((c) => c.type === 'gratitude')!
     const latestGratitude = getLatestEntryDate(gratitudeEntries)
     const daysSinceGratitude = getDaysSince(latestGratitude)
-    
+
     if (gratitudeEntries.length === 0) {
       result.push({
         type: 'gratitude',
@@ -177,12 +177,14 @@ export function useReminders() {
       })
     }
 
-    // Activities reminder
-    const activitiesConfig = REMINDER_CONFIGS.find(c => c.type === 'activities')!
-    const latestActivity = getLatestEntryDate(activities)
-    const daysSinceActivity = getDaysSince(latestActivity)
-    
-    if (activities.length === 0) {
+    const activitiesConfig = REMINDER_CONFIGS.find((c) => c.type === 'activities')!
+    const trackedActivities = activities.filter(
+      (a) => a.isCompleted && (a.moodBefore !== undefined || a.moodAfter !== undefined)
+    )
+    const latestTracked = getLatestEntryDate(trackedActivities)
+    const daysSinceTracked = getDaysSince(latestTracked)
+
+    if (trackedActivities.length === 0) {
       result.push({
         type: 'activities',
         priority: activitiesConfig.priority,
@@ -191,20 +193,19 @@ export function useReminders() {
         daysSince: null,
         isFirstTime: true,
       })
-    } else if (daysSinceActivity !== null && daysSinceActivity >= activitiesConfig.intervalDays) {
+    } else if (daysSinceTracked !== null && daysSinceTracked >= activitiesConfig.intervalDays) {
       result.push({
         type: 'activities',
         priority: activitiesConfig.priority,
-        message: activitiesConfig.overdueMessage(daysSinceActivity),
-        shortMessage: activitiesConfig.overdueShort(daysSinceActivity),
-        daysSince: daysSinceActivity,
+        message: activitiesConfig.overdueMessage(daysSinceTracked),
+        shortMessage: activitiesConfig.overdueShort(daysSinceTracked),
+        daysSince: daysSinceTracked,
         isFirstTime: false,
       })
     }
 
-    // Safety plan reminder (one-time only, no recurring)
     if (!safetyPlan) {
-      const safetyConfig = REMINDER_CONFIGS.find(c => c.type === 'safety-plan')!
+      const safetyConfig = REMINDER_CONFIGS.find((c) => c.type === 'safety-plan')!
       result.push({
         type: 'safety-plan',
         priority: safetyConfig.priority,
@@ -218,27 +219,24 @@ export function useReminders() {
     return result
   }, [moodChecks, thoughtRecords, gratitudeEntries, activities, safetyPlan])
 
-  const hasReminder = (type: Reminder['type']) => 
-    reminders.some(r => r.type === type)
+  const hasReminder = (type: Reminder['type']) => reminders.some((r) => r.type === type)
 
-  const getReminder = (type: Reminder['type']) => 
-    reminders.find(r => r.type === type)
+  const getReminder = (type: Reminder['type']) => reminders.find((r) => r.type === type)
 
-  // Map nav item IDs to reminder types
   const getNavReminder = (navId: string): Reminder | undefined => {
     const mapping: Record<string, Reminder['type']> = {
-      'home': 'records',
+      home: 'records',
       'mood-check': 'mood',
-      'gratitude': 'gratitude',
-      'activities': 'activities',
-      'toolkit': 'safety-plan',
+      gratitude: 'gratitude',
+      activities: 'activities',
+      toolkit: 'safety-plan',
     }
     const reminderType = mapping[navId]
     return reminderType ? getReminder(reminderType) : undefined
   }
 
   const totalReminders = reminders.length
-  const highPriorityCount = reminders.filter(r => r.priority === 'high').length
+  const highPriorityCount = reminders.filter((r) => r.priority === 'high').length
 
   return {
     reminders,
