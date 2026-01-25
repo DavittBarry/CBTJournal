@@ -763,6 +763,9 @@ export interface ActivityEntry {
   syncWithCalendar?: boolean
   lastSyncedAt?: string
   source?: 'local' | 'google-calendar'
+
+  // Hide from Activities view but keep for Insights
+  hiddenFromActivities?: boolean
 }
 
 // Represents a Google Calendar event displayed in the activities view
@@ -775,6 +778,8 @@ export interface CalendarEventDisplay {
   startTime?: string
   endTime?: string
   isAllDay: boolean
+  isMultiDay?: boolean
+  multiDayInfo?: string
   description?: string
   htmlLink?: string
 }

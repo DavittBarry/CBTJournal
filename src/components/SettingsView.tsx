@@ -1358,9 +1358,22 @@ export function SettingsView() {
             This app is not a replacement for professional mental health care. If you're struggling,
             please reach out to a mental health professional.
           </p>
+          <div className="pt-3 border-t border-stone-100 dark:border-stone-700">
+            <p className="text-stone-500 dark:text-stone-400 text-sm mb-2">
+              Created by{' '}
+              <a
+                href="https://davittbarry.dev/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sage-600 dark:text-sage-400 hover:text-sage-700 dark:hover:text-sage-300 font-medium"
+              >
+                Davitt Barry
+              </a>
+            </p>
+          </div>
           <button
             onClick={() => setShowPrivacyPolicy(true)}
-            className="text-sm text-sage-600 dark:text-sage-400 hover:text-sage-700 dark:hover:text-sage-300 underline"
+            className="text-sm text-sage-600 dark:text-sage-400 hover:text-sage-700 dark:hover:text-sage-300 underline mt-2"
           >
             Privacy policy
           </button>

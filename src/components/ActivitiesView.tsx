@@ -23,7 +23,11 @@ import { AutoExpandTextarea } from '@/components/AutoExpandTextarea'
 import { toast } from '@/stores/toastStore'
 import { useGoogleCalendar, isCalendarConfigured } from '@/hooks/useGoogleCalendar'
 import { categorizeActivity } from '@/utils/activityCategorizer'
-import { createCalendarEvent, updateCalendarEvent } from '@/utils/googleCalendar'
+import {
+  createCalendarEvent,
+  updateCalendarEvent,
+  deleteCalendarEvent,
+} from '@/utils/googleCalendar'
 import { useCalendarStore } from '@/stores/calendarStore'
 
 function generateId(): string {
@@ -439,7 +443,10 @@ function ActivityForm({
 
 interface QuickCompleteModalProps {
   activity: ActivityEntry
-  onSave: (activity: ActivityEntry) => void
+  onSave: (
+    activity: ActivityEntry,
+    options?: { removeAfter?: boolean; deleteFromCalendar?: boolean }
+  ) => void
   onCancel: () => void
 }
 
@@ -448,6 +455,10 @@ function QuickCompleteModal({ activity, onSave, onCancel }: QuickCompleteModalPr
   const [moodAfter, setMoodAfter] = useState(5)
   const [pleasureRating, setPleasureRating] = useState(5)
   const [masteryRating, setMasteryRating] = useState(5)
+  const [removeAfterLogging, setRemoveAfterLogging] = useState(false)
+  const [deleteFromCalendar, setDeleteFromCalendar] = useState(false)
+
+  const hasCalendarLink = !!activity.googleCalendarEventId
 
   const handleSave = () => {
     const updated: ActivityEntry = {
@@ -459,7 +470,7 @@ function QuickCompleteModal({ activity, onSave, onCancel }: QuickCompleteModalPr
       pleasureRating,
       masteryRating,
     }
-    onSave(updated)
+    onSave(updated, { removeAfter: removeAfterLogging, deleteFromCalendar })
   }
 
   const moodChange = moodAfter - moodBefore
@@ -471,7 +482,7 @@ function QuickCompleteModal({ activity, onSave, onCancel }: QuickCompleteModalPr
       onClick={onCancel}
     >
       <div
-        className="bg-white dark:bg-stone-800 rounded-2xl max-w-md w-full p-6 shadow-xl"
+        className="bg-white dark:bg-stone-800 rounded-2xl max-w-md w-full p-6 shadow-xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="text-center mb-5">
@@ -568,6 +579,44 @@ function QuickCompleteModal({ activity, onSave, onCancel }: QuickCompleteModalPr
           </div>
         </div>
 
+        <div className="space-y-2 mb-5 pt-4 border-t border-stone-200 dark:border-stone-700">
+          <label className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-stone-50 dark:hover:bg-stone-700/50">
+            <input
+              type="checkbox"
+              checked={removeAfterLogging}
+              onChange={(e) => setRemoveAfterLogging(e.target.checked)}
+              className="rounded border-stone-300 dark:border-stone-600 text-sage-600 focus:ring-sage-500"
+            />
+            <div>
+              <span className="text-sm text-stone-700 dark:text-stone-300">
+                Hide from Activities
+              </span>
+              <p className="text-xs text-stone-500 dark:text-stone-400">
+                Still visible in Insights
+              </p>
+            </div>
+          </label>
+
+          {hasCalendarLink && (
+            <label className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-stone-50 dark:hover:bg-stone-700/50">
+              <input
+                type="checkbox"
+                checked={deleteFromCalendar}
+                onChange={(e) => setDeleteFromCalendar(e.target.checked)}
+                className="rounded border-stone-300 dark:border-stone-600 text-critical-600 focus:ring-critical-500"
+              />
+              <div>
+                <span className="text-sm text-stone-700 dark:text-stone-300">
+                  Delete from Google Calendar
+                </span>
+                <p className="text-xs text-stone-500 dark:text-stone-400">
+                  Also remove the calendar event
+                </p>
+              </div>
+            </label>
+          )}
+        </div>
+
         <div className="flex gap-3">
           <button onClick={onCancel} className="btn-secondary flex-1">
             Cancel
@@ -587,47 +636,74 @@ interface ImportModalProps {
   onCancel: () => void
 }
 
+interface EventGroup {
+  title: string
+  normalizedTitle: string
+  events: CalendarEventDisplay[]
+  category: ActivityCategory
+  selected: boolean
+}
+
+function normalizeTitle(title: string): string {
+  return title.toLowerCase().trim().replace(/\s+/g, ' ')
+}
+
 function ImportModal({ events, onImport, onCancel }: ImportModalProps) {
-  const [selections, setSelections] = useState<
-    Map<string, { selected: boolean; category: ActivityCategory }>
-  >(() => {
-    const map = new Map()
+  const [eventGroups, setEventGroups] = useState<EventGroup[]>(() => {
+    const groupMap = new Map<string, CalendarEventDisplay[]>()
+
     events.forEach((event) => {
-      map.set(event.id, {
-        selected: true,
-        category: categorizeActivity(event.title, event.description),
-      })
+      const key = normalizeTitle(event.title)
+      if (!groupMap.has(key)) {
+        groupMap.set(key, [])
+      }
+      groupMap.get(key)!.push(event)
     })
-    return map
+
+    return Array.from(groupMap.entries()).map(([normalizedTitle, groupEvents]) => ({
+      title: groupEvents[0].title,
+      normalizedTitle,
+      events: groupEvents.sort((a, b) => a.date.localeCompare(b.date)),
+      category: categorizeActivity(groupEvents[0].title, groupEvents[0].description),
+      selected: true,
+    }))
   })
 
-  const toggleSelect = (id: string) => {
-    setSelections((prev) => {
-      const next = new Map(prev)
-      const current = next.get(id)!
-      next.set(id, { ...current, selected: !current.selected })
-      return next
-    })
+  const toggleGroup = (normalizedTitle: string) => {
+    setEventGroups((prev) =>
+      prev.map((g) => (g.normalizedTitle === normalizedTitle ? { ...g, selected: !g.selected } : g))
+    )
   }
 
-  const changeCategory = (id: string, category: ActivityCategory) => {
-    setSelections((prev) => {
-      const next = new Map(prev)
-      const current = next.get(id)!
-      next.set(id, { ...current, category })
-      return next
-    })
+  const changeGroupCategory = (normalizedTitle: string, category: ActivityCategory) => {
+    setEventGroups((prev) =>
+      prev.map((g) => (g.normalizedTitle === normalizedTitle ? { ...g, category } : g))
+    )
   }
 
-  const selectedCount = Array.from(selections.values()).filter((s) => s.selected).length
+  const selectAll = () => {
+    setEventGroups((prev) => prev.map((g) => ({ ...g, selected: true })))
+  }
+
+  const selectNone = () => {
+    setEventGroups((prev) => prev.map((g) => ({ ...g, selected: false })))
+  }
+
+  const selectedGroups = eventGroups.filter((g) => g.selected)
+  const selectedEventCount = selectedGroups.reduce((sum, g) => sum + g.events.length, 0)
 
   const handleImport = () => {
-    const toImport = events
-      .filter((e) => selections.get(e.id)?.selected)
-      .map((e) => ({
-        event: e,
-        category: selections.get(e.id)!.category,
-      }))
+    const toImport: Array<{ event: CalendarEventDisplay; category: ActivityCategory }> = []
+
+    selectedGroups.forEach((group) => {
+      group.events.forEach((event) => {
+        toImport.push({
+          event,
+          category: group.category,
+        })
+      })
+    })
+
     onImport(toImport)
   }
 
@@ -645,19 +721,36 @@ function ImportModal({ events, onImport, onCancel }: ImportModalProps) {
             Import calendar events
           </h3>
           <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
-            Import events to track how they affect your mood. Categories are auto-detected.
+            Multi-day events are grouped together. Select a group to import all its days.
           </p>
+          <div className="flex gap-2 mt-3">
+            <button
+              onClick={selectAll}
+              className="text-xs text-sage-600 dark:text-sage-400 hover:text-sage-700 dark:hover:text-sage-300 font-medium"
+            >
+              Select all
+            </button>
+            <span className="text-stone-300 dark:text-stone-600">|</span>
+            <button
+              onClick={selectNone}
+              className="text-xs text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 font-medium"
+            >
+              Select none
+            </button>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-2">
-          {events.map((event) => {
-            const selection = selections.get(event.id)!
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {eventGroups.map((group) => {
+            const isMultiDay = group.events.length > 1
+            const firstDate = group.events[0].date
+            const lastDate = group.events[group.events.length - 1].date
 
             return (
               <div
-                key={event.id}
+                key={group.normalizedTitle}
                 className={`p-3 rounded-xl border-2 transition-colors ${
-                  selection.selected
+                  group.selected
                     ? 'border-sage-400 dark:border-sage-600 bg-sage-50/50 dark:bg-sage-900/20'
                     : 'border-stone-200 dark:border-stone-700 opacity-60'
                 }`}
@@ -665,23 +758,40 @@ function ImportModal({ events, onImport, onCancel }: ImportModalProps) {
                 <div className="flex items-start gap-3">
                   <input
                     type="checkbox"
-                    checked={selection.selected}
-                    onChange={() => toggleSelect(event.id)}
+                    checked={group.selected}
+                    onChange={() => toggleGroup(group.normalizedTitle)}
                     className="mt-1 rounded border-stone-300 dark:border-stone-600 text-sage-600 focus:ring-sage-500"
                   />
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-stone-700 dark:text-stone-300 text-sm">
-                      {event.title}
+                      {group.title}
                     </div>
                     <div className="text-xs text-stone-500 dark:text-stone-400">
-                      {format(parseISO(event.date), 'EEE, MMM d')}
-                      {event.startTime && ` at ${event.startTime}`}
+                      {isMultiDay ? (
+                        <span className="flex items-center gap-1">
+                          <span className="text-purple-500 dark:text-purple-400 font-medium">
+                            {group.events.length} days
+                          </span>
+                          <span>·</span>
+                          <span>
+                            {format(parseISO(firstDate), 'MMM d')} –{' '}
+                            {format(parseISO(lastDate), 'MMM d')}
+                          </span>
+                        </span>
+                      ) : (
+                        <span>
+                          {format(parseISO(firstDate), 'EEE, MMM d')}
+                          {group.events[0].startTime && ` at ${group.events[0].startTime}`}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <select
-                    value={selection.category}
-                    onChange={(e) => changeCategory(event.id, e.target.value as ActivityCategory)}
-                    disabled={!selection.selected}
+                    value={group.category}
+                    onChange={(e) =>
+                      changeGroupCategory(group.normalizedTitle, e.target.value as ActivityCategory)
+                    }
+                    disabled={!group.selected}
                     className="text-xs bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 rounded-lg px-2 py-1"
                   >
                     {ACTIVITY_CATEGORIES.map((c) => (
@@ -702,10 +812,13 @@ function ImportModal({ events, onImport, onCancel }: ImportModalProps) {
           </button>
           <button
             onClick={handleImport}
-            disabled={selectedCount === 0}
+            disabled={selectedEventCount === 0}
             className="btn-primary flex-1"
           >
-            Import {selectedCount} event{selectedCount !== 1 ? 's' : ''}
+            Import {selectedEventCount} event{selectedEventCount !== 1 ? 's' : ''}
+            {selectedGroups.length > 0 && selectedGroups.length < eventGroups.length && (
+              <span className="text-sage-200 ml-1">({selectedGroups.length} groups)</span>
+            )}
           </button>
         </div>
       </div>
@@ -858,6 +971,11 @@ function DaySection({
                           {event.isAllDay
                             ? 'All day'
                             : `${event.startTime}${event.endTime ? ` - ${event.endTime}` : ''}`}
+                          {event.isMultiDay && event.multiDayInfo && (
+                            <span className="text-purple-500 dark:text-purple-400 ml-2">
+                              · {event.multiDayInfo}
+                            </span>
+                          )}
                           <span className="text-blue-500 dark:text-blue-400 ml-2">
                             Calendar event
                           </span>
@@ -1114,7 +1232,7 @@ export function ActivitiesView() {
       const dayItems: DayItem[] = []
 
       activities
-        .filter((a) => a.date === dateKey)
+        .filter((a) => a.date === dateKey && !a.hiddenFromActivities)
         .forEach((activity) => {
           dayItems.push({
             type: 'activity',
@@ -1217,10 +1335,41 @@ export function ActivitiesView() {
     setCompletingActivity(activity)
   }
 
-  const handleQuickComplete = async (activity: ActivityEntry) => {
-    await updateActivity(activity)
+  const handleQuickComplete = async (
+    activity: ActivityEntry,
+    options?: { removeAfter?: boolean; deleteFromCalendar?: boolean }
+  ) => {
+    const { connection } = useCalendarStore.getState()
+
+    const updatedActivity = { ...activity }
+
+    if (options?.removeAfter) {
+      updatedActivity.hiddenFromActivities = true
+    }
+
+    await updateActivity(updatedActivity)
+
+    if (options?.deleteFromCalendar && activity.googleCalendarEventId && connection?.accessToken) {
+      try {
+        await deleteCalendarEvent(
+          connection.accessToken,
+          connection.selectedCalendarId,
+          activity.googleCalendarEventId
+        )
+        toast.success('Deleted from Google Calendar')
+      } catch (error) {
+        console.error('Failed to delete from calendar:', error)
+        toast.error('Failed to delete from calendar')
+      }
+    }
+
+    if (options?.removeAfter) {
+      toast.success('Logged and hidden from Activities')
+    } else {
+      toast.success('✓ Completed!')
+    }
+
     setCompletingActivity(null)
-    toast.success('✓ Completed!')
   }
 
   const handleEdit = (activity: ActivityEntry) => {
