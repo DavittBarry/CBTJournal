@@ -4,7 +4,6 @@ import {
   fetchCalendarEvents,
   fetchUserCalendars,
   validateCalendarToken,
-  type GoogleCalendarEvent,
   type CalendarListEntry,
   getEventDateTime,
   getEventEndDateTime,
