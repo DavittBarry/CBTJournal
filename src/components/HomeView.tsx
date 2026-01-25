@@ -136,9 +136,12 @@ export function HomeView() {
     <a
       href={`#record/${record.id}`}
       onClick={(e) => handleCardClick(record.id, e)}
-      className="block w-full text-left p-5 focus:outline-none overflow-hidden flex flex-col h-full"
+      className={`block w-full text-left p-5 focus:outline-none flex flex-col ${
+        isExpanded ? '' : 'overflow-hidden h-full'
+      }`}
     >
-      <div className="flex-shrink-0 space-y-3 h-24">
+      {/* Date and situation */}
+      <div className="flex-shrink-0 space-y-3">
         <div className="flex items-start justify-between">
           <div className="text-sm text-stone-400 dark:text-stone-500">
             {format(parseISO(record.date), 'MMM d, yyyy')}
@@ -153,13 +156,17 @@ export function HomeView() {
             <path d="M6 9l6 6 6-6" />
           </svg>
         </div>
-        <div className="text-stone-700 dark:text-stone-200 font-medium leading-relaxed line-clamp-2">
+        <div
+          className={`text-stone-700 dark:text-stone-200 font-medium leading-relaxed ${isExpanded ? '' : 'line-clamp-2'}`}
+        >
           {record.situation}
         </div>
       </div>
-      <div className="flex-shrink-0 mt-3">
+
+      {/* Emotion tags - limit to 3 when collapsed */}
+      <div className="flex-shrink-0 mt-4">
         <div className="flex flex-wrap gap-1.5">
-          {record.emotions.map((emotion, i) => (
+          {(isExpanded ? record.emotions : record.emotions.slice(0, 3)).map((emotion, i) => (
             <span
               key={i}
               className="text-xs bg-warm-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-2.5 py-1 rounded-full"
@@ -167,11 +174,20 @@ export function HomeView() {
               {emotion.name} {emotion.intensity}%
             </span>
           ))}
+          {!isExpanded && record.emotions.length > 3 && (
+            <span className="text-xs text-stone-400 dark:text-stone-500 px-1 py-1">
+              +{record.emotions.length - 3} more
+            </span>
+          )}
         </div>
       </div>
-      <div className="flex-grow" />
-      <div className="flex-shrink-0 space-y-3">
-        {maxEmotion && hasOutcome && (
+
+      {/* Spacer */}
+      <div className="flex-grow min-h-3" />
+
+      {/* Before/After panel */}
+      {maxEmotion && hasOutcome && (
+        <div className="flex-shrink-0 mt-4">
           <div className="flex items-center gap-2 py-2 px-3 bg-stone-50 dark:bg-stone-700/50 rounded-lg text-xs">
             <div className="flex items-center gap-1">
               <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium">
@@ -204,7 +220,11 @@ export function HomeView() {
               </span>
             )}
           </div>
-        )}
+        </div>
+      )}
+
+      {/* Distortions */}
+      <div className="flex-shrink-0 mt-3">
         <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs">
           {record.distortions.slice(0, 2).map((id) => (
             <span key={id} className="text-sage-500 dark:text-sage-400">
@@ -406,26 +426,39 @@ export function HomeView() {
 
                     return (
                       <div className="rounded-xl ring-2 ring-sage-400 dark:ring-sage-500 bg-white dark:bg-stone-800 overflow-hidden animate-fade-in mt-4">
-                        {/* Small card section - matching the 300px height */}
-                        <div className="h-[300px]">
-                          {renderSmallCardContent(
-                            record,
-                            maxEmotion,
-                            hasOutcome,
-                            outcomeIntensity,
-                            improvement,
-                            true
-                          )}
-                        </div>
+                        {/* Expanded card header - just date and full situation */}
+                        <a
+                          href={`#record/${record.id}`}
+                          onClick={(e) => handleCardClick(record.id, e)}
+                          className="block p-5 focus:outline-none"
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="text-sm text-stone-400 dark:text-stone-500">
+                              {format(parseISO(record.date), 'MMM d, yyyy')}
+                            </div>
+                            <svg
+                              className="w-5 h-5 text-stone-400 dark:text-stone-500 rotate-180 flex-shrink-0"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                            >
+                              <path d="M6 9l6 6 6-6" />
+                            </svg>
+                          </div>
+                          <div className="text-stone-700 dark:text-stone-200 font-medium leading-relaxed">
+                            {record.situation}
+                          </div>
+                        </a>
 
                         {/* Expanded content section */}
-                        <div className="px-5 pb-5">
-                          <div className="flex gap-2 mb-6">
+                        <div className="px-5 pb-5 pt-4 border-t border-stone-200 dark:border-stone-700">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
                             <AppLink
                               to="thought-detail"
                               id={record.id}
                               onClick={(e) => e.stopPropagation()}
-                              className="flex-1 btn-secondary py-2 text-sm text-center"
+                              className="btn-secondary py-2 text-sm text-center"
                             >
                               View
                             </AppLink>
@@ -433,27 +466,27 @@ export function HomeView() {
                               to="new-thought"
                               id={record.id}
                               onClick={(e) => e.stopPropagation()}
-                              className="flex-1 btn-secondary py-2 text-sm text-center"
+                              className="btn-secondary py-2 text-sm text-center"
                             >
                               Edit
                             </AppLink>
                             <button
                               onClick={(e) => handleDuplicate(record.id, e)}
-                              className="flex-1 btn-secondary py-2 text-sm"
+                              className="btn-secondary py-2 text-sm"
                               type="button"
                             >
                               Duplicate
                             </button>
                             <button
                               onClick={(e) => handleDeleteClick(record.id, e)}
-                              className="px-3 py-2 text-sm font-medium text-critical-500 dark:text-critical-400 hover:text-critical-600 dark:hover:text-critical-300 hover:bg-critical-50 dark:hover:bg-critical-500/10 rounded-xl transition-colors"
+                              className="py-2 text-sm font-medium text-critical-500 dark:text-critical-400 hover:text-critical-600 dark:hover:text-critical-300 bg-critical-50 dark:bg-critical-900/20 hover:bg-critical-100 dark:hover:bg-critical-900/30 rounded-xl transition-colors"
                               type="button"
                             >
                               Delete
                             </button>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                             <div className="bg-stone-50 dark:bg-stone-800/50 rounded-xl p-4 flex flex-col">
                               <div className="flex items-center gap-2 mb-3">
                                 <span className="w-6 h-6 rounded-full bg-critical-100 dark:bg-critical-900/30 text-critical-600 dark:text-critical-400 text-xs font-bold flex items-center justify-center">
