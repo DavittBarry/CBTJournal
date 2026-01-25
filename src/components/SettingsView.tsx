@@ -16,12 +16,11 @@ import {
 import {
   isGoogleDriveConfigured,
   isDropboxConfigured,
-  initGoogleDriveAuth,
-  findOrCreateGoogleDriveFile,
   initDropboxAuth,
   disconnectCloud as disconnectCloudProvider,
-  reauthorizeGoogleDrive,
 } from '@/utils/cloudSync'
+import { GoogleConnectionCard } from '@/components/GoogleConnectionCard'
+import { useGoogleStore, hasDriveAccess } from '@/stores/googleStore'
 
 type ImportStep = 'idle' | 'choose-mode' | 'confirm-replace'
 
@@ -63,7 +62,6 @@ export function SettingsView() {
   const [showPasteModal, setShowPasteModal] = useState(false)
   const [pasteText, setPasteText] = useState('')
   const [isConnectingCloud, setIsConnectingCloud] = useState(false)
-  const [showCloudSyncOptions, setShowCloudSyncOptions] = useState(false)
 
   const hasExistingData =
     thoughtRecords.length > 0 || depressionChecklists.length > 0 || gratitudeEntries.length > 0
@@ -368,38 +366,6 @@ export function SettingsView() {
     toast.info('Auto-save disabled')
   }
 
-  const handleConnectGoogleDrive = async () => {
-    if (!isGoogleDriveConfigured()) {
-      toast.error('Google Drive is not configured. Add API keys to environment variables.')
-      return
-    }
-
-    setIsConnectingCloud(true)
-    try {
-      const accessToken = await initGoogleDriveAuth()
-      const fileId = await findOrCreateGoogleDriveFile(accessToken)
-
-      addCloudConnection({
-        provider: 'google-drive',
-        accessToken,
-        fileId,
-        fileName: 'cbtjournal-data.json',
-        lastSyncAt: undefined,
-        syncMode: 'manual',
-      })
-
-      toast.success('Connected to Google Drive')
-      setShowCloudSyncOptions(false)
-    } catch (error) {
-      if (error instanceof Error && error.message !== 'Authentication cancelled') {
-        toast.error('Failed to connect to Google Drive')
-        logger.error('Settings', 'Google Drive connection failed', error)
-      }
-    } finally {
-      setIsConnectingCloud(false)
-    }
-  }
-
   const handleConnectDropbox = async () => {
     if (!isDropboxConfigured()) {
       toast.error('Dropbox is not configured. Add API key to environment variables.')
@@ -435,68 +401,28 @@ export function SettingsView() {
     removeCloudConnection(provider)
   }
 
-  const handleReconnectCloud = async (provider: CloudProvider) => {
-    if (provider === 'google-drive') {
-      setIsConnectingCloud(true)
-      try {
-        const newToken = await reauthorizeGoogleDrive()
-        if (newToken) {
-          const connection = cloudConnections.find((c) => c.provider === provider)
-          if (connection) {
-            addCloudConnection({
-              ...connection,
-              accessToken: newToken,
-              lastError: null,
-            })
-            toast.success('Reconnected to Google Drive')
-          }
-        } else {
-          const accessToken = await initGoogleDriveAuth()
-          const fileId = await findOrCreateGoogleDriveFile(accessToken)
-          const existingConnection = cloudConnections.find((c) => c.provider === provider)
-          addCloudConnection({
-            provider: 'google-drive',
-            accessToken,
-            fileId,
-            fileName: 'cbtjournal-data.json',
-            lastSyncAt: existingConnection?.lastSyncAt,
-            syncMode: existingConnection?.syncMode || 'manual',
-            syncOnStartup: existingConnection?.syncOnStartup,
-            lastError: null,
-          })
-          toast.success('Reconnected to Google Drive')
-        }
-      } catch (error) {
-        if (error instanceof Error && error.message !== 'Authentication cancelled') {
-          toast.error('Failed to reconnect to Google Drive')
-          logger.error('Settings', 'Google Drive reconnection failed', error)
-        }
-      } finally {
-        setIsConnectingCloud(false)
+  const handleReconnectDropbox = async () => {
+    setIsConnectingCloud(true)
+    try {
+      const accessToken = await initDropboxAuth()
+      const existingConnection = cloudConnections.find((c) => c.provider === 'dropbox')
+      addCloudConnection({
+        provider: 'dropbox',
+        accessToken,
+        fileName: 'cbtjournal-data.json',
+        lastSyncAt: existingConnection?.lastSyncAt,
+        syncMode: existingConnection?.syncMode || 'manual',
+        syncOnStartup: existingConnection?.syncOnStartup,
+        lastError: null,
+      })
+      toast.success('Reconnected to Dropbox')
+    } catch (error) {
+      if (error instanceof Error && error.message !== 'Authentication cancelled') {
+        toast.error('Failed to reconnect to Dropbox')
+        logger.error('Settings', 'Dropbox reconnection failed', error)
       }
-    } else if (provider === 'dropbox') {
-      setIsConnectingCloud(true)
-      try {
-        const accessToken = await initDropboxAuth()
-        const existingConnection = cloudConnections.find((c) => c.provider === provider)
-        addCloudConnection({
-          provider: 'dropbox',
-          accessToken,
-          fileName: 'cbtjournal-data.json',
-          lastSyncAt: existingConnection?.lastSyncAt,
-          syncMode: existingConnection?.syncMode || 'manual',
-          syncOnStartup: existingConnection?.syncOnStartup,
-          lastError: null,
-        })
-        toast.success('Reconnected to Dropbox')
-      } catch (error) {
-        if (error instanceof Error && error.message !== 'Authentication cancelled') {
-          toast.error('Failed to reconnect to Dropbox')
-          logger.error('Settings', 'Dropbox reconnection failed', error)
-        }
-      } finally {
-        setIsConnectingCloud(false)
-      }
+    } finally {
+      setIsConnectingCloud(false)
     }
   }
 
@@ -535,7 +461,6 @@ export function SettingsView() {
 
   const recentErrors = logger.getRecentErrors(5)
   const allLogs = logger.getLogs()
-  const hasCloudProviders = isGoogleDriveConfigured() || isDropboxConfigured()
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -667,80 +592,6 @@ export function SettingsView() {
                   setPasteText('')
                 }}
                 className="btn-secondary flex-1"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showCloudSyncOptions && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="card p-6 max-w-sm w-full">
-            <h3 className="text-lg font-semibold text-stone-800 dark:text-stone-100 mb-2">
-              Connect cloud storage
-            </h3>
-            <p className="text-stone-500 dark:text-stone-400 text-sm mb-5">
-              Choose a cloud provider to sync your data across devices.
-            </p>
-            <div className="space-y-3">
-              {isGoogleDriveConfigured() && !isProviderConnected('google-drive') && (
-                <button
-                  onClick={handleConnectGoogleDrive}
-                  disabled={isConnectingCloud}
-                  className="btn-secondary w-full flex items-center gap-3 px-4"
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24">
-                    <path
-                      fill="#4285F4"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                    />
-                  </svg>
-                  <span className="font-medium text-stone-700 dark:text-stone-200">
-                    Google Drive
-                  </span>
-                </button>
-              )}
-              {isDropboxConfigured() && !isProviderConnected('dropbox') && (
-                <button
-                  onClick={handleConnectDropbox}
-                  disabled={isConnectingCloud}
-                  className="btn-secondary w-full flex items-center gap-3 px-4"
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#0061FF">
-                    <path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4-6-4zm12 0l-6 4 6 4-6 4 6 4 6-4-6-4 6-4-6-4zM6 18l6-4 6 4-6 4-6-4z" />
-                  </svg>
-                  <span className="font-medium text-stone-700 dark:text-stone-200">Dropbox</span>
-                </button>
-              )}
-              {!hasCloudProviders && (
-                <p className="text-sm text-stone-500 dark:text-stone-400 text-center py-4">
-                  No cloud providers configured. Add API keys to environment variables.
-                </p>
-              )}
-              {hasCloudProviders &&
-                isProviderConnected('google-drive') &&
-                isProviderConnected('dropbox') && (
-                  <p className="text-sm text-stone-500 dark:text-stone-400 text-center py-4">
-                    All available cloud providers are already connected.
-                  </p>
-                )}
-              <button
-                onClick={() => setShowCloudSyncOptions(false)}
-                className="w-full text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 py-2 text-sm font-medium"
               >
                 Cancel
               </button>
@@ -1030,56 +881,48 @@ export function SettingsView() {
         </section>
       </div>
 
-      {hasCloudProviders && (
+      {/* Unified Google connection for Calendar and Drive */}
+      {isGoogleDriveConfigured() && (
         <section className="mt-6">
           <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300 mb-4">
-            Cloud sync
+            Google services
           </h2>
+          <GoogleConnectionCard />
+        </section>
+      )}
 
-          {cloudConnections.length === 0 ? (
+      {/* Dropbox backup (separate from Google) */}
+      {isDropboxConfigured() && (
+        <section className="mt-6">
+          <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300 mb-4">
+            Dropbox backup
+          </h2>
+          {!isProviderConnected('dropbox') ? (
             <div className="card p-5">
               <p className="text-stone-600 dark:text-stone-300 text-sm mb-4 leading-relaxed">
-                Sync your data across devices using Google Drive or Dropbox. Your data stays in your
-                own cloud storage account. You can connect multiple providers for redundancy.
+                Connect Dropbox as an additional backup location for your data.
               </p>
               <button
-                onClick={() => setShowCloudSyncOptions(true)}
-                className="btn-primary w-full"
+                onClick={handleConnectDropbox}
+                className="btn-primary w-full flex items-center justify-center gap-2"
                 disabled={isConnectingCloud}
               >
-                {isConnectingCloud ? 'Connecting...' : 'Connect cloud storage'}
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#0061FF">
+                  <path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4-6-4zm12 0l-6 4 6 4-6 4 6 4 6-4-6-4 6-4-6-4zM6 18l6-4 6 4-6 4-6-4z" />
+                </svg>
+                {isConnectingCloud ? 'Connecting...' : 'Connect Dropbox'}
               </button>
             </div>
           ) : (
-            <div className="space-y-4">
-              {cloudConnections.map((connection) => (
+            cloudConnections
+              .filter((c) => c.provider === 'dropbox')
+              .map((connection) => (
                 <div key={connection.provider} className="card p-5">
                   <div className="flex items-center gap-2 text-helpful-600 dark:text-helpful-500 mb-4">
-                    {connection.provider === 'google-drive' ? (
-                      <svg className="w-5 h-5" viewBox="0 0 24 24">
-                        <path
-                          fill="#4285F4"
-                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                        />
-                        <path
-                          fill="#34A853"
-                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                        />
-                        <path
-                          fill="#FBBC05"
-                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                        />
-                        <path
-                          fill="#EA4335"
-                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                        />
-                      </svg>
-                    ) : (
-                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#0061FF">
-                        <path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4-6-4zm12 0l-6 4 6 4-6 4 6 4 6-4-6-4 6-4-6-4zM6 18l6-4 6 4-6 4-6-4z" />
-                      </svg>
-                    )}
-                    <span className="font-medium">{getProviderName(connection.provider)}</span>
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#0061FF">
+                      <path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4-6-4zm12 0l-6 4 6 4-6 4 6 4 6-4-6-4 6-4-6-4zM6 18l6-4 6 4-6 4-6-4z" />
+                    </svg>
+                    <span className="font-medium">Dropbox connected</span>
                   </div>
 
                   {getLastSyncText(connection.lastSyncAt) && (
@@ -1092,7 +935,7 @@ export function SettingsView() {
                     <div className="bg-critical-50 dark:bg-critical-900/20 text-critical-700 dark:text-critical-300 text-sm p-3 rounded-lg mb-4">
                       <div className="mb-2">{connection.lastError}</div>
                       <button
-                        onClick={() => handleReconnectCloud(connection.provider)}
+                        onClick={() => handleReconnectDropbox()}
                         disabled={isConnectingCloud}
                         className="text-sm font-medium text-critical-600 dark:text-critical-400 hover:text-critical-700 dark:hover:text-critical-300 underline"
                       >
@@ -1114,7 +957,7 @@ export function SettingsView() {
                       <button
                         onClick={() =>
                           handleToggleSyncMode(
-                            connection.provider,
+                            'dropbox',
                             connection.syncMode === 'auto' ? 'manual' : 'auto'
                           )
                         }
@@ -1144,7 +987,7 @@ export function SettingsView() {
                       <button
                         onClick={() =>
                           setSyncOnStartup(
-                            connection.provider,
+                            'dropbox',
                             connection.syncOnStartup !== false ? false : true
                           )
                         }
@@ -1165,14 +1008,14 @@ export function SettingsView() {
 
                   <div className="grid grid-cols-2 gap-3 mb-3">
                     <button
-                      onClick={() => handleSyncToCloud(connection.provider)}
+                      onClick={() => handleSyncToCloud('dropbox')}
                       className="btn-secondary"
                       disabled={isSyncing}
                     >
                       {isSyncing ? 'Syncing...' : 'Push'}
                     </button>
                     <button
-                      onClick={() => handleSyncFromCloud(connection.provider)}
+                      onClick={() => handleSyncFromCloud('dropbox')}
                       className="btn-secondary"
                       disabled={isSyncing}
                     >
@@ -1181,25 +1024,13 @@ export function SettingsView() {
                   </div>
 
                   <button
-                    onClick={() => handleDisconnectCloud(connection.provider)}
+                    onClick={() => handleDisconnectCloud('dropbox')}
                     className="btn-secondary w-full text-critical-600 hover:text-critical-700 dark:text-critical-400"
                   >
                     Disconnect
                   </button>
                 </div>
-              ))}
-
-              {((isGoogleDriveConfigured() && !isProviderConnected('google-drive')) ||
-                (isDropboxConfigured() && !isProviderConnected('dropbox'))) && (
-                <button
-                  onClick={() => setShowCloudSyncOptions(true)}
-                  className="btn-secondary w-full"
-                  disabled={isConnectingCloud}
-                >
-                  {isConnectingCloud ? 'Connecting...' : 'Add another cloud provider'}
-                </button>
-              )}
-            </div>
+              ))
           )}
         </section>
       )}

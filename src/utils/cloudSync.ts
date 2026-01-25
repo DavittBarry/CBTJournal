@@ -1,5 +1,13 @@
 import { toast } from '@/stores/toastStore'
 import { logger } from '@/utils/logger'
+import { googleAuth } from '@/services/googleAuth'
+import {
+  useGoogleStore,
+  hasCalendarAccess,
+  hasDriveAccess,
+  startGoogleConnectionHandlers,
+} from '@/stores/googleStore'
+import { useBackupStore } from '@/stores/backupStore'
 
 export type CloudProvider = 'google-drive' | 'dropbox' | null
 
@@ -20,66 +28,11 @@ export interface SyncResult {
   lastModified?: string
 }
 
-interface GoogleTokenResponse {
-  access_token: string
-  error?: string
-}
-
-interface GoogleTokenClient {
-  requestAccessToken: (options: { prompt: string }) => void
-}
-
-interface GoogleOAuth2 {
-  initTokenClient: (config: {
-    client_id: string
-    scope: string
-    callback: (response: GoogleTokenResponse) => void
-  }) => GoogleTokenClient
-}
-
-interface GoogleAccounts {
-  oauth2: GoogleOAuth2
-}
-
-interface GoogleIdentityServices {
-  accounts: GoogleAccounts
-}
-
-interface GapiClient {
-  init: (config: { apiKey: string; discoveryDocs: string[] }) => Promise<void>
-  setToken: (token: { access_token: string } | null) => void
-  drive: {
-    files: {
-      list: (params: { q: string; spaces: string; fields: string }) => Promise<{
-        result: { files?: Array<{ id: string; name: string; modifiedTime?: string }> }
-      }>
-      create: (params: {
-        resource: { name: string; mimeType: string }
-        fields: string
-      }) => Promise<{ result: { id: string } }>
-    }
-  }
-}
-
-interface Gapi {
-  load: (api: string, callback: () => void) => void
-  client: GapiClient
-}
-
-interface WindowWithGoogleApis extends Window {
-  gapi?: Gapi
-  google?: GoogleIdentityServices
-}
-
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || ''
 const DROPBOX_APP_KEY = import.meta.env.VITE_DROPBOX_APP_KEY || ''
 
 const BACKUP_FILENAME = 'cbtjournal-data.json'
-
-let googleTokenClient: GoogleTokenClient | null = null
-
-const getWindow = (): WindowWithGoogleApis => window as WindowWithGoogleApis
 
 export const isGoogleDriveConfigured = (): boolean => {
   return Boolean(GOOGLE_CLIENT_ID && GOOGLE_API_KEY)
@@ -89,103 +42,63 @@ export const isDropboxConfigured = (): boolean => {
   return Boolean(DROPBOX_APP_KEY)
 }
 
-export const loadGoogleApi = (): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    if (!isGoogleDriveConfigured()) {
-      reject(new Error('Google Drive is not configured'))
-      return
-    }
-
-    const win = getWindow()
-    if (win.gapi?.client?.drive) {
-      resolve()
-      return
-    }
-
-    const script = document.createElement('script')
-    script.src = 'https://apis.google.com/js/api.js'
-    script.onload = () => {
-      const gapi = win.gapi
-      if (!gapi) {
-        reject(new Error('Failed to load Google API'))
-        return
-      }
-      gapi.load('client', async () => {
-        try {
-          await gapi.client.init({
-            apiKey: GOOGLE_API_KEY,
-            discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
-          })
-          resolve()
-        } catch (err) {
-          reject(err)
-        }
-      })
-    }
-    script.onerror = reject
-    document.head.appendChild(script)
-  })
-}
-
-export const loadGoogleIdentityServices = (): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    if (!isGoogleDriveConfigured()) {
-      reject(new Error('Google Drive is not configured'))
-      return
-    }
-
-    const win = getWindow()
-    if (win.google?.accounts?.oauth2) {
-      resolve()
-      return
-    }
-
-    const script = document.createElement('script')
-    script.src = 'https://accounts.google.com/gsi/client'
-    script.onload = () => resolve()
-    script.onerror = reject
-    document.head.appendChild(script)
-  })
-}
-
 export const initGoogleDriveAuth = async (): Promise<string> => {
-  await loadGoogleApi()
-  await loadGoogleIdentityServices()
-
-  const win = getWindow()
-  if (!win.google?.accounts?.oauth2) {
-    throw new Error('Google Identity Services not loaded')
+  if (!isGoogleDriveConfigured()) {
+    throw new Error('Google Drive is not configured')
   }
 
-  return new Promise((resolve, reject) => {
-    googleTokenClient = win.google!.accounts.oauth2.initTokenClient({
-      client_id: GOOGLE_CLIENT_ID,
-      scope: 'https://www.googleapis.com/auth/drive.file',
-      callback: (response: GoogleTokenResponse) => {
-        if (response.error) {
-          logger.error('CloudSync', 'Google auth failed', response)
-          reject(new Error(response.error))
-          return
-        }
-        logger.info('CloudSync', 'Google Drive authenticated')
-        resolve(response.access_token)
-      },
-    })
+  await googleAuth.initialize()
 
-    googleTokenClient.requestAccessToken({ prompt: 'consent' })
+  const googleStore = useGoogleStore.getState()
+  let token = googleStore.accessToken
+
+  if (token && hasDriveAccess()) {
+    logger.info('CloudSync', 'Using existing Google token with Drive access')
+    return token
+  }
+
+  if (token && !hasDriveAccess()) {
+    logger.info('CloudSync', 'Requesting additional Drive scope')
+    token = await googleAuth.requestAdditionalScopes('drive')
+  } else {
+    const hasCalendar = hasCalendarAccess()
+    if (hasCalendar) {
+      token = await googleAuth.requestAdditionalScopes('drive')
+    } else {
+      token = await googleAuth.signIn('drive')
+    }
+  }
+
+  const authState = googleAuth.getState()
+  googleStore.setAuthState({
+    accessToken: authState.accessToken,
+    grantedScopes: authState.grantedScopes,
+    connectedAt: authState.connectedAt,
+    lastValidated: authState.lastValidated,
   })
+
+  startGoogleConnectionHandlers()
+
+  logger.info('CloudSync', 'Google Drive authenticated', {
+    scopes: authState.grantedScopes,
+  })
+  return token
 }
 
 export const findOrCreateGoogleDriveFile = async (accessToken: string): Promise<string> => {
-  const win = getWindow()
-  const gapi = win.gapi
-  if (!gapi?.client) {
-    throw new Error('Google API not loaded')
+  const gapi = googleAuth.getGapi()
+  if (!gapi?.client?.drive) {
+    await googleAuth.initialize()
   }
 
-  gapi.client.setToken({ access_token: accessToken })
+  const gapiClient = googleAuth.getGapi()
+  if (!gapiClient?.client?.drive) {
+    throw new Error('Google Drive API not loaded')
+  }
 
-  const searchResponse = await gapi.client.drive.files.list({
+  gapiClient.client.setToken({ access_token: accessToken })
+
+  const searchResponse = await gapiClient.client.drive.files.list({
     q: `name='${BACKUP_FILENAME}' and trashed=false`,
     spaces: 'drive',
     fields: 'files(id, name, modifiedTime)',
@@ -195,6 +108,15 @@ export const findOrCreateGoogleDriveFile = async (accessToken: string): Promise<
 
   if (files.length > 0) {
     logger.info('CloudSync', 'Found existing Google Drive file', { fileId: files[0].id })
+
+    const googleStore = useGoogleStore.getState()
+    googleStore.setDrive({
+      fileId: files[0].id,
+      fileName: BACKUP_FILENAME,
+      syncMode: 'manual',
+      syncOnStartup: true,
+    })
+
     return files[0].id
   }
 
@@ -203,12 +125,21 @@ export const findOrCreateGoogleDriveFile = async (accessToken: string): Promise<
     mimeType: 'application/json',
   }
 
-  const createResponse = await gapi.client.drive.files.create({
+  const createResponse = await gapiClient.client.drive.files.create({
     resource: metadata,
     fields: 'id',
   })
 
   logger.info('CloudSync', 'Created new Google Drive file', { fileId: createResponse.result.id })
+
+  const googleStore = useGoogleStore.getState()
+  googleStore.setDrive({
+    fileId: createResponse.result.id,
+    fileName: BACKUP_FILENAME,
+    syncMode: 'manual',
+    syncOnStartup: true,
+  })
+
   return createResponse.result.id
 }
 
@@ -231,6 +162,17 @@ export const saveToGoogleDrive = async (
     )
 
     if (!response.ok) {
+      if (response.status === 401) {
+        const googleStore = useGoogleStore.getState()
+        const newToken = await googleAuth.silentSignIn(googleStore.accessToken || undefined)
+        if (newToken) {
+          googleStore.setAuthState({
+            accessToken: newToken,
+            lastValidated: new Date().toISOString(),
+          })
+          return saveToGoogleDrive(newToken, fileId, jsonData)
+        }
+      }
       throw new Error(`Upload failed: ${response.status}`)
     }
 
@@ -256,6 +198,17 @@ export const loadFromGoogleDrive = async (
     if (!response.ok) {
       if (response.status === 404) {
         return { success: true, data: '' }
+      }
+      if (response.status === 401) {
+        const googleStore = useGoogleStore.getState()
+        const newToken = await googleAuth.silentSignIn(googleStore.accessToken || undefined)
+        if (newToken) {
+          googleStore.setAuthState({
+            accessToken: newToken,
+            lastValidated: new Date().toISOString(),
+          })
+          return loadFromGoogleDrive(newToken, fileId)
+        }
       }
       throw new Error(`Download failed: ${response.status}`)
     }
@@ -331,7 +284,6 @@ export const initDropboxAuth = async (): Promise<string> => {
           return
         }
 
-        // Validate state parameter
         const storedState = sessionStorage.getItem('dropbox_state')
         sessionStorage.removeItem('dropbox_state')
 
@@ -414,12 +366,8 @@ export const loadFromDropbox = async (accessToken: string): Promise<SyncResult> 
 
 export const disconnectCloud = async (provider: CloudProvider): Promise<void> => {
   if (provider === 'google-drive') {
-    const win = getWindow()
-    const gapi = win.gapi
-    if (gapi?.client) {
-      gapi.client.setToken(null)
-    }
-    googleTokenClient = null
+    const googleStore = useGoogleStore.getState()
+    googleStore.disconnectDrive()
   }
 
   logger.info('CloudSync', 'Disconnected from cloud', { provider })
@@ -432,31 +380,34 @@ export const reauthorizeGoogleDrive = async (): Promise<string | null> => {
   }
 
   try {
-    await loadGoogleApi()
-    await loadGoogleIdentityServices()
+    await googleAuth.initialize()
 
-    const win = getWindow()
-    if (!win.google?.accounts?.oauth2) {
-      return null
-    }
+    const googleStore = useGoogleStore.getState()
+    const existingToken = googleStore.accessToken
 
-    return new Promise((resolve) => {
-      googleTokenClient = win.google!.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_CLIENT_ID,
-        scope: 'https://www.googleapis.com/auth/drive.file',
-        callback: (response: GoogleTokenResponse) => {
-          if (response.error) {
-            logger.warn('CloudSync', 'Google re-auth failed', response)
-            resolve(null)
-            return
-          }
-          logger.info('CloudSync', 'Google Drive re-authenticated')
-          resolve(response.access_token)
-        },
+    const token = await googleAuth.silentSignIn(existingToken || undefined)
+
+    if (token) {
+      const authState = googleAuth.getState()
+      googleStore.setAuthState({
+        accessToken: authState.accessToken,
+        grantedScopes: authState.grantedScopes,
+        lastValidated: authState.lastValidated,
       })
 
-      googleTokenClient.requestAccessToken({ prompt: '' })
-    })
+      const backupStore = useBackupStore.getState()
+      backupStore.updateCloudConnection('google-drive', {
+        accessToken: token,
+        lastError: null,
+      })
+
+      startGoogleConnectionHandlers()
+
+      logger.info('CloudSync', 'Google Drive re-authenticated silently')
+      return token
+    }
+
+    return null
   } catch (error) {
     logger.error('CloudSync', 'Failed to re-authorize Google Drive', error)
     return null
@@ -464,14 +415,7 @@ export const reauthorizeGoogleDrive = async (): Promise<string | null> => {
 }
 
 export const validateGoogleToken = async (accessToken: string): Promise<boolean> => {
-  try {
-    const response = await fetch(
-      `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${accessToken}`
-    )
-    return response.ok
-  } catch {
-    return false
-  }
+  return googleAuth.validateToken(accessToken)
 }
 
 export const validateDropboxToken = async (accessToken: string): Promise<boolean> => {
@@ -525,4 +469,26 @@ export const getDropboxFileMetadata = async (
   } catch {
     return null
   }
+}
+
+export const getUnifiedGoogleToken = async (): Promise<string | null> => {
+  const googleStore = useGoogleStore.getState()
+
+  if (googleStore.accessToken) {
+    const isValid = await googleAuth.validateToken(googleStore.accessToken)
+    if (isValid) {
+      return googleStore.accessToken
+    }
+
+    const newToken = await googleAuth.silentSignIn(googleStore.accessToken)
+    if (newToken) {
+      googleStore.setAuthState({
+        accessToken: newToken,
+        lastValidated: new Date().toISOString(),
+      })
+      return newToken
+    }
+  }
+
+  return null
 }

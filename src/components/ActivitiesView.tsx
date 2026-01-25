@@ -28,7 +28,7 @@ import {
   updateCalendarEvent,
   deleteCalendarEvent,
 } from '@/utils/googleCalendar'
-import { useCalendarStore } from '@/stores/calendarStore'
+import { useGoogleStore } from '@/stores/googleStore'
 
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
@@ -78,8 +78,8 @@ function ActivityForm({
   const [notes, setNotes] = useState(existingActivity?.notes || '')
   const [syncToCalendar, setSyncToCalendar] = useState(existingActivity?.syncWithCalendar ?? false)
 
-  const { connection } = useCalendarStore()
-  const canSyncToCalendar = isCalendarConfigured() && connection?.accessToken
+  const { accessToken, calendar } = useGoogleStore()
+  const canSyncToCalendar = isCalendarConfigured() && accessToken && calendar
 
   const handleActivityChange = (value: string) => {
     setActivity(value)
@@ -123,12 +123,12 @@ function ActivityForm({
       source:
         existingActivity?.source || (initialData?.googleEventId ? 'google-calendar' : 'local'),
       googleCalendarEventId: existingActivity?.googleCalendarEventId || initialData?.googleEventId,
-      googleCalendarId: existingActivity?.googleCalendarId || connection?.selectedCalendarId,
+      googleCalendarId: existingActivity?.googleCalendarId || calendar?.selectedCalendarId,
       syncWithCalendar: syncToCalendar,
       lastSyncedAt: existingActivity?.lastSyncedAt,
     }
 
-    if (syncToCalendar && connection?.accessToken) {
+    if (syncToCalendar && accessToken && calendar) {
       try {
         const startDateTime = plannedTime ? `${date}T${plannedTime}:00` : `${date}T09:00:00`
         const endDateTime = plannedTime
@@ -140,8 +140,8 @@ function ActivityForm({
 
         if (entry.googleCalendarEventId) {
           const result = await updateCalendarEvent(
-            connection.accessToken,
-            connection.selectedCalendarId,
+            accessToken,
+            calendar.selectedCalendarId,
             entry.googleCalendarEventId,
             {
               summary: activity.trim(),
@@ -154,16 +154,12 @@ function ActivityForm({
             entry.lastSyncedAt = new Date().toISOString()
           }
         } else {
-          const result = await createCalendarEvent(
-            connection.accessToken,
-            connection.selectedCalendarId,
-            {
-              summary: activity.trim(),
-              description: notes.trim() || undefined,
-              start: { dateTime: startDateTime },
-              end: { dateTime: endDateTime },
-            }
-          )
+          const result = await createCalendarEvent(accessToken, calendar.selectedCalendarId, {
+            summary: activity.trim(),
+            description: notes.trim() || undefined,
+            start: { dateTime: startDateTime },
+            end: { dateTime: endDateTime },
+          })
 
           if (result.success && result.event) {
             entry.googleCalendarEventId = result.event.id
