@@ -4,16 +4,16 @@ import {
   fetchCalendarEvents,
   fetchUserCalendars,
   validateCalendarToken,
-  type GoogleCalendarEvent,
   type CalendarListEntry,
   getEventDateTime,
+  getEventEndDateTime,
   isAllDayEvent,
   formatEventTime,
 } from '@/utils/googleCalendar'
 import type { CalendarEventDisplay } from '@/types'
 import { logger } from '@/utils/logger'
 import { toast } from '@/stores/toastStore'
-import { format, parseISO, startOfDay, endOfDay } from 'date-fns'
+import { format, parseISO, startOfDay, endOfDay, addDays, isBefore, isEqual } from 'date-fns'
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || ''
@@ -242,14 +242,59 @@ export function useGoogleCalendar() {
           throw new Error(result.error || 'Failed to fetch events')
         }
 
-        const displayEvents: CalendarEventDisplay[] = result.events.map(
-          (event: GoogleCalendarEvent) => {
-            const eventDate = getEventDateTime(event)
-            return {
+        const displayEvents: CalendarEventDisplay[] = []
+
+        for (const event of result.events) {
+          const eventStart = getEventDateTime(event)
+          const eventEnd = getEventEndDateTime(event)
+          const eventStartDay = startOfDay(eventStart)
+          const eventEndDay = startOfDay(eventEnd)
+
+          // Check if this is a multi-day event
+          const isMultiDay = !isEqual(eventStartDay, eventEndDay)
+
+          if (isMultiDay && isAllDayEvent(event)) {
+            // For multi-day all-day events, create an entry for each day
+            // Note: Google Calendar's end date for all-day events is exclusive
+            // So a 2-day event from Jan 1-3 means Jan 1 and Jan 2 only
+            let currentDay = eventStartDay
+            const lastDay = eventEndDay // exclusive end date
+
+            while (isBefore(currentDay, lastDay)) {
+              const isFirstDay = isEqual(currentDay, eventStartDay)
+              const dayCount = Math.ceil(
+                (lastDay.getTime() - eventStartDay.getTime()) / (1000 * 60 * 60 * 24)
+              )
+              const currentDayNum =
+                Math.ceil(
+                  (currentDay.getTime() - eventStartDay.getTime()) / (1000 * 60 * 60 * 24)
+                ) + 1
+
+              displayEvents.push({
+                id: `gcal-${event.id}-${format(currentDay, 'yyyy-MM-dd')}`,
+                googleEventId: event.id,
+                title: event.summary || '(No title)',
+                date: format(currentDay, 'yyyy-MM-dd'),
+                startTime: undefined,
+                endTime: undefined,
+                isAllDay: true,
+                isMultiDay: true,
+                multiDayInfo: isFirstDay
+                  ? `Day 1 of ${dayCount}`
+                  : `Day ${currentDayNum} of ${dayCount}`,
+                description: event.description,
+                htmlLink: event.htmlLink,
+              })
+
+              currentDay = addDays(currentDay, 1)
+            }
+          } else {
+            // Single day event or timed multi-day event (show on start day only)
+            displayEvents.push({
               id: `gcal-${event.id}`,
               googleEventId: event.id,
               title: event.summary || '(No title)',
-              date: format(eventDate, 'yyyy-MM-dd'),
+              date: format(eventStart, 'yyyy-MM-dd'),
               startTime: isAllDayEvent(event) ? undefined : formatEventTime(event),
               endTime: event.end.dateTime
                 ? format(parseISO(event.end.dateTime), 'HH:mm')
@@ -257,9 +302,9 @@ export function useGoogleCalendar() {
               isAllDay: isAllDayEvent(event),
               description: event.description,
               htmlLink: event.htmlLink,
-            }
+            })
           }
-        )
+        }
 
         updateConnection({ lastSyncAt: new Date().toISOString() })
         setCalendarEvents(displayEvents)
