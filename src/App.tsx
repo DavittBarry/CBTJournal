@@ -1,5 +1,10 @@
 import { useEffect } from 'react'
 import { useAppStore, type ViewType } from '@/stores/appStore'
+import {
+  initializeGoogleConnection,
+  useGoogleStore,
+  cleanupGoogleConnection,
+} from '@/stores/googleStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { Navigation } from '@/components/Navigation'
 import { BackupReminder } from '@/components/BackupReminder'
@@ -179,6 +184,20 @@ function App() {
       })
     }
   }, [isLoading, initializeCloudSync])
+
+  useEffect(() => {
+    logger.debug('App', 'Initializing Google connection early')
+    initializeGoogleConnection().catch((error) => {
+      logger.error('App', 'Failed to initialize Google connection', error)
+    })
+  }, [])
+
+  const googleAccessToken = useGoogleStore((state) => state.accessToken)
+  useEffect(() => {
+    if (!googleAccessToken) {
+      cleanupGoogleConnection()
+    }
+  }, [googleAccessToken])
 
   useEffect(() => {
     window.scrollTo(0, 0)

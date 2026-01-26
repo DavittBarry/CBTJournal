@@ -27,6 +27,7 @@ import {
   getDropboxFileMetadata,
   reauthorizeGoogleDrive,
 } from '@/utils/cloudSync'
+import { useGoogleStore, getValidGoogleToken } from '@/stores/googleStore'
 import { logger } from '@/utils/logger'
 import { toast } from '@/stores/toastStore'
 
@@ -447,17 +448,35 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   checkCloudForUpdates: async (provider: CloudProvider) => {
     const backupState = useBackupStore.getState()
-    const connection = backupState.getCloudConnection(provider)
+    const googleStore = useGoogleStore.getState()
 
+    if (provider === 'google-drive') {
+      const driveInfo = googleStore.drive
+      if (!driveInfo?.fileId || !googleStore.accessToken) return false
+
+      try {
+        const metadata = await getGoogleDriveFileMetadata(googleStore.accessToken, driveInfo.fileId)
+        const cloudModifiedTime = metadata?.modifiedTime || null
+
+        if (!cloudModifiedTime) return false
+
+        const lastSync = driveInfo.lastSyncAt
+        if (!lastSync) return true
+
+        return new Date(cloudModifiedTime) > new Date(lastSync)
+      } catch (error) {
+        logger.error('App', 'Failed to check Google Drive for updates', error)
+        return false
+      }
+    }
+
+    const connection = backupState.getCloudConnection(provider)
     if (!connection) return false
 
     try {
       let cloudModifiedTime: string | null = null
 
-      if (connection.provider === 'google-drive' && connection.fileId) {
-        const metadata = await getGoogleDriveFileMetadata(connection.accessToken, connection.fileId)
-        cloudModifiedTime = metadata?.modifiedTime || null
-      } else if (connection.provider === 'dropbox') {
+      if (connection.provider === 'dropbox') {
         const metadata = await getDropboxFileMetadata(connection.accessToken)
         cloudModifiedTime = metadata?.server_modified || null
       }
@@ -481,6 +500,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     autoSaveDebounceTimer = setTimeout(async () => {
       const backupState = useBackupStore.getState()
+      const googleStore = useGoogleStore.getState()
       const state = get()
 
       if (backupState.autoSaveEnabled && state.fileHandle) {
@@ -517,7 +537,17 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
       }
 
-      const autoSyncConnections = backupState.cloudConnections.filter((c) => c.syncMode === 'auto')
+      if (
+        googleStore.drive?.syncMode === 'auto' &&
+        googleStore.drive?.fileId &&
+        googleStore.accessToken
+      ) {
+        await state.syncToCloud('google-drive')
+      }
+
+      const autoSyncConnections = backupState.cloudConnections.filter(
+        (c) => c.syncMode === 'auto' && c.provider !== 'google-drive'
+      )
       for (const connection of autoSyncConnections) {
         await state.syncToCloud(connection.provider)
       }
@@ -526,11 +556,64 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   syncToCloud: async (provider?: CloudProvider) => {
     const backupState = useBackupStore.getState()
+    const googleStore = useGoogleStore.getState()
 
     if (!provider) {
-      const connections = backupState.cloudConnections
-      if (connections.length === 0) return false
-      provider = connections[0].provider
+      if (googleStore.drive?.fileId && googleStore.accessToken) {
+        provider = 'google-drive'
+      } else {
+        const connections = backupState.cloudConnections
+        if (connections.length === 0) return false
+        provider = connections[0].provider
+      }
+    }
+
+    if (provider === 'google-drive') {
+      const driveInfo = googleStore.drive
+      if (!driveInfo?.fileId) {
+        logger.warn('App', 'No Google Drive file ID configured')
+        return false
+      }
+
+      const token = await getValidGoogleToken()
+      if (!token) {
+        googleStore.setLastError('Session expired. Please reconnect.')
+        toast.error('Google Drive session expired. Please reconnect in Settings.')
+        return false
+      }
+
+      googleStore.setIsSyncing(true)
+      googleStore.setLastError(null)
+
+      try {
+        const jsonData = await get().exportData()
+        const result = await saveToGoogleDrive(token, driveInfo.fileId, jsonData)
+
+        if (result.success) {
+          const now = new Date().toISOString()
+          googleStore.updateDrive({ lastSyncAt: now })
+          backupState.setLastBackupDate(now)
+          const totalEntries =
+            get().thoughtRecords.length +
+            get().depressionChecklists.length +
+            get().gratitudeEntries.length +
+            get().moodChecks.length +
+            get().activities.length +
+            get().copingSkillLogs.length
+          backupState.setTotalEntriesAtLastBackup(totalEntries)
+          logger.info('App', 'Synced to Google Drive')
+          return true
+        } else {
+          throw new Error(result.error || 'Sync failed')
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Sync failed'
+        googleStore.setLastError(message)
+        logger.error('App', 'Google Drive sync failed', error)
+        return false
+      } finally {
+        googleStore.setIsSyncing(false)
+      }
     }
 
     const connection = backupState.getCloudConnection(provider)
@@ -539,17 +622,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
 
     try {
-      let isValid = false
-      if (connection.provider === 'google-drive') {
-        isValid = await validateGoogleToken(connection.accessToken)
-      } else if (connection.provider === 'dropbox') {
-        isValid = await validateDropboxToken(connection.accessToken)
-      }
+      const isValid = await validateDropboxToken(connection.accessToken)
 
       if (!isValid) {
-        const providerName = connection.provider === 'google-drive' ? 'Google Drive' : 'Dropbox'
         backupState.setConnectionError(provider, 'Session expired. Please reconnect in Settings.')
-        toast.error(`${providerName} session expired. Please reconnect in Settings.`)
+        toast.error('Dropbox session expired. Please reconnect in Settings.')
         return false
       }
     } catch (error) {
@@ -563,15 +640,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     try {
       const jsonData = await get().exportData()
-      let result
-
-      if (connection.provider === 'google-drive' && connection.fileId) {
-        result = await saveToGoogleDrive(connection.accessToken, connection.fileId, jsonData)
-      } else if (connection.provider === 'dropbox') {
-        result = await saveToDropbox(connection.accessToken, jsonData)
-      } else {
-        throw new Error('Invalid cloud connection')
-      }
+      const result = await saveToDropbox(connection.accessToken, jsonData)
 
       if (result.success) {
         backupState.updateSyncTime(provider, new Date().toISOString())
@@ -601,11 +670,67 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   syncFromCloud: async (provider?: CloudProvider) => {
     const backupState = useBackupStore.getState()
+    const googleStore = useGoogleStore.getState()
 
     if (!provider) {
-      const connections = backupState.cloudConnections
-      if (connections.length === 0) return false
-      provider = connections[0].provider
+      if (googleStore.drive?.fileId && googleStore.accessToken) {
+        provider = 'google-drive'
+      } else {
+        const connections = backupState.cloudConnections
+        if (connections.length === 0) return false
+        provider = connections[0].provider
+      }
+    }
+
+    if (provider === 'google-drive') {
+      const driveInfo = googleStore.drive
+      if (!driveInfo?.fileId) {
+        logger.warn('App', 'No Google Drive file ID configured')
+        return false
+      }
+
+      const token = await getValidGoogleToken()
+      if (!token) {
+        googleStore.setLastError('Session expired. Please reconnect.')
+        toast.error('Google Drive session expired. Please reconnect in Settings.')
+        return false
+      }
+
+      googleStore.setIsSyncing(true)
+      googleStore.setLastError(null)
+
+      try {
+        const result = await loadFromGoogleDrive(token, driveInfo.fileId)
+
+        if (result.success) {
+          if (result.data && result.data.trim()) {
+            const parsed = JSON.parse(result.data)
+            if (
+              parsed.thoughtRecords ||
+              parsed.depressionChecklists ||
+              parsed.gratitudeEntries ||
+              parsed.moodChecks ||
+              parsed.activities
+            ) {
+              await get().importData(result.data, 'replace')
+              toast.success('Data synced from Google Drive')
+            }
+          }
+          googleStore.updateDrive({ lastSyncAt: new Date().toISOString() })
+          logger.info('App', 'Synced from Google Drive')
+          return true
+        } else {
+          throw new Error(result.error || 'Sync failed')
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Sync failed'
+        googleStore.setLastError(message)
+        logger.error('App', 'Google Drive sync from failed', error)
+        toast.error('Failed to sync from Google Drive')
+        return false
+      } finally {
+        googleStore.setIsSyncing(false)
+      }
     }
 
     const connection = backupState.getCloudConnection(provider)
@@ -614,17 +739,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
 
     try {
-      let isValid = false
-      if (connection.provider === 'google-drive') {
-        isValid = await validateGoogleToken(connection.accessToken)
-      } else if (connection.provider === 'dropbox') {
-        isValid = await validateDropboxToken(connection.accessToken)
-      }
+      const isValid = await validateDropboxToken(connection.accessToken)
 
       if (!isValid) {
-        const providerName = connection.provider === 'google-drive' ? 'Google Drive' : 'Dropbox'
         backupState.setConnectionError(provider, 'Session expired. Please reconnect in Settings.')
-        toast.error(`${providerName} session expired. Please reconnect in Settings.`)
+        toast.error('Dropbox session expired. Please reconnect in Settings.')
         return false
       }
     } catch (error) {
@@ -637,15 +756,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     backupState.setConnectionError(provider, null)
 
     try {
-      let result
-
-      if (connection.provider === 'google-drive' && connection.fileId) {
-        result = await loadFromGoogleDrive(connection.accessToken, connection.fileId)
-      } else if (connection.provider === 'dropbox') {
-        result = await loadFromDropbox(connection.accessToken)
-      } else {
-        throw new Error('Invalid cloud connection')
-      }
+      const result = await loadFromDropbox(connection.accessToken)
 
       if (result.success) {
         if (result.data && result.data.trim()) {
@@ -658,9 +769,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             parsed.activities
           ) {
             await get().importData(result.data, 'replace')
-            toast.success(
-              `Data synced from ${connection.provider === 'google-drive' ? 'Google Drive' : 'Dropbox'}`
-            )
+            toast.success('Data synced from Dropbox')
           }
         }
         backupState.updateSyncTime(provider, new Date().toISOString())
@@ -673,9 +782,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const message = error instanceof Error ? error.message : 'Sync failed'
       backupState.setConnectionError(provider, message)
       logger.error('App', 'Cloud sync from failed', { provider, error })
-      toast.error(
-        `Failed to sync from ${connection.provider === 'google-drive' ? 'Google Drive' : 'Dropbox'}`
-      )
+      toast.error('Failed to sync from Dropbox')
       return false
     } finally {
       backupState.setIsSyncing(false)
