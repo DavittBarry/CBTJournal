@@ -1335,7 +1335,7 @@ export function ActivitiesView() {
     activity: ActivityEntry,
     options?: { removeAfter?: boolean; deleteFromCalendar?: boolean }
   ) => {
-    const { connection } = useCalendarStore.getState()
+    const { accessToken, calendar } = useGoogleStore.getState()
 
     const updatedActivity = { ...activity }
 
@@ -1345,11 +1345,11 @@ export function ActivitiesView() {
 
     await updateActivity(updatedActivity)
 
-    if (options?.deleteFromCalendar && activity.googleCalendarEventId && connection?.accessToken) {
+    if (options?.deleteFromCalendar && activity.googleCalendarEventId && accessToken && calendar) {
       try {
         await deleteCalendarEvent(
-          connection.accessToken,
-          connection.selectedCalendarId,
+          accessToken,
+          calendar.selectedCalendarId,
           activity.googleCalendarEventId
         )
         toast.success('Deleted from Google Calendar')

@@ -20,7 +20,6 @@ import {
   disconnectCloud as disconnectCloudProvider,
 } from '@/utils/cloudSync'
 import { GoogleConnectionCard } from '@/components/GoogleConnectionCard'
-import { useGoogleStore, hasDriveAccess } from '@/stores/googleStore'
 
 type ImportStep = 'idle' | 'choose-mode' | 'confirm-replace'
 

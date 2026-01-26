@@ -17,7 +17,6 @@ export function GoogleConnectionCard() {
   const {
     accessToken,
     grantedScopes,
-    connectedAt,
     lastValidated,
     lastError,
     calendar,
