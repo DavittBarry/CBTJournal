@@ -127,7 +127,7 @@ export function useGoogle() {
     logger.info('useGoogle', 'Drive setup complete', { fileId })
   }
 
-  const findOrCreateDriveFile = async (token: string): Promise<string> => {
+  const findOrCreateDriveFile = async (_token: string): Promise<string> => {
     const gapi = googleAuth.getGapi()
     if (!gapi?.client?.drive) {
       await googleAuth.initialize()
