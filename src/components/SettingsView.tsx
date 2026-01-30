@@ -384,7 +384,6 @@ export function SettingsView() {
       })
 
       toast.success('Connected to Dropbox')
-      setShowCloudSyncOptions(false)
     } catch (error) {
       if (error instanceof Error && error.message !== 'Authentication cancelled') {
         toast.error('Failed to connect to Dropbox')

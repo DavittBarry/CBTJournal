@@ -171,9 +171,9 @@ export function useGoogle() {
     store.setLastError(null)
 
     try {
-      const token = await googleAuth.silentSignIn(store.accessToken || undefined)
+      const silentToken = await googleAuth.silentSignIn(store.accessToken || undefined)
 
-      if (!token) {
+      if (!silentToken) {
         const newToken = await googleAuth.signIn('both')
         const authState = googleAuth.getState()
         store.setAuthState({
