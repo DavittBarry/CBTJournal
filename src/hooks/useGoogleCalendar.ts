@@ -1,9 +1,13 @@
-import { useState, useCallback } from 'react'
-import { useCalendarStore } from '@/stores/calendarStore'
+import { useState, useCallback, useEffect } from 'react'
+import {
+  useGoogleStore,
+  getValidGoogleToken,
+  startGoogleConnectionHandlers,
+} from '@/stores/googleStore'
+import { googleAuth } from '@/services/googleAuth'
 import {
   fetchCalendarEvents,
   fetchUserCalendars,
-  validateCalendarToken,
   type CalendarListEntry,
   getEventDateTime,
   getEventEndDateTime,
@@ -15,106 +19,35 @@ import { logger } from '@/utils/logger'
 import { toast } from '@/stores/toastStore'
 import { format, parseISO, startOfDay, endOfDay, addDays, isBefore, isEqual } from 'date-fns'
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
-const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || ''
-
-interface GoogleTokenResponse {
-  access_token: string
-  error?: string
-}
-
-interface GoogleTokenClient {
-  requestAccessToken: (options: { prompt: string }) => void
-}
-
-interface GoogleOAuth2 {
-  initTokenClient: (config: {
-    client_id: string
-    scope: string
-    callback: (response: GoogleTokenResponse) => void
-  }) => GoogleTokenClient
-}
-
-interface GoogleAccounts {
-  oauth2: GoogleOAuth2
-}
-
-interface GoogleIdentityServices {
-  accounts: GoogleAccounts
-}
-
-interface WindowWithGoogle extends Window {
-  google?: GoogleIdentityServices
-}
-
-const CALENDAR_SCOPE =
-  'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly'
-
-let tokenClient: GoogleTokenClient | null = null
-
-const loadGoogleIdentityServices = (): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    const win = window as WindowWithGoogle
-    if (win.google?.accounts?.oauth2) {
-      resolve()
-      return
-    }
-
-    if (document.querySelector('script[src="https://accounts.google.com/gsi/client"]')) {
-      const checkLoaded = setInterval(() => {
-        if (win.google?.accounts?.oauth2) {
-          clearInterval(checkLoaded)
-          resolve()
-        }
-      }, 100)
-      setTimeout(() => {
-        clearInterval(checkLoaded)
-        reject(new Error('Timeout loading Google Identity Services'))
-      }, 10000)
-      return
-    }
-
-    const script = document.createElement('script')
-    script.src = 'https://accounts.google.com/gsi/client'
-    script.onload = () => {
-      const checkLoaded = setInterval(() => {
-        if (win.google?.accounts?.oauth2) {
-          clearInterval(checkLoaded)
-          resolve()
-        }
-      }, 100)
-      setTimeout(() => {
-        clearInterval(checkLoaded)
-        reject(new Error('Timeout loading Google Identity Services'))
-      }, 5000)
-    }
-    script.onerror = () => reject(new Error('Failed to load Google Identity Services'))
-    document.head.appendChild(script)
-  })
-}
-
 export const isCalendarConfigured = (): boolean => {
-  return Boolean(GOOGLE_CLIENT_ID && GOOGLE_API_KEY)
+  return googleAuth.isConfigured()
 }
 
 export function useGoogleCalendar() {
   const {
-    connection,
-    availableCalendars,
+    accessToken,
+    grantedScopes,
+    calendar,
     isConnecting,
     isSyncing,
     showCalendarEvents,
-    setConnection,
-    updateConnection,
-    setAvailableCalendars,
+    lastError,
+    setAuthState,
+    setCalendar,
+    updateCalendar,
     setIsConnecting,
     setIsSyncing,
     setShowCalendarEvents,
     setLastError,
-    disconnect,
-  } = useCalendarStore()
+    disconnectCalendar,
+  } = useGoogleStore()
 
   const [calendarEvents, setCalendarEvents] = useState<CalendarEventDisplay[]>([])
+  const [availableCalendars, setAvailableCalendars] = useState<CalendarListEntry[]>([])
+
+  const hasCalendarAccess = grantedScopes.some(
+    (s) => s.includes('calendar.events') || s.includes('calendar.readonly')
+  )
 
   const connect = useCallback(async (): Promise<boolean> => {
     if (!isCalendarConfigured()) {
@@ -126,101 +59,120 @@ export function useGoogleCalendar() {
     setLastError(null)
 
     try {
-      await loadGoogleIdentityServices()
+      await googleAuth.initialize()
 
-      const win = window as WindowWithGoogle
-      if (!win.google?.accounts?.oauth2) {
-        throw new Error('Google Identity Services not available')
+      let token = accessToken
+
+      if (!token || !hasCalendarAccess) {
+        if (token && !hasCalendarAccess) {
+          token = await googleAuth.requestAdditionalScopes('calendar')
+        } else {
+          token = await googleAuth.signIn('calendar')
+        }
       }
 
-      return new Promise((resolve) => {
-        tokenClient = win.google!.accounts.oauth2.initTokenClient({
-          client_id: GOOGLE_CLIENT_ID,
-          scope: CALENDAR_SCOPE,
-          callback: async (response: GoogleTokenResponse) => {
-            if (response.error) {
-              logger.error('Calendar', 'Auth failed', response)
-              setLastError(response.error)
-              toast.error('Failed to connect to Google Calendar')
-              setIsConnecting(false)
-              resolve(false)
-              return
-            }
-
-            try {
-              const calendarsResult = await fetchUserCalendars(response.access_token)
-              if (!calendarsResult.success || !calendarsResult.calendars) {
-                throw new Error(calendarsResult.error || 'Failed to fetch calendars')
-              }
-
-              setAvailableCalendars(calendarsResult.calendars)
-
-              const primaryCalendar =
-                calendarsResult.calendars.find((c) => c.primary) || calendarsResult.calendars[0]
-
-              if (!primaryCalendar) {
-                throw new Error('No calendars found')
-              }
-
-              setConnection({
-                accessToken: response.access_token,
-                connectedAt: new Date().toISOString(),
-                selectedCalendarId: primaryCalendar.id,
-                selectedCalendarName: primaryCalendar.summary,
-              })
-
-              logger.info('Calendar', 'Connected successfully', {
-                calendarId: primaryCalendar.id,
-              })
-              toast.success('Connected to Google Calendar')
-              setIsConnecting(false)
-              resolve(true)
-            } catch (error) {
-              logger.error('Calendar', 'Post-auth setup failed', error)
-              setLastError(String(error))
-              toast.error('Failed to set up calendar connection')
-              setIsConnecting(false)
-              resolve(false)
-            }
-          },
-        })
-
-        tokenClient.requestAccessToken({ prompt: 'consent' })
+      const authState = googleAuth.getState()
+      setAuthState({
+        accessToken: authState.accessToken,
+        grantedScopes: authState.grantedScopes,
+        connectedAt: authState.connectedAt,
+        lastValidated: authState.lastValidated,
       })
+
+      const calendarsResult = await fetchUserCalendars(token)
+      if (!calendarsResult.success || !calendarsResult.calendars) {
+        throw new Error(calendarsResult.error || 'Failed to fetch calendars')
+      }
+
+      setAvailableCalendars(calendarsResult.calendars)
+
+      const primaryCalendar =
+        calendarsResult.calendars.find((c) => c.primary) || calendarsResult.calendars[0]
+
+      if (!primaryCalendar) {
+        throw new Error('No calendars found')
+      }
+
+      setCalendar({
+        selectedCalendarId: primaryCalendar.id,
+        selectedCalendarName: primaryCalendar.summary,
+      })
+
+      startGoogleConnectionHandlers()
+
+      logger.info('Calendar', 'Connected successfully', {
+        calendarId: primaryCalendar.id,
+      })
+      toast.success('Connected to Google Calendar')
+      setIsConnecting(false)
+      return true
     } catch (error) {
       logger.error('Calendar', 'Connection failed', error)
       setLastError(String(error))
-      toast.error('Failed to connect to Google Calendar')
+      if (error instanceof Error && error.message !== 'popup_closed_by_user') {
+        toast.error('Failed to connect to Google Calendar')
+      }
       setIsConnecting(false)
       return false
     }
-  }, [setConnection, setAvailableCalendars, setIsConnecting, setLastError])
+  }, [accessToken, hasCalendarAccess, setAuthState, setCalendar, setIsConnecting, setLastError])
 
   const validateConnection = useCallback(async (): Promise<boolean> => {
-    if (!connection?.accessToken) {
+    const token = await getValidGoogleToken()
+    if (!token) {
+      setLastError('Session expired')
       return false
     }
+    return true
+  }, [setLastError])
+
+  const refreshConnectionSilently = useCallback(async (): Promise<boolean> => {
+    if (!calendar) return false
 
     try {
-      const isValid = await validateCalendarToken(connection.accessToken)
-      if (!isValid) {
-        setLastError('Session expired')
-        return false
+      const token = await getValidGoogleToken()
+      if (token) {
+        const authState = googleAuth.getState()
+        setAuthState({
+          accessToken: authState.accessToken,
+          grantedScopes: authState.grantedScopes,
+          lastValidated: authState.lastValidated,
+        })
+
+        if (authState.grantedScopes.some((s) => s.includes('calendar'))) {
+          const calendarsResult = await fetchUserCalendars(token)
+          if (calendarsResult.success && calendarsResult.calendars) {
+            setAvailableCalendars(calendarsResult.calendars)
+          }
+        }
+
+        return true
       }
-      return true
-    } catch {
+      return false
+    } catch (error) {
+      logger.debug('Calendar', 'Silent refresh failed', error)
       return false
     }
-  }, [connection?.accessToken, setLastError])
+  }, [calendar, setAuthState])
+
+  useEffect(() => {
+    if (calendar && accessToken && hasCalendarAccess && availableCalendars.length === 0) {
+      fetchUserCalendars(accessToken).then((result) => {
+        if (result.success && result.calendars) {
+          setAvailableCalendars(result.calendars)
+        }
+      })
+    }
+  }, [calendar, accessToken, hasCalendarAccess, availableCalendars.length])
 
   const fetchEvents = useCallback(
     async (startDate: Date, endDate: Date): Promise<CalendarEventDisplay[]> => {
-      if (!connection?.accessToken || !connection.selectedCalendarId) {
+      if (!calendar?.selectedCalendarId) {
         return []
       }
 
-      const isValid = await validateConnection()
-      if (!isValid) {
+      const token = await getValidGoogleToken()
+      if (!token) {
         toast.warning('Calendar session expired. Please reconnect.')
         return []
       }
@@ -232,8 +184,8 @@ export function useGoogleCalendar() {
         const timeMax = endOfDay(endDate).toISOString()
 
         const result = await fetchCalendarEvents(
-          connection.accessToken,
-          connection.selectedCalendarId,
+          token,
+          calendar.selectedCalendarId,
           timeMin,
           timeMax
         )
@@ -250,15 +202,11 @@ export function useGoogleCalendar() {
           const eventStartDay = startOfDay(eventStart)
           const eventEndDay = startOfDay(eventEnd)
 
-          // Check if this is a multi-day event
           const isMultiDay = !isEqual(eventStartDay, eventEndDay)
 
           if (isMultiDay && isAllDayEvent(event)) {
-            // For multi-day all-day events, create an entry for each day
-            // Note: Google Calendar's end date for all-day events is exclusive
-            // So a 2-day event from Jan 1-3 means Jan 1 and Jan 2 only
             let currentDay = eventStartDay
-            const lastDay = eventEndDay // exclusive end date
+            const lastDay = eventEndDay
 
             while (isBefore(currentDay, lastDay)) {
               const isFirstDay = isEqual(currentDay, eventStartDay)
@@ -289,7 +237,6 @@ export function useGoogleCalendar() {
               currentDay = addDays(currentDay, 1)
             }
           } else {
-            // Single day event or timed multi-day event (show on start day only)
             displayEvents.push({
               id: `gcal-${event.id}`,
               googleEventId: event.id,
@@ -306,7 +253,7 @@ export function useGoogleCalendar() {
           }
         }
 
-        updateConnection({ lastSyncAt: new Date().toISOString() })
+        updateCalendar({ lastSyncAt: new Date().toISOString() })
         setCalendarEvents(displayEvents)
         setIsSyncing(false)
 
@@ -318,40 +265,42 @@ export function useGoogleCalendar() {
         return []
       }
     },
-    [
-      connection?.accessToken,
-      connection?.selectedCalendarId,
-      validateConnection,
-      updateConnection,
-      setIsSyncing,
-      setLastError,
-    ]
+    [calendar?.selectedCalendarId, updateCalendar, setIsSyncing, setLastError]
   )
 
   const selectCalendar = useCallback(
-    (calendar: CalendarListEntry) => {
-      updateConnection({
-        selectedCalendarId: calendar.id,
-        selectedCalendarName: calendar.summary,
+    (cal: CalendarListEntry) => {
+      setCalendar({
+        selectedCalendarId: cal.id,
+        selectedCalendarName: cal.summary,
       })
       setCalendarEvents([])
     },
-    [updateConnection]
+    [setCalendar]
   )
 
   const handleDisconnect = useCallback(() => {
-    disconnect()
+    disconnectCalendar()
     setCalendarEvents([])
-    tokenClient = null
+    setAvailableCalendars([])
     toast.info('Disconnected from Google Calendar')
-  }, [disconnect])
+  }, [disconnectCalendar])
 
   return {
     isConfigured: isCalendarConfigured(),
-    isConnected: Boolean(connection?.accessToken),
+    isConnected: Boolean(accessToken && calendar && hasCalendarAccess),
     isConnecting,
     isSyncing,
-    connection,
+    connection: calendar
+      ? {
+          accessToken,
+          connectedAt: useGoogleStore.getState().connectedAt || '',
+          selectedCalendarId: calendar.selectedCalendarId,
+          selectedCalendarName: calendar.selectedCalendarName,
+          lastSyncAt: calendar.lastSyncAt,
+          lastError: lastError || undefined,
+        }
+      : null,
     availableCalendars,
     calendarEvents,
     showCalendarEvents,
@@ -361,5 +310,6 @@ export function useGoogleCalendar() {
     selectCalendar,
     setShowCalendarEvents,
     validateConnection,
+    refreshConnectionSilently,
   }
 }
