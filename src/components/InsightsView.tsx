@@ -225,18 +225,36 @@ export function InsightsView() {
       .slice(-20)
 
     return sorted.map((record) => {
-      const maxBefore =
-        record.emotions.length > 0 ? Math.max(...record.emotions.map((e) => e.intensity)) : 0
-      const maxAfter =
-        record.outcomeEmotions.length > 0 && record.outcomeEmotions[0].name
-          ? Math.max(...record.outcomeEmotions.map((e) => e.intensity))
-          : null
+      const avgBefore =
+        record.emotions.length > 0
+          ? Math.round(
+              record.emotions.reduce((sum, e) => sum + e.intensity, 0) / record.emotions.length
+            )
+          : 0
+
+      // Only compute "after" when outcome emotions match initial ones (same names re-rated)
+      let avgAfter: number | null = null
+      if (record.outcomeEmotions.length > 0 && record.outcomeEmotions[0].name) {
+        const matches: { before: number; after: number }[] = []
+        for (const oe of record.outcomeEmotions) {
+          if (!oe.name.trim()) continue
+          const initial = record.emotions.find(
+            (e) => e.name.trim().toLowerCase() === oe.name.trim().toLowerCase()
+          )
+          if (initial) {
+            matches.push({ before: initial.intensity, after: oe.intensity })
+          }
+        }
+        if (matches.length > 0) {
+          avgAfter = Math.round(matches.reduce((sum, m) => sum + m.after, 0) / matches.length)
+        }
+      }
 
       return {
         date: format(parseISO(record.date), 'MMM d'),
-        before: maxBefore,
-        after: maxAfter,
-        improvement: maxAfter !== null ? maxBefore - maxAfter : null,
+        before: avgBefore,
+        after: avgAfter,
+        improvement: avgAfter !== null ? avgBefore - avgAfter : null,
       }
     })
   }, [thoughtRecords])
@@ -444,12 +462,10 @@ export function InsightsView() {
                 </div>
                 <div className="card p-4">
                   <div className="text-2xl font-semibold text-sage-600 dark:text-sage-400">
-                    {progressMetrics.avgWellnessAllTime > 0
-                      ? progressMetrics.avgWellnessAllTime
-                      : '—'}
+                    {progressMetrics.completionRate}%
                   </div>
                   <div className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-                    Wellness score
+                    Completion rate
                   </div>
                 </div>
               </>
@@ -567,18 +583,9 @@ export function InsightsView() {
               </div>
               <div className="card p-5">
                 <div className="text-3xl font-semibold text-sage-600 dark:text-sage-400">
-                  {progressMetrics.avgWellnessAllTime > 0
-                    ? progressMetrics.avgWellnessAllTime
-                    : '—'}
+                  {progressMetrics.recordsLast30Days}
                 </div>
-                <div className="text-sm text-stone-500 dark:text-stone-400 mt-1">
-                  Wellness score
-                </div>
-                {progressMetrics.avgImprovementAllTime > 0 && (
-                  <div className="text-xs text-helpful-500 mt-0.5">
-                    ↓{progressMetrics.avgImprovementAllTime}% neg. reduction
-                  </div>
-                )}
+                <div className="text-sm text-stone-500 dark:text-stone-400 mt-1">Last 30 days</div>
               </div>
               <div className="card p-5">
                 <div className="text-3xl font-semibold text-stone-800 dark:text-stone-100">
@@ -605,7 +612,7 @@ export function InsightsView() {
                 </h2>
                 <StatInfoButton
                   title="Emotional intensity"
-                  content="Shows intensity before and after thought records. A widening gap indicates CBT is becoming more effective."
+                  content="Shows average emotional intensity for each record. The 'after' line appears when you re-rate the same emotions, showing how much they shifted."
                 />
               </div>
               <div className="h-48 sm:h-56">
