@@ -158,8 +158,6 @@ export function HomeView() {
 
   // Render the small card content (reused in both normal and expanded states)
   const renderSmallCardContent = (record: (typeof filteredRecords)[0], isExpanded: boolean) => {
-    const changes = getEmotionChanges(record)
-    const wellnessScore = getWellnessScore(record)
     const hasOutcome = record.outcomeEmotions.length > 0 && !!record.outcomeEmotions[0]?.name
 
     return (
@@ -193,108 +191,101 @@ export function HomeView() {
           </div>
         </div>
 
-        {/* Emotion tags - limit to 3 when collapsed */}
-        <div className="flex-shrink-0 mt-4">
-          <div className="flex flex-wrap gap-1.5">
-            {(isExpanded ? record.emotions : record.emotions.slice(0, 3)).map((emotion, i) => (
-              <span
-                key={i}
-                className="text-xs bg-warm-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-2.5 py-1 rounded-full"
-              >
-                {emotion.name} {emotion.intensity}%
-              </span>
-            ))}
-            {!isExpanded && record.emotions.length > 3 && (
-              <span className="text-xs text-stone-400 dark:text-stone-500 px-1 py-1">
-                +{record.emotions.length - 3} more
-              </span>
-            )}
-          </div>
-        </div>
-
         {/* Spacer */}
         <div className="flex-grow min-h-3" />
 
-        {/* Before/After panel */}
-        {hasOutcome &&
+        {/* Before/After panels */}
+        {hasOutcome ? (
           (() => {
-            const hasMatches = changes.length > 0
-            const avgBefore = hasMatches
-              ? Math.round(changes.reduce((sum, c) => sum + c.before, 0) / changes.length)
-              : Math.round(
-                  record.emotions.reduce((sum, e) => sum + e.intensity, 0) / record.emotions.length
-                )
-            const avgAfter = hasMatches
-              ? Math.round(changes.reduce((sum, c) => sum + c.after, 0) / changes.length)
-              : Math.round(
-                  record.outcomeEmotions
-                    .filter((e) => e.name.trim())
-                    .reduce((sum, e) => sum + e.intensity, 0) /
-                    record.outcomeEmotions.filter((e) => e.name.trim()).length
-                )
+            const outcomeFiltered = record.outcomeEmotions.filter((e) => e.name.trim())
+            const showEmotions = isExpanded ? record.emotions : record.emotions.slice(0, 3)
+            const showOutcome = isExpanded ? outcomeFiltered : outcomeFiltered.slice(0, 3)
             return (
-              <div className="flex-shrink-0 mt-4">
-                <div className="flex items-center gap-2 py-2 px-3 bg-stone-50 dark:bg-stone-700/50 rounded-lg text-xs">
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium">
+              <div className="flex-shrink-0 mt-3 space-y-1.5">
+                <div className="py-1.5 px-3 bg-critical-50 dark:bg-critical-900/10 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium flex-shrink-0">
                       Before
                     </span>
-                    <span className="font-semibold text-critical-500 dark:text-critical-400">
-                      {avgBefore}%
-                    </span>
+                    <div className="flex flex-wrap gap-1 min-w-0">
+                      {showEmotions.map((e, i) => (
+                        <span
+                          key={i}
+                          className="text-xs text-critical-700 dark:text-critical-300 bg-critical-100 dark:bg-critical-900/20 px-2 py-0.5 rounded-full whitespace-nowrap"
+                        >
+                          {e.name} {e.intensity}%
+                        </span>
+                      ))}
+                      {!isExpanded && record.emotions.length > 3 && (
+                        <span className="text-xs text-stone-400 dark:text-stone-500">
+                          +{record.emotions.length - 3}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <svg
-                    className="w-3 h-3 text-stone-300 dark:text-stone-600 flex-shrink-0"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M5 12h14M12 5l7 7-7 7" />
-                  </svg>
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium">
+                </div>
+                <div className="py-1.5 px-3 bg-helpful-50 dark:bg-helpful-900/10 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium flex-shrink-0">
                       After
                     </span>
-                    <span className="font-semibold text-helpful-600 dark:text-helpful-500">
-                      {avgAfter}%
-                    </span>
+                    <div className="flex flex-wrap gap-1 min-w-0">
+                      {showOutcome.map((e, i) => (
+                        <span
+                          key={i}
+                          className="text-xs text-helpful-700 dark:text-helpful-300 bg-helpful-100 dark:bg-helpful-900/20 px-2 py-0.5 rounded-full whitespace-nowrap"
+                        >
+                          {e.name} {e.intensity}%
+                        </span>
+                      ))}
+                      {!isExpanded && outcomeFiltered.length > 3 && (
+                        <span className="text-xs text-stone-400 dark:text-stone-500">
+                          +{outcomeFiltered.length - 3}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  {avgBefore > avgAfter && (
-                    <span className="ml-auto font-medium text-stone-500 dark:text-stone-400 whitespace-nowrap">
-                      {avgBefore - avgAfter}% better
-                    </span>
-                  )}
-                  {wellnessScore > 0 && (
-                    <span
-                      className="ml-auto font-medium text-sage-600 dark:text-sage-400 whitespace-nowrap"
-                      title="Wellness: negative reduction (70%) + new positive feelings (30%)"
-                    >
-                      w{wellnessScore}
-                    </span>
-                  )}
                 </div>
               </div>
             )
-          })()}
-
-        {/* Incomplete indicator - no outcome emotions */}
-        {!hasOutcome && (
-          <div className="flex-shrink-0 mt-4">
-            <div className="flex items-center gap-1.5 py-1.5 px-3 bg-amber-50/60 dark:bg-amber-900/10 border border-amber-200/50 dark:border-amber-800/30 rounded-lg text-xs text-amber-600 dark:text-amber-400">
-              <svg
-                className="w-3.5 h-3.5 flex-shrink-0"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 8v4M12 16h.01" />
-              </svg>
-              <span>Edit to re-rate emotions</span>
+          })()
+        ) : (
+          <>
+            {/* Emotion tags when no outcome */}
+            <div className="flex-shrink-0 mt-3">
+              <div className="flex flex-wrap gap-1.5">
+                {(isExpanded ? record.emotions : record.emotions.slice(0, 3)).map((emotion, i) => (
+                  <span
+                    key={i}
+                    className="text-xs bg-warm-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-2.5 py-1 rounded-full"
+                  >
+                    {emotion.name} {emotion.intensity}%
+                  </span>
+                ))}
+                {!isExpanded && record.emotions.length > 3 && (
+                  <span className="text-xs text-stone-400 dark:text-stone-500 px-1 py-1">
+                    +{record.emotions.length - 3} more
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
+            {/* Incomplete indicator */}
+            <div className="flex-shrink-0 mt-3">
+              <div className="flex items-center gap-1.5 py-1.5 px-3 bg-amber-50/60 dark:bg-amber-900/10 border border-amber-200/50 dark:border-amber-800/30 rounded-lg text-xs text-amber-600 dark:text-amber-400">
+                <svg
+                  className="w-3.5 h-3.5 flex-shrink-0"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 8v4M12 16h.01" />
+                </svg>
+                <span>Edit to re-rate emotions</span>
+              </div>
+            </div>
+          </>
         )}
 
         {/* Distortions */}
