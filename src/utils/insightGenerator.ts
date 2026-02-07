@@ -28,10 +28,13 @@ export interface ProgressMetrics {
   recordsLast7Days: number
   avgImprovementAllTime: number
   avgImprovementRecent: number
+  avgWellnessAllTime: number
+  avgWellnessRecent: number
   completionRate: number
   streak: number
   longestStreak: number
   bestImprovement: { date: string; improvement: number; situation: string }
+  bestWellness: { date: string; wellness: number; situation: string }
   recentWins: { date: string; improvement: number; emotion: string }[]
 }
 
@@ -324,6 +327,29 @@ function extractCommonThemes(situations: string[]): string[] {
     .map(([theme]) => theme)
 }
 
+/**
+ * Calculate a combined wellness score for a single thought record.
+ * Formula: (negativeReduction * 0.7) + (positiveEmergence * 0.3)
+ * - negativeReduction: avg improvement across matched emotions (clamped 0-100)
+ * - positiveEmergence: avg intensity of newEmotions (0-100), or 0 if none
+ * Backward-compatible: records without newEmotions get positiveEmergence=0.
+ */
+export function calculateWellnessScore(
+  improvement: number,
+  newEmotions?: { name: string; intensity: number }[]
+): number {
+  const negativeReduction = Math.max(0, Math.min(100, improvement))
+  const validNewEmotions = (newEmotions || []).filter((e) => e.name.trim())
+  const positiveEmergence =
+    validNewEmotions.length > 0
+      ? Math.round(
+          validNewEmotions.reduce((sum, e) => sum + e.intensity, 0) / validNewEmotions.length
+        )
+      : 0
+
+  return Math.round(negativeReduction * 0.7 + positiveEmergence * 0.3)
+}
+
 export function generateProgressMetrics(records: ThoughtRecord[]): ProgressMetrics | null {
   if (records.length === 0) return null
 
@@ -344,8 +370,13 @@ export function generateProgressMetrics(records: ThoughtRecord[]): ProgressMetri
   let improvementCount = 0
   let recentImprovement = 0
   let recentImprovementCount = 0
+  let totalWellness = 0
+  let wellnessCount = 0
+  let recentWellness = 0
+  let recentWellnessCount = 0
   let completedRecords = 0
   let bestImprovement = { date: '', improvement: 0, situation: '' }
+  let bestWellness = { date: '', wellness: 0, situation: '' }
   const recentWins: { date: string; improvement: number; emotion: string }[] = []
 
   for (const record of records) {
@@ -355,32 +386,68 @@ export function generateProgressMetrics(records: ThoughtRecord[]): ProgressMetri
       record.outcomeEmotions[0].name
     ) {
       completedRecords++
-      const maxInitial = Math.max(...record.emotions.map((e) => e.intensity))
-      const maxOutcome = Math.max(...record.outcomeEmotions.map((e) => e.intensity))
-      const improvement = maxInitial - maxOutcome
 
-      totalImprovement += improvement
-      improvementCount++
-
-      if (differenceInDays(now, parseISO(record.date)) <= 30) {
-        recentImprovement += improvement
-        recentImprovementCount++
-      }
-
-      if (improvement > bestImprovement.improvement) {
-        bestImprovement = {
-          date: record.date,
-          improvement,
-          situation: record.situation.slice(0, 60) + (record.situation.length > 60 ? '...' : ''),
+      const matches: { name: string; before: number; after: number; diff: number }[] = []
+      for (const oe of record.outcomeEmotions) {
+        if (!oe.name.trim()) continue
+        const initial = record.emotions.find(
+          (e) => e.name.trim().toLowerCase() === oe.name.trim().toLowerCase()
+        )
+        if (initial) {
+          matches.push({
+            name: oe.name,
+            before: initial.intensity,
+            after: oe.intensity,
+            diff: initial.intensity - oe.intensity,
+          })
         }
       }
 
-      if (improvement >= 30 && differenceInDays(now, parseISO(record.date)) <= 14) {
-        recentWins.push({
-          date: record.date,
-          improvement,
-          emotion: record.emotions[0].name,
-        })
+      const improvement =
+        matches.length > 0
+          ? Math.round(matches.reduce((sum, m) => sum + m.diff, 0) / matches.length)
+          : 0
+
+      if (matches.length > 0) {
+        totalImprovement += improvement
+        improvementCount++
+
+        // Calculate wellness score (combines negative reduction + positive emergence)
+        const wellness = calculateWellnessScore(improvement, record.newEmotions)
+        totalWellness += wellness
+        wellnessCount++
+
+        if (differenceInDays(now, parseISO(record.date)) <= 30) {
+          recentImprovement += improvement
+          recentImprovementCount++
+          recentWellness += wellness
+          recentWellnessCount++
+        }
+
+        if (improvement > bestImprovement.improvement) {
+          bestImprovement = {
+            date: record.date,
+            improvement,
+            situation: record.situation.slice(0, 60) + (record.situation.length > 60 ? '...' : ''),
+          }
+        }
+
+        if (wellness > bestWellness.wellness) {
+          bestWellness = {
+            date: record.date,
+            wellness,
+            situation: record.situation.slice(0, 60) + (record.situation.length > 60 ? '...' : ''),
+          }
+        }
+
+        const bestMatch = matches.reduce((best, m) => (m.diff > best.diff ? m : best), matches[0])
+        if (bestMatch.diff >= 30 && differenceInDays(now, parseISO(record.date)) <= 14) {
+          recentWins.push({
+            date: record.date,
+            improvement: bestMatch.diff,
+            emotion: bestMatch.name,
+          })
+        }
       }
     }
   }
@@ -395,10 +462,14 @@ export function generateProgressMetrics(records: ThoughtRecord[]): ProgressMetri
       improvementCount > 0 ? Math.round(totalImprovement / improvementCount) : 0,
     avgImprovementRecent:
       recentImprovementCount > 0 ? Math.round(recentImprovement / recentImprovementCount) : 0,
+    avgWellnessAllTime: wellnessCount > 0 ? Math.round(totalWellness / wellnessCount) : 0,
+    avgWellnessRecent:
+      recentWellnessCount > 0 ? Math.round(recentWellness / recentWellnessCount) : 0,
     completionRate: Math.round((completedRecords / records.length) * 100),
     streak,
     longestStreak,
     bestImprovement,
+    bestWellness,
     recentWins: recentWins.slice(0, 3),
   }
 }
@@ -485,7 +556,15 @@ export function generatePersonalInsights(
     })
   }
 
-  if (progressMetrics.avgImprovementRecent > progressMetrics.avgImprovementAllTime + 5) {
+  if (progressMetrics.avgWellnessRecent > progressMetrics.avgWellnessAllTime + 5) {
+    insights.push({
+      type: 'progress',
+      title: 'Improving effectiveness',
+      description: `Your recent wellness score is ${progressMetrics.avgWellnessRecent - progressMetrics.avgWellnessAllTime} points higher than your average. Your CBT skills are growing!`,
+      icon: '📈',
+      priority: 3,
+    })
+  } else if (progressMetrics.avgImprovementRecent > progressMetrics.avgImprovementAllTime + 5) {
     insights.push({
       type: 'progress',
       title: 'Improving effectiveness',

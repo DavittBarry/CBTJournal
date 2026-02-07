@@ -12,7 +12,8 @@ export default defineConfig({
       manifest: {
         name: 'CBTJournal - CBT Thought Journal',
         short_name: 'CBTJournal',
-        description: 'Track your thoughts with cognitive behavioral therapy techniques based on Feeling Good by David D. Burns',
+        description:
+          'Track your thoughts with cognitive behavioral therapy techniques based on Feeling Good by David D. Burns',
         theme_color: '#617161',
         background_color: '#f3ede7',
         display: 'standalone',
@@ -24,21 +25,21 @@ export default defineConfig({
             src: 'pwa-192x192.png',
             sizes: '192x192',
             type: 'image/png',
-            purpose: 'any'
+            purpose: 'any',
           },
           {
             src: 'pwa-512x512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any'
+            purpose: 'any',
           },
           {
             src: 'pwa-512x512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'maskable'
-          }
-        ]
+            purpose: 'maskable',
+          },
+        ],
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
@@ -50,12 +51,12 @@ export default defineConfig({
               cacheName: 'google-fonts-stylesheets',
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
               },
               cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
+                statuses: [0, 200],
+              },
+            },
           },
           {
             urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
@@ -64,26 +65,26 @@ export default defineConfig({
               cacheName: 'google-fonts-webfonts',
               expiration: {
                 maxEntries: 20,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
               },
               cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          }
+                statuses: [0, 200],
+              },
+            },
+          },
         ],
         cleanupOutdatedCaches: true,
-        navigateFallback: null
+        navigateFallback: null,
       },
       devOptions: {
-        enabled: false
-      }
-    })
+        enabled: false,
+      },
+    }),
   ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src')
-    }
+      '@': path.resolve(__dirname, './src'),
+    },
   },
   build: {
     target: 'es2015',
@@ -92,30 +93,30 @@ export default defineConfig({
       compress: {
         drop_console: true, // Remove console.* in production
         drop_debugger: true,
-        pure_funcs: ['console.log', 'console.info', 'console.debug']
-      }
+        pure_funcs: ['console.log', 'console.info', 'console.debug'],
+      },
     },
     rollupOptions: {
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom'],
-          'charts': ['recharts'],
-          'utils': ['date-fns', 'idb', 'zustand']
-        }
-      }
+          charts: ['recharts'],
+          utils: ['date-fns', 'idb', 'zustand'],
+        },
+      },
     },
     sourcemap: false,
     reportCompressedSize: true,
-    chunkSizeWarningLimit: 1000
+    chunkSizeWarningLimit: 1000,
   },
   server: {
     port: 5173,
-    strictPort: false,
-    host: true
+    strictPort: true,
+    host: true,
   },
   preview: {
     port: 4173,
     strictPort: false,
-    host: true
-  }
+    host: true,
+  },
 })

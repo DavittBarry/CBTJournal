@@ -10,6 +10,7 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  height: 100%;
 }
 
 body {
@@ -18,6 +19,14 @@ body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   letter-spacing: -0.011em;
+  height: 100%;
+  overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+  body {
+    overflow: auto;
+  }
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator {
@@ -190,39 +199,30 @@ select:focus {
 /* Safe area insets for notched phones */
 @supports (padding: max(0px)) {
   .pb-safe {
-    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
   }
 }
 
 /* Landscape mobile adjustments */
 @media (max-height: 500px) and (orientation: landscape) {
-  nav.fixed.bottom-0 {
+  nav.order-last {
     @apply py-1;
   }
-  
-  nav.fixed.bottom-0 button {
+
+  nav.order-last button {
     @apply py-1;
   }
-  
-  nav.fixed.bottom-0 svg {
+
+  nav.order-last svg {
     @apply w-4 h-4;
   }
-  
-  nav.fixed.bottom-0 span {
+
+  nav.order-last span {
     @apply text-[8px] mt-0.5;
-  }
-  
-  main {
-    padding-bottom: 4rem !important;
   }
 }
 
-/* Tablet landscape adjustments */
-@media (min-width: 768px) and (max-width: 1023px) and (orientation: landscape) {
-  main {
-    padding-bottom: 5rem;
-  }
-}
+/* Tablet landscape adjustments - no extra padding needed with flex layout */
 
 /* Focus visible only for keyboard navigation */
 @media (hover: hover) {
