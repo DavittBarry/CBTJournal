@@ -1141,15 +1141,15 @@ function CalendarConnectionBanner() {
 
   return (
     <div className="card p-3 mb-5">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">📅</span>
-          <span className="text-sm text-stone-600 dark:text-stone-400">
+      <div className="flex items-center justify-between gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <span className="text-lg flex-shrink-0">📅</span>
+          <span className="text-sm text-stone-600 dark:text-stone-400 truncate">
             {connection?.selectedCalendarName}
           </span>
         </div>
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-xs text-stone-500 dark:text-stone-400 cursor-pointer">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <label className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400 cursor-pointer">
             <input
               type="checkbox"
               checked={showCalendarEvents}
@@ -1179,7 +1179,10 @@ function CalendarConnectionBanner() {
               <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
             </svg>
           </button>
-          <button onClick={disconnect} className="text-xs text-stone-400 hover:text-critical-500">
+          <button
+            onClick={disconnect}
+            className="text-xs text-stone-400 hover:text-critical-500 whitespace-nowrap"
+          >
             Disconnect
           </button>
         </div>

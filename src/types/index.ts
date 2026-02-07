@@ -536,8 +536,9 @@ export interface ThoughtRecord {
   distortions: CognitiveDistortionId[]
   rationalResponse: string
   outcomeEmotions: Emotion[]
-  beliefRatingBefore?: number // 0-100 how much you believe the automatic thought
-  beliefRatingAfter?: number // 0-100 after generating rational response
+  newEmotions?: Emotion[]
+  beliefRatingBefore?: number
+  beliefRatingAfter?: number
   isBehavioralExperiment?: boolean
   experimentPrediction?: string
   experimentOutcome?: string

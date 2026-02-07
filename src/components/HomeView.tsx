@@ -7,6 +7,7 @@ import { toast } from '@/stores/toastStore'
 import { ReminderBanner } from '@/components/ReminderBanner'
 import { useReminders } from '@/hooks/useReminders'
 import { AppLink } from '@/components/AppLink'
+import { calculateWellnessScore } from '@/utils/insightGenerator'
 
 export function HomeView() {
   const {
@@ -27,6 +28,37 @@ export function HomeView() {
 
   const getDistortionName = (id: number) => {
     return COGNITIVE_DISTORTIONS.find((d) => d.id === id)?.shortName || ''
+  }
+
+  const getEmotionChanges = (record: (typeof thoughtRecords)[0]) => {
+    const matches: { name: string; before: number; after: number; diff: number }[] = []
+    for (const oe of record.outcomeEmotions) {
+      if (!oe.name.trim()) continue
+      const initial = record.emotions.find(
+        (e) => e.name.trim().toLowerCase() === oe.name.trim().toLowerCase()
+      )
+      if (initial) {
+        matches.push({
+          name: oe.name,
+          before: initial.intensity,
+          after: oe.intensity,
+          diff: initial.intensity - oe.intensity,
+        })
+      }
+    }
+    return matches
+  }
+
+  const getAverageImprovement = (record: (typeof thoughtRecords)[0]) => {
+    const changes = getEmotionChanges(record)
+    if (changes.length === 0) return 0
+    const totalDiff = changes.reduce((sum, c) => sum + c.diff, 0)
+    return Math.round(totalDiff / changes.length)
+  }
+
+  const getWellnessScore = (record: (typeof thoughtRecords)[0]) => {
+    const improvement = getAverageImprovement(record)
+    return calculateWellnessScore(improvement, record.newEmotions)
   }
 
   useEffect(() => {
@@ -125,121 +157,164 @@ export function HomeView() {
   }
 
   // Render the small card content (reused in both normal and expanded states)
-  const renderSmallCardContent = (
-    record: (typeof filteredRecords)[0],
-    maxEmotion: { name: string; intensity: number } | undefined,
-    hasOutcome: boolean,
-    outcomeIntensity: number | null,
-    improvement: number,
-    isExpanded: boolean
-  ) => (
-    <a
-      href={`#record/${record.id}`}
-      onClick={(e) => handleCardClick(record.id, e)}
-      className={`block w-full text-left p-5 focus:outline-none flex flex-col ${
-        isExpanded ? '' : 'overflow-hidden h-full'
-      }`}
-    >
-      {/* Date and situation */}
-      <div className="flex-shrink-0 space-y-3">
-        <div className="flex items-start justify-between">
-          <div className="text-sm text-stone-400 dark:text-stone-500">
-            {format(parseISO(record.date), 'MMM d, yyyy')}
-          </div>
-          <svg
-            className={`w-5 h-5 text-stone-400 dark:text-stone-500 transition-transform duration-200 flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-          >
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-        </div>
-        <div
-          className={`text-stone-700 dark:text-stone-200 font-medium leading-relaxed ${isExpanded ? '' : 'line-clamp-2'}`}
-        >
-          {record.situation}
-        </div>
-      </div>
+  const renderSmallCardContent = (record: (typeof filteredRecords)[0], isExpanded: boolean) => {
+    const changes = getEmotionChanges(record)
+    const wellnessScore = getWellnessScore(record)
+    const hasOutcome = record.outcomeEmotions.length > 0 && !!record.outcomeEmotions[0]?.name
 
-      {/* Emotion tags - limit to 3 when collapsed */}
-      <div className="flex-shrink-0 mt-4">
-        <div className="flex flex-wrap gap-1.5">
-          {(isExpanded ? record.emotions : record.emotions.slice(0, 3)).map((emotion, i) => (
-            <span
-              key={i}
-              className="text-xs bg-warm-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-2.5 py-1 rounded-full"
-            >
-              {emotion.name} {emotion.intensity}%
-            </span>
-          ))}
-          {!isExpanded && record.emotions.length > 3 && (
-            <span className="text-xs text-stone-400 dark:text-stone-500 px-1 py-1">
-              +{record.emotions.length - 3} more
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Spacer */}
-      <div className="flex-grow min-h-3" />
-
-      {/* Before/After panel */}
-      {maxEmotion && hasOutcome && (
-        <div className="flex-shrink-0 mt-4">
-          <div className="flex items-center gap-2 py-2 px-3 bg-stone-50 dark:bg-stone-700/50 rounded-lg text-xs">
-            <div className="flex items-center gap-1">
-              <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium">
-                Before
-              </span>
-              <span className="font-semibold text-critical-500 dark:text-critical-400">
-                {maxEmotion.intensity}%
-              </span>
+    return (
+      <a
+        href={`#record/${record.id}`}
+        onClick={(e) => handleCardClick(record.id, e)}
+        className={`block w-full text-left p-5 focus:outline-none flex flex-col ${
+          isExpanded ? '' : 'overflow-hidden h-full'
+        }`}
+      >
+        {/* Date and situation */}
+        <div className="flex-shrink-0 space-y-3">
+          <div className="flex items-start justify-between">
+            <div className="text-sm text-stone-400 dark:text-stone-500">
+              {format(parseISO(record.date), 'MMM d, yyyy')}
             </div>
             <svg
-              className="w-3 h-3 text-stone-300 dark:text-stone-600 flex-shrink-0"
+              className={`w-5 h-5 text-stone-400 dark:text-stone-500 transition-transform duration-200 flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`}
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2"
+              strokeWidth="1.5"
             >
-              <path d="M5 12h14M12 5l7 7-7 7" />
+              <path d="M6 9l6 6 6-6" />
             </svg>
-            <div className="flex items-center gap-1">
-              <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium">
-                After
+          </div>
+          <div
+            className={`text-stone-700 dark:text-stone-200 font-medium leading-relaxed ${isExpanded ? '' : 'line-clamp-2'}`}
+          >
+            {record.situation}
+          </div>
+        </div>
+
+        {/* Emotion tags - limit to 3 when collapsed */}
+        <div className="flex-shrink-0 mt-4">
+          <div className="flex flex-wrap gap-1.5">
+            {(isExpanded ? record.emotions : record.emotions.slice(0, 3)).map((emotion, i) => (
+              <span
+                key={i}
+                className="text-xs bg-warm-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-2.5 py-1 rounded-full"
+              >
+                {emotion.name} {emotion.intensity}%
               </span>
-              <span className="font-semibold text-helpful-600 dark:text-helpful-500">
-                {outcomeIntensity}%
-              </span>
-            </div>
-            {improvement > 0 && (
-              <span className="ml-auto font-medium text-stone-500 dark:text-stone-400 whitespace-nowrap">
-                {improvement}% better
+            ))}
+            {!isExpanded && record.emotions.length > 3 && (
+              <span className="text-xs text-stone-400 dark:text-stone-500 px-1 py-1">
+                +{record.emotions.length - 3} more
               </span>
             )}
           </div>
         </div>
-      )}
 
-      {/* Distortions */}
-      <div className="flex-shrink-0 mt-3">
-        <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs">
-          {record.distortions.slice(0, 2).map((id) => (
-            <span key={id} className="text-sage-500 dark:text-sage-400">
-              {getDistortionName(id)}
-            </span>
-          ))}
-          {record.distortions.length > 2 && (
-            <span className="text-stone-400 dark:text-stone-500">
-              +{record.distortions.length - 2} more
-            </span>
-          )}
+        {/* Spacer */}
+        <div className="flex-grow min-h-3" />
+
+        {/* Before/After panel */}
+        {hasOutcome &&
+          (() => {
+            const hasMatches = changes.length > 0
+            const avgBefore = hasMatches
+              ? Math.round(changes.reduce((sum, c) => sum + c.before, 0) / changes.length)
+              : Math.round(
+                  record.emotions.reduce((sum, e) => sum + e.intensity, 0) / record.emotions.length
+                )
+            const avgAfter = hasMatches
+              ? Math.round(changes.reduce((sum, c) => sum + c.after, 0) / changes.length)
+              : Math.round(
+                  record.outcomeEmotions
+                    .filter((e) => e.name.trim())
+                    .reduce((sum, e) => sum + e.intensity, 0) /
+                    record.outcomeEmotions.filter((e) => e.name.trim()).length
+                )
+            return (
+              <div className="flex-shrink-0 mt-4">
+                <div className="flex items-center gap-2 py-2 px-3 bg-stone-50 dark:bg-stone-700/50 rounded-lg text-xs">
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium">
+                      Before
+                    </span>
+                    <span className="font-semibold text-critical-500 dark:text-critical-400">
+                      {avgBefore}%
+                    </span>
+                  </div>
+                  <svg
+                    className="w-3 h-3 text-stone-300 dark:text-stone-600 flex-shrink-0"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-medium">
+                      After
+                    </span>
+                    <span className="font-semibold text-helpful-600 dark:text-helpful-500">
+                      {avgAfter}%
+                    </span>
+                  </div>
+                  {avgBefore > avgAfter && (
+                    <span className="ml-auto font-medium text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                      {avgBefore - avgAfter}% better
+                    </span>
+                  )}
+                  {wellnessScore > 0 && (
+                    <span
+                      className="ml-auto font-medium text-sage-600 dark:text-sage-400 whitespace-nowrap"
+                      title="Wellness: negative reduction (70%) + new positive feelings (30%)"
+                    >
+                      w{wellnessScore}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )
+          })()}
+
+        {/* Incomplete indicator - no outcome emotions */}
+        {!hasOutcome && (
+          <div className="flex-shrink-0 mt-4">
+            <div className="flex items-center gap-1.5 py-1.5 px-3 bg-amber-50/60 dark:bg-amber-900/10 border border-amber-200/50 dark:border-amber-800/30 rounded-lg text-xs text-amber-600 dark:text-amber-400">
+              <svg
+                className="w-3.5 h-3.5 flex-shrink-0"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 8v4M12 16h.01" />
+              </svg>
+              <span>Edit to re-rate emotions</span>
+            </div>
+          </div>
+        )}
+
+        {/* Distortions */}
+        <div className="flex-shrink-0 mt-3">
+          <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs">
+            {record.distortions.slice(0, 2).map((id) => (
+              <span key={id} className="text-sage-500 dark:text-sage-400">
+                {getDistortionName(id)}
+              </span>
+            ))}
+            {record.distortions.length > 2 && (
+              <span className="text-stone-400 dark:text-stone-500">
+                +{record.distortions.length - 2} more
+              </span>
+            )}
+          </div>
         </div>
-      </div>
-    </a>
-  )
+      </a>
+    )
+  }
 
   return (
     <div>
@@ -367,21 +442,9 @@ export function HomeView() {
                   }}
                 >
                   {row.map((record) => {
-                    const maxEmotion = record.emotions.reduce(
-                      (max, e) => (e.intensity > max.intensity ? e : max),
-                      record.emotions[0]
-                    )
-                    const hasOutcome =
-                      record.outcomeEmotions.length > 0 && !!record.outcomeEmotions[0].name
-                    const outcomeIntensity = hasOutcome ? record.outcomeEmotions[0].intensity : null
-                    const improvement =
-                      maxEmotion && outcomeIntensity !== null
-                        ? maxEmotion.intensity - outcomeIntensity
-                        : 0
                     const isExpanded = expandedId === record.id
 
                     if (isExpanded) {
-                      // Render invisible placeholder to maintain grid structure
                       return (
                         <div
                           key={record.id}
@@ -396,14 +459,7 @@ export function HomeView() {
                         key={record.id}
                         className="card overflow-hidden transition-all duration-300 hover:shadow-soft-lg dark:hover:shadow-soft-lg-dark card-thought-record"
                       >
-                        {renderSmallCardContent(
-                          record,
-                          maxEmotion,
-                          hasOutcome,
-                          outcomeIntensity,
-                          improvement,
-                          false
-                        )}
+                        {renderSmallCardContent(record, false)}
                       </div>
                     )
                   })}
@@ -416,13 +472,11 @@ export function HomeView() {
                       (max, e) => (e.intensity > max.intensity ? e : max),
                       record.emotions[0]
                     )
+                    const changes = getEmotionChanges(record)
+                    const avgImprovement = getAverageImprovement(record)
+                    const wellnessScore = getWellnessScore(record)
                     const hasOutcome =
-                      record.outcomeEmotions.length > 0 && !!record.outcomeEmotions[0].name
-                    const outcomeIntensity = hasOutcome ? record.outcomeEmotions[0].intensity : null
-                    const improvement =
-                      maxEmotion && outcomeIntensity !== null
-                        ? maxEmotion.intensity - outcomeIntensity
-                        : 0
+                      record.outcomeEmotions.length > 0 && !!record.outcomeEmotions[0]?.name
 
                     return (
                       <div className="rounded-xl ring-2 ring-sage-400 dark:ring-sage-500 bg-white dark:bg-stone-800 overflow-hidden animate-fade-in mt-4">
@@ -562,21 +616,76 @@ export function HomeView() {
                               {hasOutcome && (
                                 <div className="mt-auto pt-3 border-t border-stone-200 dark:border-stone-700">
                                   <div className="text-xs text-stone-400 dark:text-stone-500 mb-2">
-                                    Emotions after
+                                    Emotion changes
                                   </div>
-                                  <div className="flex flex-wrap gap-1.5 mb-2">
-                                    {record.outcomeEmotions.map((emotion, i) => (
-                                      <span
-                                        key={i}
-                                        className="text-xs bg-helpful-100 dark:bg-helpful-900/30 text-helpful-700 dark:text-helpful-300 px-2.5 py-1 rounded-full"
-                                      >
-                                        {emotion.name} {emotion.intensity}%
-                                      </span>
-                                    ))}
-                                  </div>
-                                  {improvement > 0 && (
-                                    <div className="text-sm font-medium text-helpful-600 dark:text-helpful-400">
-                                      ↓ {improvement}% reduction
+                                  {changes.length > 0 ? (
+                                    <div className="space-y-1 mb-2">
+                                      {changes.map((c) => (
+                                        <div
+                                          key={c.name}
+                                          className="flex items-center justify-between text-xs"
+                                        >
+                                          <span className="text-stone-600 dark:text-stone-300">
+                                            {c.name}
+                                          </span>
+                                          <span
+                                            className={`font-medium tabular-nums ${
+                                              c.diff > 0
+                                                ? 'text-green-600 dark:text-green-400'
+                                                : c.diff < 0
+                                                  ? 'text-amber-600 dark:text-amber-400'
+                                                  : 'text-stone-500 dark:text-stone-400'
+                                            }`}
+                                          >
+                                            {c.before}% → {c.after}%
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <div className="flex flex-wrap gap-1.5 mb-2">
+                                      {record.outcomeEmotions.map((emotion, i) => (
+                                        <span
+                                          key={i}
+                                          className="text-xs bg-helpful-100 dark:bg-helpful-900/30 text-helpful-700 dark:text-helpful-300 px-2.5 py-1 rounded-full"
+                                        >
+                                          {emotion.name} {emotion.intensity}%
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {record.newEmotions && record.newEmotions.length > 0 && (
+                                    <div className="mt-2">
+                                      <div className="text-xs text-stone-400 dark:text-stone-500 mb-1">
+                                        New feelings
+                                      </div>
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {record.newEmotions.map((emotion, i) => (
+                                          <span
+                                            key={i}
+                                            className="text-xs bg-helpful-100 dark:bg-helpful-900/30 text-helpful-700 dark:text-helpful-300 px-2.5 py-1 rounded-full"
+                                          >
+                                            {emotion.name} {emotion.intensity}%
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                  {(avgImprovement > 0 || wellnessScore > 0) && (
+                                    <div className="flex items-center gap-3 mt-2">
+                                      {avgImprovement > 0 && (
+                                        <span className="text-sm font-medium text-helpful-600 dark:text-helpful-400">
+                                          ↓ {avgImprovement}% avg. improvement
+                                        </span>
+                                      )}
+                                      {wellnessScore > 0 && (
+                                        <span
+                                          className="text-sm font-medium text-sage-600 dark:text-sage-400"
+                                          title="Wellness score: combines negative emotion reduction (70%) + new positive feelings (30%)"
+                                        >
+                                          wellness {wellnessScore}
+                                        </span>
+                                      )}
                                     </div>
                                   )}
                                 </div>

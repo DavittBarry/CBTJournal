@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useAppStore, type ViewType } from '@/stores/appStore'
 import {
   initializeGoogleConnection,
@@ -199,8 +199,12 @@ function App() {
     }
   }, [googleAccessToken])
 
+  const mainRef = useRef<HTMLElement>(null)
+
   useEffect(() => {
-    window.scrollTo(0, 0)
+    if (mainRef.current) {
+      mainRef.current.scrollTo(0, 0)
+    }
   }, [currentView])
 
   if (isLoading) {
@@ -258,7 +262,7 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-warm-200 dark:bg-stone-900 text-stone-800 dark:text-stone-100">
+      <div className="flex flex-col h-[100dvh] bg-warm-200 dark:bg-stone-900 text-stone-800 dark:text-stone-100 lg:block lg:h-auto lg:min-h-screen">
         {/* Skip to main content link for keyboard accessibility */}
         <a
           href="#main-content"
@@ -267,21 +271,26 @@ function App() {
           Skip to main content
         </a>
         <OnboardingFlow />
-        <Navigation />
+        <Navigation mainRef={mainRef} />
         <BackupReminder />
 
         <main
+          ref={mainRef}
           id="main-content"
           className="
-          pb-24 lg:pb-8
+          flex-1 overflow-y-auto order-1
+          lg:overflow-visible lg:order-none
+          lg:pb-8
           lg:ml-64
           px-4 sm:px-6 lg:px-8 xl:px-12
           py-6 lg:py-8
+          pb-6
         "
         >
           <div className="max-w-[1600px] mx-auto">{renderView()}</div>
         </main>
 
+        {/* Mobile bottom navigation is rendered by Navigation component below main for flex order */}
         <ToastContainer />
       </div>
     </ErrorBoundary>

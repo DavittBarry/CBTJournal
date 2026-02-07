@@ -79,10 +79,11 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
   const [outcomeEmotions, setOutcomeEmotions] = useState<Emotion[]>(
     existingRecord?.outcomeEmotions || [{ name: '', intensity: 50 }]
   )
+  const [newEmotions, setNewEmotions] = useState<Emotion[]>(existingRecord?.newEmotions || [])
   const [expandedDistortion, setExpandedDistortion] = useState<CognitiveDistortionId | null>(null)
   const [showEmotionSuggestions, setShowEmotionSuggestions] = useState(false)
   const [activeEmotionIndex, setActiveEmotionIndex] = useState<number | null>(null)
-  const [isOutcomeEmotions, setIsOutcomeEmotions] = useState(false)
+  const [emotionContext, setEmotionContext] = useState<'initial' | 'outcome' | 'new'>('initial')
   const [beliefBefore, setBeliefBefore] = useState(existingRecord?.beliefRatingBefore ?? 80)
   const [beliefAfter, setBeliefAfter] = useState(existingRecord?.beliefRatingAfter ?? 50)
 
@@ -150,6 +151,7 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
       distortions,
       rationalResponse: mode === 'defusion' ? '' : rationalResponse,
       outcomeEmotions: outcomeEmotions.filter((e) => e.name.trim()),
+      newEmotions: newEmotions.filter((e) => e.name.trim()),
       beliefRatingBefore: mode === 'standard' ? beliefBefore : undefined,
       beliefRatingAfter: mode === 'standard' ? beliefAfter : undefined,
       isBehavioralExperiment: mode === 'experiment',
@@ -190,46 +192,54 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
     setView('home')
   }
 
-  const addEmotion = (isOutcome: boolean) => {
-    if (isOutcome) {
-      setOutcomeEmotions([...outcomeEmotions, { name: '', intensity: 50 }])
-    } else {
-      setEmotions([...emotions, { name: '', intensity: 50 }])
-    }
+  const getEmotionStateForContext = (ctx: 'initial' | 'outcome' | 'new') => {
+    if (ctx === 'outcome') return { current: outcomeEmotions, setter: setOutcomeEmotions }
+    if (ctx === 'new') return { current: newEmotions, setter: setNewEmotions }
+    return { current: emotions, setter: setEmotions }
+  }
+
+  const addEmotion = (ctx: 'initial' | 'outcome' | 'new') => {
+    const { current, setter } = getEmotionStateForContext(ctx)
+    setter([...current, { name: '', intensity: 50 }])
   }
 
   const updateEmotion = (
     index: number,
     field: 'name' | 'intensity',
     value: string | number,
-    isOutcome: boolean
+    ctx: 'initial' | 'outcome' | 'new'
   ) => {
-    const setter = isOutcome ? setOutcomeEmotions : setEmotions
-    const current = isOutcome ? outcomeEmotions : emotions
+    const { current, setter } = getEmotionStateForContext(ctx)
     const updated = [...current]
     updated[index] = { ...updated[index], [field]: value }
     setter(updated)
   }
 
-  const removeEmotion = (index: number, isOutcome: boolean) => {
-    const setter = isOutcome ? setOutcomeEmotions : setEmotions
-    const current = isOutcome ? outcomeEmotions : emotions
+  const removeEmotion = (index: number, ctx: 'initial' | 'outcome' | 'new') => {
+    const { current, setter } = getEmotionStateForContext(ctx)
     setter(current.filter((_, i) => i !== index))
+  }
+
+  const prefillOutcomeEmotions = () => {
+    const filled = emotions.filter((e) => e.name.trim())
+    if (filled.length > 0) {
+      setOutcomeEmotions(filled.map((e) => ({ name: e.name, intensity: e.intensity })))
+    }
   }
 
   const toggleDistortion = (id: CognitiveDistortionId) => {
     setDistortions((prev) => (prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]))
   }
 
-  const handleEmotionFocus = (index: number, isOutcome: boolean) => {
+  const handleEmotionFocus = (index: number, ctx: 'initial' | 'outcome' | 'new') => {
     setActiveEmotionIndex(index)
-    setIsOutcomeEmotions(isOutcome)
+    setEmotionContext(ctx)
     setShowEmotionSuggestions(true)
   }
 
   const selectEmotionSuggestion = (emotionName: string) => {
     if (activeEmotionIndex !== null) {
-      updateEmotion(activeEmotionIndex, 'name', emotionName, isOutcomeEmotions)
+      updateEmotion(activeEmotionIndex, 'name', emotionName, emotionContext)
       setShowEmotionSuggestions(false)
     }
   }
@@ -414,8 +424,8 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
                     <input
                       type="text"
                       value={emotion.name}
-                      onChange={(e) => updateEmotion(index, 'name', e.target.value, false)}
-                      onFocus={() => handleEmotionFocus(index, false)}
+                      onChange={(e) => updateEmotion(index, 'name', e.target.value, 'initial')}
+                      onFocus={() => handleEmotionFocus(index, 'initial')}
                       onBlur={() => setTimeout(() => setShowEmotionSuggestions(false), 200)}
                       placeholder="e.g., Anxious, Sad"
                       className="input-field w-full"
@@ -428,7 +438,7 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
                       max="100"
                       value={emotion.intensity}
                       onChange={(e) =>
-                        updateEmotion(index, 'intensity', parseInt(e.target.value) || 0, false)
+                        updateEmotion(index, 'intensity', parseInt(e.target.value) || 0, 'initial')
                       }
                       className="input-field w-20 text-center tabular-nums"
                     />
@@ -437,7 +447,7 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
                   {emotions.length > 1 && (
                     <button
                       type="button"
-                      onClick={() => removeEmotion(index, false)}
+                      onClick={() => removeEmotion(index, 'initial')}
                       className="text-stone-400 dark:text-stone-500 hover:text-critical-500 dark:hover:text-critical-400 p-1 transition-colors flex-shrink-0"
                     >
                       <svg
@@ -457,29 +467,31 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
             </div>
 
             {/* Emotion suggestions */}
-            {showEmotionSuggestions && activeEmotionIndex !== null && !isOutcomeEmotions && (
-              <div className="mt-3 p-3 bg-stone-50 dark:bg-stone-700/50 rounded-lg">
-                <p className="text-xs text-stone-500 dark:text-stone-400 mb-2">
-                  Common emotions (tap to select):
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {COMMON_EMOTIONS.slice(0, 20).map((emotionName) => (
-                    <button
-                      key={emotionName}
-                      type="button"
-                      onClick={() => selectEmotionSuggestion(emotionName)}
-                      className="text-xs px-2 py-1 bg-white dark:bg-stone-600 rounded-full text-stone-600 dark:text-stone-300 hover:bg-sage-100 dark:hover:bg-sage-800 transition-colors"
-                    >
-                      {emotionName}
-                    </button>
-                  ))}
+            {showEmotionSuggestions &&
+              activeEmotionIndex !== null &&
+              emotionContext === 'initial' && (
+                <div className="mt-3 p-3 bg-stone-50 dark:bg-stone-700/50 rounded-lg">
+                  <p className="text-xs text-stone-500 dark:text-stone-400 mb-2">
+                    Common emotions (tap to select):
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {COMMON_EMOTIONS.slice(0, 20).map((emotionName) => (
+                      <button
+                        key={emotionName}
+                        type="button"
+                        onClick={() => selectEmotionSuggestion(emotionName)}
+                        className="text-xs px-2 py-1 bg-white dark:bg-stone-600 rounded-full text-stone-600 dark:text-stone-300 hover:bg-sage-100 dark:hover:bg-sage-800 transition-colors"
+                      >
+                        {emotionName}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             <button
               type="button"
-              onClick={() => addEmotion(false)}
+              onClick={() => addEmotion('initial')}
               className="text-sage-600 dark:text-sage-400 hover:text-sage-700 dark:hover:text-sage-300 text-sm font-medium mt-3"
             >
               + Add emotion
@@ -873,17 +885,31 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
           <SectionHeader
             number={mode === 'simple' ? 4 : mode === 'experiment' ? 7 : 6}
             title="Outcome"
-            description="After this reflection, how do you feel now?"
+            description="Re-rate the same emotions from step 2. How intense are they now?"
           />
 
           <div className="card p-5">
-            <label className="label">
-              Re-rate your emotions
-              <InfoButton
-                title="Measuring the shift"
-                content="After completing the exercise, re-rate your emotions. The goal isn't to eliminate negative feelings entirely, but to reduce their intensity. Even a small reduction shows the technique is working."
-              />
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="label mb-0">
+                Re-rate your emotions
+                <InfoButton
+                  title="Re-rating your emotions (Burns method)"
+                  content="In the Daily Mood Log, you re-rate the same negative emotions you identified earlier. The goal isn't to eliminate them but to see if they've shifted after examining your thoughts. Even a small reduction shows the technique is working."
+                />
+              </label>
+              {emotions.some((e) => e.name.trim()) && (
+                <button
+                  type="button"
+                  onClick={prefillOutcomeEmotions}
+                  className="text-xs text-sage-600 dark:text-sage-400 hover:text-sage-700 dark:hover:text-sage-300 font-medium px-2 py-1 rounded-lg hover:bg-sage-50 dark:hover:bg-sage-900/20 transition-colors"
+                >
+                  Copy from step 2
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-stone-500 dark:text-stone-400 mb-3">
+              Rate the same emotions again to see how they've shifted.
+            </p>
             <div className="space-y-2">
               {outcomeEmotions.map((emotion, index) => (
                 <div key={index} className="flex gap-2 items-center">
@@ -891,10 +917,10 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
                     <input
                       type="text"
                       value={emotion.name}
-                      onChange={(e) => updateEmotion(index, 'name', e.target.value, true)}
-                      onFocus={() => handleEmotionFocus(index, true)}
+                      onChange={(e) => updateEmotion(index, 'name', e.target.value, 'outcome')}
+                      onFocus={() => handleEmotionFocus(index, 'outcome')}
                       onBlur={() => setTimeout(() => setShowEmotionSuggestions(false), 200)}
-                      placeholder="e.g., Calmer, Less anxious"
+                      placeholder="Same emotion from step 2"
                       className="input-field w-full"
                     />
                   </div>
@@ -905,7 +931,7 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
                       max="100"
                       value={emotion.intensity}
                       onChange={(e) =>
-                        updateEmotion(index, 'intensity', parseInt(e.target.value) || 0, true)
+                        updateEmotion(index, 'intensity', parseInt(e.target.value) || 0, 'outcome')
                       }
                       className="input-field w-20 text-center tabular-nums"
                     />
@@ -914,7 +940,7 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
                   {outcomeEmotions.length > 1 && (
                     <button
                       type="button"
-                      onClick={() => removeEmotion(index, true)}
+                      onClick={() => removeEmotion(index, 'outcome')}
                       className="text-stone-400 dark:text-stone-500 hover:text-critical-500 dark:hover:text-critical-400 p-1 transition-colors flex-shrink-0"
                     >
                       <svg
@@ -933,34 +959,165 @@ export function ThoughtRecordForm({ existingRecord }: Props) {
               ))}
             </div>
 
-            {/* Emotion suggestions for outcome */}
-            {showEmotionSuggestions && activeEmotionIndex !== null && isOutcomeEmotions && (
-              <div className="mt-3 p-3 bg-stone-50 dark:bg-stone-700/50 rounded-lg">
-                <p className="text-xs text-stone-500 dark:text-stone-400 mb-2">
-                  Common emotions (tap to select):
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {COMMON_EMOTIONS.slice(20).map((emotionName) => (
-                    <button
-                      key={emotionName}
-                      type="button"
-                      onClick={() => selectEmotionSuggestion(emotionName)}
-                      className="text-xs px-2 py-1 bg-white dark:bg-stone-600 rounded-full text-stone-600 dark:text-stone-300 hover:bg-sage-100 dark:hover:bg-sage-800 transition-colors"
-                    >
-                      {emotionName}
-                    </button>
-                  ))}
+            {showEmotionSuggestions &&
+              activeEmotionIndex !== null &&
+              emotionContext === 'outcome' && (
+                <div className="mt-3 p-3 bg-stone-50 dark:bg-stone-700/50 rounded-lg">
+                  <p className="text-xs text-stone-500 dark:text-stone-400 mb-2">
+                    Your initial emotions (tap to select):
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {emotions
+                      .filter((e) => e.name.trim())
+                      .map((emotion) => (
+                        <button
+                          key={emotion.name}
+                          type="button"
+                          onClick={() => selectEmotionSuggestion(emotion.name)}
+                          className="text-xs px-2 py-1 bg-white dark:bg-stone-600 rounded-full text-stone-600 dark:text-stone-300 hover:bg-sage-100 dark:hover:bg-sage-800 transition-colors"
+                        >
+                          {emotion.name} ({emotion.intensity}%)
+                        </button>
+                      ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             <button
               type="button"
-              onClick={() => addEmotion(true)}
+              onClick={() => addEmotion('outcome')}
               className="text-sage-600 dark:text-sage-400 hover:text-sage-700 dark:hover:text-sage-300 text-sm font-medium mt-3"
             >
               + Add emotion
             </button>
+
+            {/* Improvement indicators */}
+            {outcomeEmotions.some((oe) => oe.name.trim()) && (
+              <div className="mt-4 pt-4 border-t border-stone-200 dark:border-stone-700">
+                {outcomeEmotions
+                  .filter((oe) => oe.name.trim())
+                  .map((oe) => {
+                    const match = emotions.find(
+                      (e) => e.name.trim().toLowerCase() === oe.name.trim().toLowerCase()
+                    )
+                    if (!match) return null
+                    const diff = match.intensity - oe.intensity
+                    return (
+                      <div key={oe.name} className="flex items-center justify-between text-sm py-1">
+                        <span className="text-stone-600 dark:text-stone-300">{oe.name}</span>
+                        <span
+                          className={`font-medium tabular-nums ${
+                            diff > 0
+                              ? 'text-green-600 dark:text-green-400'
+                              : diff < 0
+                                ? 'text-amber-600 dark:text-amber-400'
+                                : 'text-stone-500 dark:text-stone-400'
+                          }`}
+                        >
+                          {match.intensity}% → {oe.intensity}%{diff > 0 && ` (↓${diff}%)`}
+                          {diff < 0 && ` (↑${Math.abs(diff)}%)`}
+                          {diff === 0 && ' (no change)'}
+                        </span>
+                      </div>
+                    )
+                  })}
+              </div>
+            )}
+
+            {/* New emotions section */}
+            <div className="mt-6 pt-4 border-t border-stone-200 dark:border-stone-700">
+              <div className="flex items-center justify-between mb-1">
+                <label className="label mb-0 text-sm">
+                  New emotions (optional)
+                  <InfoButton
+                    title="Positive emotions that emerged"
+                    content="After working through your thoughts, you may notice new positive feelings like relief, calm, or hope. These are separate from the re-rated emotions above."
+                  />
+                </label>
+              </div>
+              <p className="text-xs text-stone-500 dark:text-stone-400 mb-3">
+                Any new feelings that emerged after reflection?
+              </p>
+
+              {newEmotions.length > 0 && (
+                <div className="space-y-2 mb-2">
+                  {newEmotions.map((emotion, index) => (
+                    <div key={index} className="flex gap-2 items-center">
+                      <div className="relative flex-1 min-w-0">
+                        <input
+                          type="text"
+                          value={emotion.name}
+                          onChange={(e) => updateEmotion(index, 'name', e.target.value, 'new')}
+                          onFocus={() => handleEmotionFocus(index, 'new')}
+                          onBlur={() => setTimeout(() => setShowEmotionSuggestions(false), 200)}
+                          placeholder="e.g., Relieved, Hopeful"
+                          className="input-field w-full"
+                        />
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={emotion.intensity}
+                          onChange={(e) =>
+                            updateEmotion(index, 'intensity', parseInt(e.target.value) || 0, 'new')
+                          }
+                          className="input-field w-20 text-center tabular-nums"
+                        />
+                        <span className="text-stone-400 dark:text-stone-500 text-sm w-4">%</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeEmotion(index, 'new')}
+                        className="text-stone-400 dark:text-stone-500 hover:text-critical-500 dark:hover:text-critical-400 p-1 transition-colors flex-shrink-0"
+                      >
+                        <svg
+                          className="w-5 h-5"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                        >
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {showEmotionSuggestions &&
+                activeEmotionIndex !== null &&
+                emotionContext === 'new' && (
+                  <div className="mt-3 p-3 bg-stone-50 dark:bg-stone-700/50 rounded-lg">
+                    <p className="text-xs text-stone-500 dark:text-stone-400 mb-2">
+                      Positive emotions (tap to select):
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {COMMON_EMOTIONS.slice(20, 32).map((emotionName) => (
+                        <button
+                          key={emotionName}
+                          type="button"
+                          onClick={() => selectEmotionSuggestion(emotionName)}
+                          className="text-xs px-2 py-1 bg-white dark:bg-stone-600 rounded-full text-stone-600 dark:text-stone-300 hover:bg-sage-100 dark:hover:bg-sage-800 transition-colors"
+                        >
+                          {emotionName}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              <button
+                type="button"
+                onClick={() => addEmotion('new')}
+                className="text-sage-600 dark:text-sage-400 hover:text-sage-700 dark:hover:text-sage-300 text-sm font-medium mt-2"
+              >
+                + Add new emotion
+              </button>
+            </div>
           </div>
         </section>
 
