@@ -130,6 +130,7 @@ function ActivityForm({
 
     if (syncToCalendar && accessToken && calendar) {
       try {
+        const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
         const startDateTime = plannedTime ? `${date}T${plannedTime}:00` : `${date}T09:00:00`
         const endDateTime = plannedTime
           ? `${date}T${plannedTime
@@ -146,29 +147,34 @@ function ActivityForm({
             {
               summary: activity.trim(),
               description: notes.trim() || undefined,
-              start: { dateTime: startDateTime },
-              end: { dateTime: endDateTime },
+              start: { dateTime: startDateTime, timeZone },
+              end: { dateTime: endDateTime, timeZone },
             }
           )
           if (result.success) {
             entry.lastSyncedAt = new Date().toISOString()
+          } else {
+            toast.error('Failed to update Google Calendar event')
           }
         } else {
           const result = await createCalendarEvent(accessToken, calendar.selectedCalendarId, {
             summary: activity.trim(),
             description: notes.trim() || undefined,
-            start: { dateTime: startDateTime },
-            end: { dateTime: endDateTime },
+            start: { dateTime: startDateTime, timeZone },
+            end: { dateTime: endDateTime, timeZone },
           })
 
           if (result.success && result.event) {
             entry.googleCalendarEventId = result.event.id
             entry.lastSyncedAt = new Date().toISOString()
             toast.success('Added to Google Calendar')
+          } else {
+            toast.error('Failed to add to Google Calendar')
           }
         }
       } catch (error) {
         console.error('Failed to sync to calendar:', error)
+        toast.error('Failed to sync with Google Calendar')
       }
     }
 
@@ -626,6 +632,94 @@ function QuickCompleteModal({ activity, onSave, onCancel }: QuickCompleteModalPr
   )
 }
 
+interface DeleteConfirmModalProps {
+  title: string
+  itemType: 'activity' | 'calendar'
+  hasCalendarEvent: boolean
+  onDeleteAppOnly: () => void
+  onDeleteBoth: () => void
+  onCancel: () => void
+}
+
+function DeleteConfirmModal({
+  title,
+  itemType,
+  hasCalendarEvent,
+  onDeleteAppOnly,
+  onDeleteBoth,
+  onCancel,
+}: DeleteConfirmModalProps) {
+  const isCalendarOnly = itemType === 'calendar'
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      onClick={onCancel}
+    >
+      <div
+        className="bg-white dark:bg-stone-800 rounded-2xl max-w-sm w-full p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="text-center mb-5">
+          <div className="text-4xl mb-2">🗑️</div>
+          <h3 className="text-lg font-semibold text-stone-800 dark:text-stone-100">
+            Delete &ldquo;{title}&rdquo;?
+          </h3>
+          {hasCalendarEvent && !isCalendarOnly && (
+            <p className="text-sm text-stone-500 dark:text-stone-400 mt-2">
+              This is linked to Google Calendar. Where do you want to delete it from?
+            </p>
+          )}
+          {isCalendarOnly && (
+            <p className="text-sm text-stone-500 dark:text-stone-400 mt-2">
+              This will remove the event from Google Calendar.
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          {isCalendarOnly ? (
+            <button
+              onClick={onDeleteBoth}
+              className="w-full py-2.5 px-4 rounded-lg bg-critical-500 hover:bg-critical-600 text-white font-medium text-sm transition-colors"
+            >
+              Delete from Google Calendar
+            </button>
+          ) : hasCalendarEvent ? (
+            <>
+              <button
+                onClick={onDeleteBoth}
+                className="w-full py-2.5 px-4 rounded-lg bg-critical-500 hover:bg-critical-600 text-white font-medium text-sm transition-colors"
+              >
+                Delete from app & Google Calendar
+              </button>
+              <button
+                onClick={onDeleteAppOnly}
+                className="w-full py-2.5 px-4 rounded-lg bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-300 font-medium text-sm transition-colors"
+              >
+                Delete from app only
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={onDeleteAppOnly}
+              className="w-full py-2.5 px-4 rounded-lg bg-critical-500 hover:bg-critical-600 text-white font-medium text-sm transition-colors"
+            >
+              Delete
+            </button>
+          )}
+          <button
+            onClick={onCancel}
+            className="w-full py-2.5 px-4 rounded-lg text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 font-medium text-sm transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 interface ImportModalProps {
   events: CalendarEventDisplay[]
   onImport: (events: Array<{ event: CalendarEventDisplay; category: ActivityCategory }>) => void
@@ -837,6 +931,7 @@ interface DaySectionProps {
   onEditActivity: (activity: ActivityEntry) => void
   onDeleteActivity: (id: string) => void
   onTrackCalendarEvent: (event: CalendarEventDisplay) => void
+  onDeleteCalendarEvent: (event: CalendarEventDisplay) => void
 }
 
 function DaySection({
@@ -848,6 +943,7 @@ function DaySection({
   onEditActivity,
   onDeleteActivity,
   onTrackCalendarEvent,
+  onDeleteCalendarEvent,
 }: DaySectionProps) {
   const today = isToday(date)
   const yesterday = isYesterday(date)
@@ -976,12 +1072,20 @@ function DaySection({
                             Calendar event
                           </span>
                         </div>
-                        <button
-                          onClick={() => onTrackCalendarEvent(event)}
-                          className="text-xs text-sage-600 dark:text-sage-400 hover:text-sage-700 dark:hover:text-sage-300 font-medium mt-1"
-                        >
-                          + Track how it affected you
-                        </button>
+                        <div className="flex items-center gap-3 mt-1">
+                          <button
+                            onClick={() => onTrackCalendarEvent(event)}
+                            className="text-xs text-sage-600 dark:text-sage-400 hover:text-sage-700 dark:hover:text-sage-300 font-medium"
+                          >
+                            + Track how it affected you
+                          </button>
+                          <button
+                            onClick={() => onDeleteCalendarEvent(event)}
+                            className="text-xs text-critical-500 hover:text-critical-600 dark:text-critical-400 dark:hover:text-critical-300"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1201,6 +1305,11 @@ export function ActivitiesView() {
     null
   )
   const [showImportModal, setShowImportModal] = useState(false)
+  const [deletingItem, setDeletingItem] = useState<{
+    type: 'activity' | 'calendar'
+    activity?: ActivityEntry
+    calendarEvent?: CalendarEventDisplay
+  } | null>(null)
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [expandedDays, setExpandedDays] = useState<Set<string>>(
     new Set([format(new Date(), 'yyyy-MM-dd')])
@@ -1377,11 +1486,70 @@ export function ActivitiesView() {
     setShowForm(true)
   }
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Delete this activity?')) {
-      await deleteActivity(id)
+  const handleDelete = (id: string) => {
+    const activity = activities.find((a) => a.id === id)
+    if (!activity) return
+    setDeletingItem({ type: 'activity', activity })
+  }
+
+  const handleDeleteCalendarEvent = (event: CalendarEventDisplay) => {
+    setDeletingItem({ type: 'calendar', calendarEvent: event })
+  }
+
+  const handleConfirmDeleteAppOnly = async () => {
+    if (!deletingItem) return
+
+    if (deletingItem.type === 'activity' && deletingItem.activity) {
+      await deleteActivity(deletingItem.activity.id)
       toast.success('Activity deleted')
     }
+
+    setDeletingItem(null)
+  }
+
+  const handleConfirmDeleteBoth = async () => {
+    if (!deletingItem) return
+
+    const { accessToken, calendar } = useGoogleStore.getState()
+
+    if (deletingItem.type === 'activity' && deletingItem.activity) {
+      await deleteActivity(deletingItem.activity.id)
+
+      if (deletingItem.activity.googleCalendarEventId && accessToken && calendar) {
+        try {
+          await deleteCalendarEvent(
+            accessToken,
+            calendar.selectedCalendarId,
+            deletingItem.activity.googleCalendarEventId
+          )
+          toast.success('Deleted from app and Google Calendar')
+        } catch (error) {
+          console.error('Failed to delete from calendar:', error)
+          toast.error('Deleted from app, but failed to remove from Google Calendar')
+        }
+      }
+    } else if (deletingItem.type === 'calendar' && deletingItem.calendarEvent) {
+      if (!accessToken || !calendar) {
+        toast.error('Not connected to Google Calendar')
+        setDeletingItem(null)
+        return
+      }
+
+      try {
+        await deleteCalendarEvent(
+          accessToken,
+          calendar.selectedCalendarId,
+          deletingItem.calendarEvent.googleEventId
+        )
+        toast.success('Deleted from Google Calendar')
+        fetchEvents(weekStart, weekEnd)
+      } catch (error) {
+        console.error('Failed to delete calendar event:', error)
+        toast.error('Failed to delete from Google Calendar')
+      }
+    }
+
+    setDeletingItem(null)
   }
 
   const handleTrackCalendarEvent = (event: CalendarEventDisplay) => {
@@ -1638,6 +1806,7 @@ export function ActivitiesView() {
               onEditActivity={handleEdit}
               onDeleteActivity={handleDelete}
               onTrackCalendarEvent={handleTrackCalendarEvent}
+              onDeleteCalendarEvent={handleDeleteCalendarEvent}
             />
           )
         })}
@@ -1656,6 +1825,23 @@ export function ActivitiesView() {
           events={unimportedCalendarEvents}
           onImport={handleImport}
           onCancel={() => setShowImportModal(false)}
+        />
+      )}
+
+      {deletingItem && (
+        <DeleteConfirmModal
+          title={
+            deletingItem.type === 'activity'
+              ? deletingItem.activity?.activity || ''
+              : deletingItem.calendarEvent?.title || ''
+          }
+          itemType={deletingItem.type}
+          hasCalendarEvent={
+            deletingItem.type === 'calendar' || !!deletingItem.activity?.googleCalendarEventId
+          }
+          onDeleteAppOnly={handleConfirmDeleteAppOnly}
+          onDeleteBoth={handleConfirmDeleteBoth}
+          onCancel={() => setDeletingItem(null)}
         />
       )}
 
