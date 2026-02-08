@@ -423,10 +423,10 @@ export function InsightsView() {
         description="Personalized analysis of your CBT practice and behavioral activation. Track your progress and discover what works for you."
       />
 
-      <div className="flex gap-2 p-1 bg-stone-100 dark:bg-stone-800 rounded-xl">
+      <div className="flex gap-1 sm:gap-2 p-1 bg-stone-100 dark:bg-stone-800 rounded-xl overflow-x-auto">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`flex-1 py-2 px-4 text-sm font-medium rounded-lg transition-colors ${
+          className={`flex-1 min-w-0 py-2 px-2 sm:px-4 text-xs sm:text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
             activeTab === 'overview'
               ? 'bg-white dark:bg-stone-700 text-stone-800 dark:text-stone-100 shadow-sm'
               : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
@@ -436,7 +436,7 @@ export function InsightsView() {
         </button>
         <button
           onClick={() => setActiveTab('thoughts')}
-          className={`flex-1 py-2 px-4 text-sm font-medium rounded-lg transition-colors ${
+          className={`flex-1 min-w-0 py-2 px-2 sm:px-4 text-xs sm:text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
             activeTab === 'thoughts'
               ? 'bg-white dark:bg-stone-700 text-stone-800 dark:text-stone-100 shadow-sm'
               : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
@@ -446,7 +446,7 @@ export function InsightsView() {
         </button>
         <button
           onClick={() => setActiveTab('activities')}
-          className={`flex-1 py-2 px-4 text-sm font-medium rounded-lg transition-colors ${
+          className={`flex-1 min-w-0 py-2 px-2 sm:px-4 text-xs sm:text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
             activeTab === 'activities'
               ? 'bg-white dark:bg-stone-700 text-stone-800 dark:text-stone-100 shadow-sm'
               : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
@@ -456,7 +456,7 @@ export function InsightsView() {
         </button>
         <button
           onClick={() => setActiveTab('gratitude')}
-          className={`flex-1 py-2 px-4 text-sm font-medium rounded-lg transition-colors ${
+          className={`flex-1 min-w-0 py-2 px-2 sm:px-4 text-xs sm:text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
             activeTab === 'gratitude'
               ? 'bg-white dark:bg-stone-700 text-stone-800 dark:text-stone-100 shadow-sm'
               : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
