@@ -1,13 +1,17 @@
 import { useState } from 'react'
+import { useAppStore } from '@/stores/appStore'
+import { toast } from '@/stores/toastStore'
 
 const ONBOARDING_KEY = 'untwist-onboarding-completed'
 
 export function OnboardingFlow() {
+  const { loadSampleData } = useAppStore()
   const [isVisible, setIsVisible] = useState(() => {
     const completed = localStorage.getItem(ONBOARDING_KEY)
     return !completed
   })
   const [currentStep, setCurrentStep] = useState(0)
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleComplete = () => {
     localStorage.setItem(ONBOARDING_KEY, 'true')
@@ -15,7 +19,7 @@ export function OnboardingFlow() {
   }
 
   const handleNext = () => {
-    if (currentStep < 2) {
+    if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1)
     } else {
       handleComplete()
@@ -24,6 +28,19 @@ export function OnboardingFlow() {
 
   const handleSkip = () => {
     handleComplete()
+  }
+
+  const handleLoadSample = async () => {
+    setIsLoading(true)
+    try {
+      await loadSampleData()
+      toast.success('Sample data loaded')
+      handleComplete()
+    } catch {
+      toast.error('Failed to load sample data')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   if (!isVisible) return null
@@ -80,9 +97,31 @@ export function OnboardingFlow() {
         </svg>
       ),
     },
+    {
+      title: 'Try with sample data?',
+      content:
+        'Load example entries to explore how thought records, mood tracking, gratitude journaling, and insights work. You can always load or clear this later in Settings.',
+      icon: (
+        <svg
+          className="w-12 h-12 text-sage-500"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        >
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="16" y1="13" x2="8" y2="13" />
+          <line x1="16" y1="17" x2="8" y2="17" />
+          <polyline points="10 9 9 9 8 9" />
+        </svg>
+      ),
+      isSampleStep: true,
+    },
   ]
 
   const step = steps[currentStep]
+  const isSampleStep = 'isSampleStep' in step && step.isSampleStep
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -108,7 +147,24 @@ export function OnboardingFlow() {
           </div>
 
           <div className="flex gap-3 w-full">
-            {currentStep < steps.length - 1 ? (
+            {isSampleStep ? (
+              <>
+                <button
+                  onClick={handleComplete}
+                  className="flex-1 btn-secondary"
+                  disabled={isLoading}
+                >
+                  Start empty
+                </button>
+                <button
+                  onClick={handleLoadSample}
+                  className="flex-1 btn-primary"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Loading...' : 'Load sample data'}
+                </button>
+              </>
+            ) : currentStep < steps.length - 1 ? (
               <>
                 <button onClick={handleSkip} className="flex-1 btn-secondary">
                   Skip

@@ -97,6 +97,8 @@ interface AppState {
   setSelectedActivityId: (id: string | null) => void
   exportData: () => Promise<string>
   importData: (jsonString: string, mode?: 'merge' | 'replace') => Promise<void>
+  loadSampleData: () => Promise<void>
+  clearAllData: () => Promise<void>
   tryAutoSave: () => Promise<void>
   setFileHandle: (handle: FileSystemFileHandle | null) => void
   initializeAutoSave: () => Promise<void>
@@ -350,6 +352,17 @@ export const useAppStore = create<AppState>((set, get) => ({
   importData: async (jsonString, mode: 'merge' | 'replace' = 'merge') => {
     const data = JSON.parse(jsonString)
     await db.importData(data, mode)
+    await get().loadData()
+  },
+
+  loadSampleData: async () => {
+    const response = await fetch('/sample-data.json')
+    const jsonString = await response.text()
+    await get().importData(jsonString, 'replace')
+  },
+
+  clearAllData: async () => {
+    await db.clearAllData()
     await get().loadData()
   },
 

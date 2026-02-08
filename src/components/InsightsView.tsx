@@ -33,8 +33,13 @@ import {
   type PersonalInsight,
 } from '@/utils/insightGenerator'
 import { generateActivityInsights, type ActivityPatternInsight } from '@/utils/activityInsights'
+import { generateGratitudeInsights, type GratitudePatternInsight } from '@/utils/gratitudeInsights'
 
-function InsightCard({ insight }: { insight: PersonalInsight | ActivityPatternInsight }) {
+function InsightCard({
+  insight,
+}: {
+  insight: PersonalInsight | ActivityPatternInsight | GratitudePatternInsight
+}) {
   const bgColors = {
     celebration:
       'bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-amber-200 dark:border-amber-800',
@@ -173,7 +178,9 @@ export function InsightsView() {
   const { resolvedTheme } = useThemeStore()
   const isDark = resolvedTheme === 'dark'
   const [expandedDistortion, setExpandedDistortion] = useState<number | null>(null)
-  const [activeTab, setActiveTab] = useState<'overview' | 'thoughts' | 'activities'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'thoughts' | 'activities' | 'gratitude'>(
+    'overview'
+  )
 
   const chartColors = {
     axis: isDark ? '#78716c' : '#a8a29e',
@@ -191,6 +198,7 @@ export function InsightsView() {
     activity: isDark ? '#8bb88b' : '#5a8a5a',
     activityFill: isDark ? 'rgba(139, 184, 139, 0.2)' : 'rgba(90, 138, 90, 0.1)',
     moodChange: isDark ? '#6bbb6b' : '#4a9a4a',
+    gratitude: isDark ? '#c4a87d' : '#b8956d',
   }
 
   const distortionInsights = useMemo(
@@ -216,6 +224,11 @@ export function InsightsView() {
   const timePatterns = useMemo(() => generateTimePatterns(thoughtRecords), [thoughtRecords])
 
   const activityInsights = useMemo(() => generateActivityInsights(activities), [activities])
+
+  const gratitudeInsightData = useMemo(
+    () => generateGratitudeInsights(gratitudeEntries),
+    [gratitudeEntries]
+  )
 
   const emotionalTrend = useMemo(() => {
     if (thoughtRecords.length < 3) return null
@@ -397,7 +410,11 @@ export function InsightsView() {
     )
   }
 
-  const allInsights = [...personalInsights, ...(activityInsights?.personalInsights || [])]
+  const allInsights = [
+    ...personalInsights,
+    ...(activityInsights?.personalInsights || []),
+    ...(gratitudeInsightData?.personalInsights || []),
+  ]
 
   return (
     <div className="space-y-6">
@@ -436,6 +453,16 @@ export function InsightsView() {
           }`}
         >
           Activities
+        </button>
+        <button
+          onClick={() => setActiveTab('gratitude')}
+          className={`flex-1 py-2 px-4 text-sm font-medium rounded-lg transition-colors ${
+            activeTab === 'gratitude'
+              ? 'bg-white dark:bg-stone-700 text-stone-800 dark:text-stone-100 shadow-sm'
+              : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
+          }`}
+        >
+          Gratitude
         </button>
       </div>
 
@@ -1058,6 +1085,222 @@ export function InsightsView() {
           <p className="text-stone-500 dark:text-stone-400 text-sm max-w-md mx-auto">
             Start tracking activities with mood ratings to see which ones help you feel better. This
             builds your personal evidence base.
+          </p>
+        </div>
+      )}
+
+      {activeTab === 'gratitude' && gratitudeInsightData && (
+        <>
+          {gratitudeInsightData.personalInsights.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {gratitudeInsightData.personalInsights.map((insight, i) => (
+                <InsightCard key={i} insight={insight} />
+              ))}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="card p-5">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-3xl font-semibold text-stone-800 dark:text-stone-100">
+                    {gratitudeInsightData.totalDays}
+                  </div>
+                  <div className="text-sm text-stone-500 dark:text-stone-400 mt-1">Days logged</div>
+                </div>
+                <StatInfoButton
+                  title="Days logged"
+                  content="Total number of days you've written a gratitude entry. Consistency matters more than volume."
+                />
+              </div>
+            </div>
+            <div className="card p-5">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-3xl font-semibold text-stone-800 dark:text-stone-100">
+                    {gratitudeInsightData.currentStreak > 0
+                      ? `${gratitudeInsightData.currentStreak}🔥`
+                      : '0'}
+                  </div>
+                  <div className="text-sm text-stone-500 dark:text-stone-400 mt-1">Day streak</div>
+                </div>
+                <StatInfoButton
+                  title="Gratitude streak"
+                  content={`Current consecutive days of gratitude journaling. Your longest streak is ${gratitudeInsightData.longestStreak} days.`}
+                />
+              </div>
+            </div>
+            <div className="card p-5">
+              <div className="text-3xl font-semibold text-stone-800 dark:text-stone-100">
+                {gratitudeInsightData.totalItems}
+              </div>
+              <div className="text-sm text-stone-500 dark:text-stone-400 mt-1">Gratitude items</div>
+            </div>
+            <div className="card p-5">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-3xl font-semibold text-sage-600 dark:text-sage-400">
+                    {gratitudeInsightData.depthScore}%
+                  </div>
+                  <div className="text-sm text-stone-500 dark:text-stone-400 mt-1">
+                    Practice depth
+                  </div>
+                </div>
+                <StatInfoButton
+                  title="Practice depth"
+                  content="Measures how often you use the optional reflection fields (why it matters and savoring moments). Deeper reflection amplifies gratitude's benefits."
+                />
+              </div>
+            </div>
+          </div>
+
+          {gratitudeInsightData.weeklyTrend.length >= 3 && (
+            <div className="card p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300">
+                  Weekly gratitude trend
+                </h2>
+                <StatInfoButton
+                  title="Weekly trend"
+                  content="Number of gratitude items logged per week. Consistency matters more than volume."
+                />
+              </div>
+              <div className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={gratitudeInsightData.weeklyTrend}>
+                    <XAxis
+                      dataKey="week"
+                      stroke={chartColors.axis}
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      stroke={chartColors.axis}
+                      fontSize={12}
+                      allowDecimals={false}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: chartColors.tooltipBg,
+                        border: `1px solid ${chartColors.tooltipBorder}`,
+                        borderRadius: '12px',
+                      }}
+                      formatter={(value: number) => [`${value} items`, 'Gratitude items']}
+                    />
+                    <Bar dataKey="itemCount" fill={chartColors.gratitude} radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
+          {gratitudeInsightData.topThemes.length > 0 && (
+            <div className="card p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300">
+                  What you're grateful for
+                </h2>
+                <StatInfoButton
+                  title="Gratitude themes"
+                  content="Common themes detected in your gratitude items. Noticing what you appreciate most can deepen your practice."
+                />
+              </div>
+              <div className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={gratitudeInsightData.topThemes.slice(0, 5)} layout="vertical">
+                    <XAxis
+                      type="number"
+                      stroke={chartColors.axis}
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="theme"
+                      stroke={chartColors.axis}
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                      width={70}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: chartColors.tooltipBg,
+                        border: `1px solid ${chartColors.tooltipBorder}`,
+                        borderRadius: '12px',
+                      }}
+                      formatter={(
+                        value: number,
+                        _name: string,
+                        props: { payload?: { percentage?: number } }
+                      ) => [`${value} items (${props.payload?.percentage ?? 0}%)`, 'Mentions']}
+                    />
+                    <Bar dataKey="count" fill={chartColors.gratitude} radius={[0, 6, 6, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
+          {gratitudeInsightData.totalDays >= 5 && (
+            <div className="card p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold text-stone-700 dark:text-stone-300">
+                  Practice patterns
+                </h2>
+                <StatInfoButton
+                  title="Practice days"
+                  content="Which days of the week you journal most. Building a consistent routine strengthens the gratitude habit."
+                />
+              </div>
+              <div className="h-40">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={gratitudeInsightData.dayOfWeekPattern}>
+                    <XAxis
+                      dataKey="day"
+                      stroke={chartColors.axis}
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      stroke={chartColors.axis}
+                      fontSize={12}
+                      allowDecimals={false}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: chartColors.tooltipBg,
+                        border: `1px solid ${chartColors.tooltipBorder}`,
+                        borderRadius: '12px',
+                      }}
+                    />
+                    <Bar dataKey="count" fill={chartColors.gratitude} radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {activeTab === 'gratitude' && !gratitudeInsightData && (
+        <div className="text-center py-12">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-sage-100 dark:bg-sage-900/30 flex items-center justify-center">
+            <span className="text-2xl">🙏</span>
+          </div>
+          <h3 className="text-stone-700 dark:text-stone-300 font-medium mb-2">
+            No gratitude entries yet
+          </h3>
+          <p className="text-stone-500 dark:text-stone-400 text-sm max-w-md mx-auto">
+            Start a gratitude practice to see insights about what you appreciate most. Research
+            shows regular gratitude journaling improves well-being.
           </p>
         </div>
       )}
