@@ -1,0 +1,637 @@
+{
+  "thoughtRecords": [
+    {
+      "id": "sample-tr-1",
+      "createdAt": "2026-01-10T09:00:00.000Z",
+      "date": "2026-01-10",
+      "situation": "Gave a presentation at work and stumbled over a few words",
+      "emotions": [
+        { "name": "Anxious", "intensity": 75 },
+        { "name": "Embarrassed", "intensity": 80 }
+      ],
+      "automaticThoughts": "Everyone noticed I messed up. They probably think I'm incompetent.",
+      "distortions": [2, 5],
+      "rationalResponse": "A few stumbles don't define the whole presentation. Several colleagues said it was helpful afterward.",
+      "outcomeEmotions": [
+        { "name": "Anxious", "intensity": 40 },
+        { "name": "Embarrassed", "intensity": 35 }
+      ],
+      "newEmotions": [{ "name": "Relieved", "intensity": 60 }],
+      "beliefRatingBefore": 80,
+      "beliefRatingAfter": 30
+    },
+    {
+      "id": "sample-tr-2",
+      "createdAt": "2026-01-13T18:00:00.000Z",
+      "date": "2026-01-13",
+      "situation": "Friend cancelled dinner plans at the last minute",
+      "emotions": [
+        { "name": "Sad", "intensity": 65 },
+        { "name": "Rejected", "intensity": 70 }
+      ],
+      "automaticThoughts": "They don't actually want to spend time with me. Nobody really cares.",
+      "distortions": [2, 5, 9],
+      "rationalResponse": "They said they were feeling unwell. That's a valid reason. We've had many good times together.",
+      "outcomeEmotions": [
+        { "name": "Sad", "intensity": 35 },
+        { "name": "Rejected", "intensity": 25 }
+      ],
+      "newEmotions": [{ "name": "Content", "intensity": 50 }],
+      "beliefRatingBefore": 75,
+      "beliefRatingAfter": 20
+    },
+    {
+      "id": "sample-tr-3",
+      "createdAt": "2026-01-16T12:00:00.000Z",
+      "date": "2026-01-16",
+      "situation": "Got critical feedback on a project I spent weeks on",
+      "emotions": [
+        { "name": "Frustrated", "intensity": 80 },
+        { "name": "Discouraged", "intensity": 70 }
+      ],
+      "automaticThoughts": "All that work was for nothing. I should have done better.",
+      "distortions": [1, 3, 8],
+      "rationalResponse": "The feedback pointed out specific areas to improve, but also acknowledged the strong foundation. Critique is part of growth.",
+      "outcomeEmotions": [
+        { "name": "Frustrated", "intensity": 45 },
+        { "name": "Discouraged", "intensity": 30 }
+      ],
+      "newEmotions": [{ "name": "Hopeful", "intensity": 55 }],
+      "beliefRatingBefore": 85,
+      "beliefRatingAfter": 35
+    },
+    {
+      "id": "sample-tr-4",
+      "createdAt": "2026-01-19T20:00:00.000Z",
+      "date": "2026-01-19",
+      "situation": "Couldn't fall asleep worrying about upcoming deadlines",
+      "emotions": [
+        { "name": "Anxious", "intensity": 85 },
+        { "name": "Overwhelmed", "intensity": 75 }
+      ],
+      "automaticThoughts": "I'll never get everything done. I'm going to fail at all of it.",
+      "distortions": [1, 5, 6],
+      "rationalResponse": "I can make a prioritized list tomorrow. I've managed tight deadlines before. One step at a time.",
+      "outcomeEmotions": [
+        { "name": "Anxious", "intensity": 50 },
+        { "name": "Overwhelmed", "intensity": 40 }
+      ],
+      "newEmotions": [],
+      "beliefRatingBefore": 90,
+      "beliefRatingAfter": 40
+    },
+    {
+      "id": "sample-tr-5",
+      "createdAt": "2026-01-22T14:00:00.000Z",
+      "date": "2026-01-22",
+      "situation": "Saw an old classmate who seemed more successful than me",
+      "emotions": [
+        { "name": "Jealous", "intensity": 60 },
+        { "name": "Inadequate", "intensity": 70 }
+      ],
+      "automaticThoughts": "Everyone is doing better than me. I haven't achieved anything worthwhile.",
+      "distortions": [2, 3, 4],
+      "rationalResponse": "I'm comparing my inside to their outside. I've made progress in areas that matter to me. Success looks different for everyone.",
+      "outcomeEmotions": [
+        { "name": "Jealous", "intensity": 25 },
+        { "name": "Inadequate", "intensity": 30 }
+      ],
+      "newEmotions": [{ "name": "Proud", "intensity": 45 }],
+      "beliefRatingBefore": 70,
+      "beliefRatingAfter": 25
+    },
+    {
+      "id": "sample-tr-6",
+      "createdAt": "2026-01-25T10:00:00.000Z",
+      "date": "2026-01-25",
+      "situation": "Made a small mistake at work and felt terrible all day",
+      "emotions": [
+        { "name": "Guilty", "intensity": 75 },
+        { "name": "Anxious", "intensity": 65 }
+      ],
+      "automaticThoughts": "I should never make mistakes. My boss must be so disappointed.",
+      "distortions": [1, 5, 8],
+      "rationalResponse": "Everyone makes mistakes. My boss didn't even mention it. I can fix it easily tomorrow.",
+      "outcomeEmotions": [
+        { "name": "Guilty", "intensity": 30 },
+        { "name": "Anxious", "intensity": 25 }
+      ],
+      "newEmotions": [{ "name": "Relieved", "intensity": 65 }],
+      "beliefRatingBefore": 80,
+      "beliefRatingAfter": 20
+    },
+    {
+      "id": "sample-tr-7",
+      "createdAt": "2026-01-28T16:00:00.000Z",
+      "date": "2026-01-28",
+      "situation": "Declined an invitation to a party because of social anxiety",
+      "emotions": [
+        { "name": "Anxious", "intensity": 70 },
+        { "name": "Lonely", "intensity": 60 }
+      ],
+      "automaticThoughts": "I won't know what to say. People will think I'm boring.",
+      "distortions": [5, 7, 9],
+      "rationalResponse": "I don't need to be the life of the party. I can go for a short time and leave if uncomfortable. Last time I went, I actually enjoyed parts of it.",
+      "outcomeEmotions": [
+        { "name": "Anxious", "intensity": 45 },
+        { "name": "Lonely", "intensity": 35 }
+      ],
+      "newEmotions": [{ "name": "Hopeful", "intensity": 40 }],
+      "beliefRatingBefore": 75,
+      "beliefRatingAfter": 35
+    },
+    {
+      "id": "sample-tr-8",
+      "createdAt": "2026-01-31T11:00:00.000Z",
+      "date": "2026-01-31",
+      "situation": "Got stuck in traffic and was late to an appointment",
+      "emotions": [
+        { "name": "Frustrated", "intensity": 65 },
+        { "name": "Anxious", "intensity": 55 }
+      ],
+      "automaticThoughts": "I should have left earlier. Now they'll think I'm unreliable.",
+      "distortions": [5, 8, 10],
+      "rationalResponse": "Traffic was unpredictable. I called ahead. Being a few minutes late once doesn't define my character.",
+      "outcomeEmotions": [
+        { "name": "Frustrated", "intensity": 30 },
+        { "name": "Anxious", "intensity": 20 }
+      ],
+      "newEmotions": [],
+      "beliefRatingBefore": 65,
+      "beliefRatingAfter": 15
+    },
+    {
+      "id": "sample-tr-9",
+      "createdAt": "2026-02-02T09:00:00.000Z",
+      "date": "2026-02-02",
+      "situation": "Received a vague email from manager asking to 'chat tomorrow'",
+      "emotions": [
+        { "name": "Anxious", "intensity": 80 },
+        { "name": "Fearful", "intensity": 70 }
+      ],
+      "automaticThoughts": "I'm going to get fired. Something must be really wrong.",
+      "distortions": [5, 6, 7],
+      "rationalResponse": "There's no evidence this is bad news. It could be about anything - a new project, routine check-in, or even something positive.",
+      "outcomeEmotions": [
+        { "name": "Anxious", "intensity": 40 },
+        { "name": "Fearful", "intensity": 25 }
+      ],
+      "newEmotions": [{ "name": "Peaceful", "intensity": 50 }],
+      "beliefRatingBefore": 85,
+      "beliefRatingAfter": 25
+    },
+    {
+      "id": "sample-tr-10",
+      "createdAt": "2026-02-05T15:00:00.000Z",
+      "date": "2026-02-05",
+      "situation": "Tried a new recipe and it didn't turn out well",
+      "emotions": [
+        { "name": "Frustrated", "intensity": 50 },
+        { "name": "Discouraged", "intensity": 45 }
+      ],
+      "automaticThoughts": "I can't cook. I shouldn't have bothered trying something new.",
+      "distortions": [1, 2, 9],
+      "rationalResponse": "Learning takes practice. One failed recipe doesn't mean I can't cook. I'll adjust next time.",
+      "outcomeEmotions": [
+        { "name": "Frustrated", "intensity": 20 },
+        { "name": "Discouraged", "intensity": 15 }
+      ],
+      "newEmotions": [{ "name": "Confident", "intensity": 55 }],
+      "beliefRatingBefore": 60,
+      "beliefRatingAfter": 15
+    }
+  ],
+  "gratitudeEntries": [
+    {
+      "id": "sample-g-1",
+      "createdAt": "2026-01-10T21:00:00.000Z",
+      "date": "2026-01-10",
+      "entries": [
+        "The warm coffee my partner made this morning",
+        "A good conversation with a colleague at lunch",
+        "The sunshine on my walk home"
+      ],
+      "whyGrateful": "These small moments remind me that good things happen every day, even on stressful ones.",
+      "savoring": "The feeling of warmth from the coffee mug while watching the sunrise through the kitchen window."
+    },
+    {
+      "id": "sample-g-2",
+      "createdAt": "2026-01-11T21:00:00.000Z",
+      "date": "2026-01-11",
+      "entries": [
+        "My health allowing me to go for a jog",
+        "A friend texting to check in",
+        "Finding a great book at the library"
+      ]
+    },
+    {
+      "id": "sample-g-3",
+      "createdAt": "2026-01-12T21:00:00.000Z",
+      "date": "2026-01-12",
+      "entries": [
+        "A home-cooked meal with family",
+        "The peaceful quiet of the evening",
+        "My dog greeting me at the door"
+      ],
+      "whyGrateful": "Family time grounds me and reminds me what matters most."
+    },
+    {
+      "id": "sample-g-4",
+      "createdAt": "2026-01-14T21:00:00.000Z",
+      "date": "2026-01-14",
+      "entries": [
+        "Progress on a work project I was stuck on",
+        "A compliment from a stranger",
+        "The beautiful sunset on the drive home"
+      ]
+    },
+    {
+      "id": "sample-g-5",
+      "createdAt": "2026-01-16T21:00:00.000Z",
+      "date": "2026-01-16",
+      "entries": [
+        "Learning something new in a podcast",
+        "My comfortable bed after a long day",
+        "A laugh shared with a coworker"
+      ]
+    },
+    {
+      "id": "sample-g-6",
+      "createdAt": "2026-01-18T21:00:00.000Z",
+      "date": "2026-01-18",
+      "entries": [
+        "Weekend morning with no alarm",
+        "Cooking a new recipe that turned out well",
+        "A long phone call with an old friend",
+        "The smell of rain outside"
+      ],
+      "savoring": "Sitting on the porch with tea, listening to the rain and feeling completely at peace."
+    },
+    {
+      "id": "sample-g-7",
+      "createdAt": "2026-01-20T21:00:00.000Z",
+      "date": "2026-01-20",
+      "entries": [
+        "A productive morning of exercise and reading",
+        "Kind words from my mom on the phone",
+        "The energy I felt after a good workout"
+      ],
+      "whyGrateful": "Taking care of my body directly improves my mind."
+    },
+    {
+      "id": "sample-g-8",
+      "createdAt": "2026-01-22T21:00:00.000Z",
+      "date": "2026-01-22",
+      "entries": [
+        "A colleague offering to help with my workload",
+        "Finding time to read a chapter of my book",
+        "A warm dinner ready when I got home"
+      ]
+    },
+    {
+      "id": "sample-g-9",
+      "createdAt": "2026-01-24T21:00:00.000Z",
+      "date": "2026-01-24",
+      "entries": [
+        "Finishing a challenging task at work",
+        "A walk in the park during my lunch break",
+        "Watching birds in the garden"
+      ]
+    },
+    {
+      "id": "sample-g-10",
+      "createdAt": "2026-01-26T21:00:00.000Z",
+      "date": "2026-01-26",
+      "entries": [
+        "Game night with friends",
+        "My health and the ability to enjoy the day",
+        "A child laughing in the park made me smile"
+      ],
+      "whyGrateful": "Social connections fill my cup in ways I sometimes forget.",
+      "savoring": "The moment during the game when everyone was laughing so hard we couldn't breathe."
+    },
+    {
+      "id": "sample-g-11",
+      "createdAt": "2026-01-28T21:00:00.000Z",
+      "date": "2026-01-28",
+      "entries": [
+        "A peaceful yoga session in the morning",
+        "Fresh flowers someone brought to the office",
+        "The feeling of accomplishment after cleaning the house"
+      ]
+    },
+    {
+      "id": "sample-g-12",
+      "createdAt": "2026-01-30T21:00:00.000Z",
+      "date": "2026-01-30",
+      "entries": [
+        "A supportive message from a friend",
+        "Enjoying a home-cooked soup on a cold day",
+        "Quiet evening reading by the lamp"
+      ]
+    },
+    {
+      "id": "sample-g-13",
+      "createdAt": "2026-02-01T21:00:00.000Z",
+      "date": "2026-02-01",
+      "entries": [
+        "Starting a new month with energy and intention",
+        "My morning coffee ritual",
+        "A good night's sleep"
+      ]
+    },
+    {
+      "id": "sample-g-14",
+      "createdAt": "2026-02-03T21:00:00.000Z",
+      "date": "2026-02-03",
+      "entries": [
+        "A productive brainstorming session at work",
+        "The sun breaking through clouds on my walk",
+        "My partner surprising me with my favorite tea"
+      ],
+      "whyGrateful": "Small gestures of love mean the most."
+    },
+    {
+      "id": "sample-g-15",
+      "createdAt": "2026-02-05T21:00:00.000Z",
+      "date": "2026-02-05",
+      "entries": [
+        "Learning a skill I've been wanting to try",
+        "A good meal with family",
+        "The satisfaction of helping a colleague solve a problem"
+      ],
+      "savoring": "The look of relief and gratitude on my colleague's face when we finally cracked the issue together."
+    }
+  ],
+  "moodChecks": [
+    {
+      "id": "sample-mc-1",
+      "date": "2026-01-10",
+      "createdAt": "2026-01-10T08:00:00.000Z",
+      "type": "phq9",
+      "phq9Scores": {
+        "interest": 2,
+        "depressed": 2,
+        "sleep": 1,
+        "energy": 2,
+        "appetite": 1,
+        "selfEsteem": 2,
+        "concentration": 1,
+        "movement": 0,
+        "selfHarm": 0
+      }
+    },
+    {
+      "id": "sample-mc-2",
+      "date": "2026-01-10",
+      "createdAt": "2026-01-10T08:10:00.000Z",
+      "type": "gad7",
+      "gad7Scores": {
+        "anxious": 2,
+        "worrying": 2,
+        "worryingTooMuch": 1,
+        "relaxing": 2,
+        "restless": 1,
+        "irritable": 1,
+        "afraid": 1
+      }
+    },
+    {
+      "id": "sample-mc-3",
+      "date": "2026-01-24",
+      "createdAt": "2026-01-24T08:00:00.000Z",
+      "type": "phq9",
+      "phq9Scores": {
+        "interest": 1,
+        "depressed": 1,
+        "sleep": 1,
+        "energy": 1,
+        "appetite": 1,
+        "selfEsteem": 1,
+        "concentration": 1,
+        "movement": 0,
+        "selfHarm": 0
+      }
+    },
+    {
+      "id": "sample-mc-4",
+      "date": "2026-01-24",
+      "createdAt": "2026-01-24T08:10:00.000Z",
+      "type": "gad7",
+      "gad7Scores": {
+        "anxious": 1,
+        "worrying": 1,
+        "worryingTooMuch": 1,
+        "relaxing": 1,
+        "restless": 1,
+        "irritable": 0,
+        "afraid": 1
+      }
+    },
+    {
+      "id": "sample-mc-5",
+      "date": "2026-02-05",
+      "createdAt": "2026-02-05T08:00:00.000Z",
+      "type": "phq9",
+      "phq9Scores": {
+        "interest": 1,
+        "depressed": 0,
+        "sleep": 1,
+        "energy": 1,
+        "appetite": 0,
+        "selfEsteem": 1,
+        "concentration": 0,
+        "movement": 0,
+        "selfHarm": 0
+      }
+    },
+    {
+      "id": "sample-mc-6",
+      "date": "2026-02-05",
+      "createdAt": "2026-02-05T08:10:00.000Z",
+      "type": "gad7",
+      "gad7Scores": {
+        "anxious": 1,
+        "worrying": 1,
+        "worryingTooMuch": 0,
+        "relaxing": 1,
+        "restless": 0,
+        "irritable": 0,
+        "afraid": 0
+      }
+    }
+  ],
+  "activities": [
+    {
+      "id": "sample-a-1",
+      "date": "2026-01-11",
+      "createdAt": "2026-01-11T07:00:00.000Z",
+      "activity": "Morning jog in the park",
+      "category": "physical",
+      "duration": 30,
+      "moodBefore": 4,
+      "moodAfter": 7,
+      "pleasureRating": 7,
+      "masteryRating": 6,
+      "isPlanned": true,
+      "isCompleted": true
+    },
+    {
+      "id": "sample-a-2",
+      "date": "2026-01-13",
+      "createdAt": "2026-01-13T10:00:00.000Z",
+      "activity": "Coffee with a friend",
+      "category": "social",
+      "duration": 60,
+      "moodBefore": 5,
+      "moodAfter": 8,
+      "pleasureRating": 9,
+      "masteryRating": 3,
+      "isPlanned": true,
+      "isCompleted": true
+    },
+    {
+      "id": "sample-a-3",
+      "date": "2026-01-15",
+      "createdAt": "2026-01-15T19:00:00.000Z",
+      "activity": "Painted watercolors for an hour",
+      "category": "creative",
+      "duration": 60,
+      "moodBefore": 4,
+      "moodAfter": 7,
+      "pleasureRating": 8,
+      "masteryRating": 5,
+      "isPlanned": false,
+      "isCompleted": true
+    },
+    {
+      "id": "sample-a-4",
+      "date": "2026-01-17",
+      "createdAt": "2026-01-17T18:00:00.000Z",
+      "activity": "Cooked a new recipe for dinner",
+      "category": "self-care",
+      "duration": 45,
+      "moodBefore": 5,
+      "moodAfter": 7,
+      "pleasureRating": 7,
+      "masteryRating": 7,
+      "isPlanned": true,
+      "isCompleted": true
+    },
+    {
+      "id": "sample-a-5",
+      "date": "2026-01-19",
+      "createdAt": "2026-01-19T09:00:00.000Z",
+      "activity": "Organized and cleaned workspace",
+      "category": "productive",
+      "duration": 90,
+      "moodBefore": 3,
+      "moodAfter": 6,
+      "pleasureRating": 4,
+      "masteryRating": 8,
+      "isPlanned": true,
+      "isCompleted": true
+    },
+    {
+      "id": "sample-a-6",
+      "date": "2026-01-21",
+      "createdAt": "2026-01-21T17:00:00.000Z",
+      "activity": "Yoga and meditation session",
+      "category": "mindfulness",
+      "duration": 45,
+      "moodBefore": 4,
+      "moodAfter": 7,
+      "pleasureRating": 7,
+      "masteryRating": 5,
+      "isPlanned": true,
+      "isCompleted": true
+    },
+    {
+      "id": "sample-a-7",
+      "date": "2026-01-23",
+      "createdAt": "2026-01-23T14:00:00.000Z",
+      "activity": "Volunteered at local food bank",
+      "category": "values-aligned",
+      "duration": 120,
+      "moodBefore": 5,
+      "moodAfter": 9,
+      "pleasureRating": 8,
+      "masteryRating": 6,
+      "isPlanned": true,
+      "isCompleted": true
+    },
+    {
+      "id": "sample-a-8",
+      "date": "2026-01-25",
+      "createdAt": "2026-01-25T20:00:00.000Z",
+      "activity": "Read a novel for an hour",
+      "category": "leisure",
+      "duration": 60,
+      "moodBefore": 5,
+      "moodAfter": 7,
+      "pleasureRating": 8,
+      "masteryRating": 3,
+      "isPlanned": false,
+      "isCompleted": true
+    },
+    {
+      "id": "sample-a-9",
+      "date": "2026-01-27",
+      "createdAt": "2026-01-27T08:00:00.000Z",
+      "activity": "Bike ride along the river",
+      "category": "physical",
+      "duration": 45,
+      "moodBefore": 4,
+      "moodAfter": 8,
+      "pleasureRating": 9,
+      "masteryRating": 6,
+      "isPlanned": true,
+      "isCompleted": true
+    },
+    {
+      "id": "sample-a-10",
+      "date": "2026-01-29",
+      "createdAt": "2026-01-29T12:00:00.000Z",
+      "activity": "Lunch with coworkers",
+      "category": "social",
+      "duration": 45,
+      "moodBefore": 5,
+      "moodAfter": 7,
+      "pleasureRating": 7,
+      "masteryRating": 4,
+      "isPlanned": false,
+      "isCompleted": true
+    },
+    {
+      "id": "sample-a-11",
+      "date": "2026-02-01",
+      "createdAt": "2026-02-01T07:30:00.000Z",
+      "activity": "Morning swim at the pool",
+      "category": "physical",
+      "duration": 40,
+      "moodBefore": 4,
+      "moodAfter": 8,
+      "pleasureRating": 8,
+      "masteryRating": 7,
+      "isPlanned": true,
+      "isCompleted": true
+    },
+    {
+      "id": "sample-a-12",
+      "date": "2026-02-03",
+      "createdAt": "2026-02-03T19:00:00.000Z",
+      "activity": "Sketching in a new art journal",
+      "category": "creative",
+      "duration": 40,
+      "moodBefore": 5,
+      "moodAfter": 7,
+      "pleasureRating": 8,
+      "masteryRating": 5,
+      "isPlanned": false,
+      "isCompleted": true
+    }
+  ],
+  "depressionChecklists": [],
+  "safetyPlans": [],
+  "copingSkillLogs": []
+}

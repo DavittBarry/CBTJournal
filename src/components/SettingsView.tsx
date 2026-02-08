@@ -27,6 +27,8 @@ export function SettingsView() {
   const {
     exportData,
     importData,
+    loadSampleData,
+    clearAllData,
     thoughtRecords,
     depressionChecklists,
     gratitudeEntries,
@@ -61,6 +63,10 @@ export function SettingsView() {
   const [showPasteModal, setShowPasteModal] = useState(false)
   const [pasteText, setPasteText] = useState('')
   const [isConnectingCloud, setIsConnectingCloud] = useState(false)
+  const [showSampleConfirm, setShowSampleConfirm] = useState(false)
+  const [isLoadingSample, setIsLoadingSample] = useState(false)
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
+  const [isClearing, setIsClearing] = useState(false)
 
   const hasExistingData =
     thoughtRecords.length > 0 || depressionChecklists.length > 0 || gratitudeEntries.length > 0
@@ -457,6 +463,32 @@ export function SettingsView() {
     toast.info('Logs cleared')
   }
 
+  const handleLoadSampleData = async () => {
+    setIsLoadingSample(true)
+    try {
+      await loadSampleData()
+      toast.success('Sample data loaded')
+    } catch {
+      toast.error('Failed to load sample data')
+    } finally {
+      setIsLoadingSample(false)
+      setShowSampleConfirm(false)
+    }
+  }
+
+  const handleClearAllData = async () => {
+    setIsClearing(true)
+    try {
+      await clearAllData()
+      toast.success('All data cleared')
+    } catch {
+      toast.error('Failed to clear data')
+    } finally {
+      setIsClearing(false)
+      setShowClearConfirm(false)
+    }
+  }
+
   const recentErrors = logger.getRecentErrors(5)
   const allLogs = logger.getLogs()
 
@@ -590,6 +622,106 @@ export function SettingsView() {
                   setPasteText('')
                 }}
                 className="btn-secondary flex-1"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSampleConfirm && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="card p-6 max-w-sm w-full">
+            <h3 className="text-lg font-semibold text-stone-800 dark:text-stone-100 mb-2">
+              Load sample data?
+            </h3>
+            <p className="text-stone-500 dark:text-stone-400 text-sm mb-5">
+              {hasExistingData
+                ? 'This will replace all your current data with example entries. Make sure to export a backup first if you want to keep your data.'
+                : 'This will load example thought records, gratitude entries, mood checks, and activities so you can explore how the app works.'}
+            </p>
+            <div className="space-y-3">
+              {hasExistingData && (
+                <button
+                  onClick={async () => {
+                    await handleExport()
+                    await handleLoadSampleData()
+                  }}
+                  className="btn-primary w-full"
+                  disabled={isLoadingSample}
+                >
+                  Export backup, then load sample
+                </button>
+              )}
+              <button
+                onClick={handleLoadSampleData}
+                className={hasExistingData ? 'btn-secondary w-full' : 'btn-primary w-full'}
+                disabled={isLoadingSample}
+              >
+                {isLoadingSample
+                  ? 'Loading...'
+                  : hasExistingData
+                    ? 'Replace without backup'
+                    : 'Load sample data'}
+              </button>
+              <button
+                onClick={() => setShowSampleConfirm(false)}
+                className="w-full text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 py-2 text-sm font-medium"
+                disabled={isLoadingSample}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showClearConfirm && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="card p-6 max-w-sm w-full">
+            <div className="flex items-center gap-2 mb-2">
+              <svg
+                className="w-5 h-5 text-critical-600 dark:text-critical-400"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+              <h3 className="text-lg font-semibold text-stone-800 dark:text-stone-100">
+                Delete all data?
+              </h3>
+            </div>
+            <p className="text-stone-500 dark:text-stone-400 text-sm mb-5">
+              This will permanently delete all thought records, gratitude entries, mood checks,
+              activities, safety plans, and coping logs. This action cannot be undone.
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={async () => {
+                  await handleExport()
+                  await handleClearAllData()
+                }}
+                className="btn-primary w-full"
+                disabled={isClearing}
+              >
+                Export backup, then delete
+              </button>
+              <button
+                onClick={handleClearAllData}
+                className="w-full py-2.5 px-4 rounded-xl text-sm font-medium border border-critical-300 dark:border-critical-700 text-critical-600 dark:text-critical-400 hover:bg-critical-50 dark:hover:bg-critical-900/20 transition-colors"
+                disabled={isClearing}
+              >
+                {isClearing ? 'Deleting...' : 'Delete everything'}
+              </button>
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                className="w-full text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 py-2 text-sm font-medium"
+                disabled={isClearing}
               >
                 Cancel
               </button>
@@ -866,6 +998,19 @@ export function SettingsView() {
             {hasFileSystemAccess() && (
               <button onClick={handleMultipleFilesImport} className="btn-secondary w-full">
                 Import & merge multiple files
+              </button>
+            )}
+
+            <button onClick={() => setShowSampleConfirm(true)} className="btn-secondary w-full">
+              Load sample data
+            </button>
+
+            {hasExistingData && (
+              <button
+                onClick={() => setShowClearConfirm(true)}
+                className="w-full py-2.5 px-4 rounded-xl text-sm font-medium border border-critical-300 dark:border-critical-700 text-critical-600 dark:text-critical-400 hover:bg-critical-50 dark:hover:bg-critical-900/20 transition-colors"
+              >
+                Clear all data
               </button>
             )}
           </div>
