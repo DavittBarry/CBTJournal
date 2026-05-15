@@ -5,9 +5,11 @@ import type {
   GratitudeEntry,
   MoodCheckEntry,
   ActivityEntry,
+  ActivityCategory,
   SafetyPlan,
   CopingSkillLog,
 } from '@/types'
+import { ACTIVITY_CATEGORIES } from '@/types'
 import { logger } from '@/utils/logger'
 import { toast } from '@/stores/toastStore'
 
@@ -383,6 +385,25 @@ export const db = {
       const database = await getDB()
       const entries = await database.getAll('activities')
       logger.debug('DB', 'Retrieved activities', { count: entries.length })
+
+      const validCategories = new Set(ACTIVITY_CATEGORIES.map((c) => c.id))
+      const bad = entries.filter((e) => !validCategories.has(e.category))
+      if (bad.length > 0) {
+        const seen = [...new Set(bad.map((e) => String(e.category)))]
+        logger.warn('DB', 'Normalizing unknown activity categories', {
+          count: bad.length,
+          values: seen,
+        })
+        const tx = database.transaction('activities', 'readwrite')
+        await Promise.all(
+          bad.map((e) => {
+            e.category = 'other' as ActivityCategory
+            return tx.store.put(e)
+          })
+        )
+        await tx.done
+      }
+
       return entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     })
   },

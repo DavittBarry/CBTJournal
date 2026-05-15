@@ -91,7 +91,7 @@ export function generateActivityInsights(
   })
 
   activities.forEach((activity) => {
-    const stats = categoryStats.get(activity.category)!
+    const stats = categoryStats.get(activity.category) ?? categoryStats.get('other')!
     stats.count++
 
     if (activity.isCompleted) {
